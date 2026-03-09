@@ -26,24 +26,35 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen relative p-6 font-serif flex flex-col">
+    <div className="min-h-screen relative p-6 pt-4 font-serif flex flex-col">
       {/* 1. 顶部栏 (Top Bar) */}
-      <header className="mt-8 mb-4 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-light text-cangzhen-text-main tracking-wide leading-tight">
-            累计馆藏 <span className="font-medium">20</span> 件
-            <br />
-            本周新增 <span className="font-medium">3</span> 件
-          </h1>
-        </div>
+      <header className="mb-1 flex justify-between items-center relative z-20">
+        <h1 className="text-lg font-medium text-cangzhen-text-main tracking-wide">
+          欢迎回到专属博物馆
+        </h1>
         <button className="p-2 rounded-full glass-convex text-cangzhen-text-secondary hover:text-cangzhen-text-main transition-colors">
           <Settings size={20} strokeWidth={1.5} />
         </button>
       </header>
 
-      {/* 2. 核心仪表盘区域 (Greenhouse Centered) */}
-      <div className="flex justify-center mb-10">
-          <GlassGreenhouse stats={pavilionStats} />
+      {/* 2. 核心仪表盘区域 (Greenhouse Left + Data Right) */}
+      <div className="flex items-end justify-between mb-8 pl-8 mt-1 -translate-y-8">
+          {/* Left: Greenhouse Subject (Approx 2/3 width) */}
+          <div className="flex-[2.2] transform scale-[0.85] origin-bottom-left -mr-4">
+             <GlassGreenhouse stats={pavilionStats} />
+          </div>
+
+          {/* Right: Key Data (Approx 1/3 width) */}
+          <div className="flex-[1] flex flex-col gap-5 pl-4 border-l border-cangzhen-text-secondary/20 justify-end pb-4 h-[120px]">
+              <div className="flex flex-col items-start">
+                  <span className="text-[10px] text-cangzhen-text-secondary tracking-widest opacity-70 mb-0.5">累计馆藏</span>
+                  <span className="text-2xl font-light text-cangzhen-text-main font-serif">20</span>
+              </div>
+              <div className="flex flex-col items-start">
+                  <span className="text-[10px] text-cangzhen-text-secondary tracking-widest opacity-70 mb-0.5">本周新增</span>
+                  <span className="text-2xl font-light text-cangzhen-text-main font-serif">3</span>
+              </div>
+          </div>
       </div>
 
       {/* 3. 今日推荐 (Today Recommend) */}

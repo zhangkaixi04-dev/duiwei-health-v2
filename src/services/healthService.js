@@ -840,10 +840,10 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
 
     // 3. Prepare AI Prompt
     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
+     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
-    const systemPrompt = `你是一位资深中医健康顾问。请基于用户档案和本周数据生成健康周报。
+     const systemPrompt = `你是一位资深中医健康顾问。请基于用户档案和本周数据生成健康周报。
     
 【用户档案】
 - 性别/年龄：${userProfile.basicInfo?.gender === 'female' ? '女' : '男'} ${userProfile.basicInfo?.age || '?'}岁
@@ -859,21 +859,25 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
 
 【输出要求】
 1. **必须返回纯JSON格式**，严禁Markdown。
-2. **综合得分(totalScore)**：0-10分（保留1位小数）。评分标准参考《中国居民膳食指南》及中医养生标准（如子午流注睡眠），结合数据完整度打分。
-3. **雷达图(radar)**：包含 情绪、饮食、睡眠、运动、消化 5个维度。每个维度满分10分。
-4. **详情(details)**：每个维度需包含 score(0-10), status(简短状态词), trend(up/down/flat), desc(现象描述), breakdown(数据支撑), suggestion(建议)。
-5. **总结(summary)**：结合体质和本周表现，给出一段专业、温暖的建议（100字左右）。
+2. 包含字段：
+   - dateRange (字符串)
+   - score (数字, 0-100)
+   - summary (简短总结，不超过50字)
+   - tcmInsight (中医视角分析，包含体质和节气建议)
+   - metrics (对象: sleepAvg, exerciseDays, dietScore, poopStatus)
+   - actionCards (数组，3个对象: type, title, icon(字符串名), color, bg, content)
 
-【JSON结构示例】
+返回示例：
 {
-  "dateRange": "${dateRange}",
-  "totalScore": "8.5",
-  "summary": "...",
-  "radar": [ {"subject": "情绪", "A": 8, "fullMark": 10}, ... ],
-  "details": {
-    "emotion": { "score": 8, "title": "情绪", "status": "平稳", "trend": "flat", "desc": "...", "breakdown": "...", "suggestion": "..." },
-    ... (其他4个维度)
-  }
+  "dateRange": "10.23-10.29",
+  "score": 85,
+  "summary": "本周整体状态良好，睡眠质量提升。",
+  "tcmInsight": "您属于<b>气虚质</b>，本周作息规律，但运动量略少。秋分将至，建议多吃润肺食物。",
+  "metrics": { "sleepAvg": 7.5, "exerciseDays": 3, "dietScore": 80, "poopStatus": "正常" },
+  "actionCards": [
+     { "type": "diet", "title": "饮食建议", "icon": "Utensils", "color": "text-orange-500", "bg": "bg-orange-50", "content": "多吃山药、莲子。" },
+     ...
+  ]
 }`;
 
     try {
@@ -891,40 +895,94 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         });
 
         const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
+        const content = data.choices[0].message.content;
+        return JSON.parse(content.replace(/```json|```/g, '').trim());
 
-        const text = data.choices[0].message.content;
-        const jsonStr = text.replace(/```json|```/g, '').trim();
-        const result = JSON.parse(jsonStr);
+    } catch (e) {
+        console.error("Weekly Report Generation Failed:", e);
+        throw e; // Let caller handle fallback
+    }
+  },
 
-        // Ensure dateRange matches requested
-        result.dateRange = dateRange;
+  /**
+   * 13. 获取每日推荐 (Cangzhen - Doubao API)
+   * Generates 3 personalized micro-actions based on user profile and date.
+   */
+  get_daily_recommendation: async (userProfile = {}) => {
+    // 1. Check Cache first (to avoid API cost on every render)
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = `cangzhen_daily_rec_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached) {
+        try {
+            return JSON.parse(cached);
+        } catch (e) {
+            console.warn("Cache parse failed, fetching new.");
+        }
+    }
+
+    // 2. Call Doubao API
+    const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
+    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
+    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+
+    // Construct prompt
+    let profileDesc = "用户";
+    if (userProfile.constitution) profileDesc += `，中医体质为${userProfile.constitution.type}`;
+    if (userProfile.basicInfo?.gender) profileDesc += `，性别${userProfile.basicInfo.gender === 'female' ? '女' : '男'}`;
+
+    const systemPrompt = `你是一位治愈系的数字博物馆导览员，也是一位生活美学家。
+请基于今天的日期（${today}）和用户画像（${profileDesc}），为用户生成 3 条“今日推荐”微行动。
+
+【维度说明】
+1. **感知 (Sensation)**：引导用户通过五感（视听嗅味触）去发现生活中的微小美好。例如：去公园闻桂花、听雨声、摸树皮。
+2. **情绪 (Emotion)**：引导用户关注内心，进行自我关怀或情绪释放。例如：给自己买束花、拥抱自己、写下三件开心的事。
+3. **灵感 (Inspiration)**：引导用户进行微小的创造或思考。例如：读一首诗、画一笔涂鸦、思考一个无解的问题。
+
+【输出要求】
+1. **必须返回纯JSON格式**。
+2. 包含 3 个对象，key 分别为 sensation, emotion, inspiration。
+3. 每个 value 是一个简短的行动指令（不超过 20 字）。
+4. 语言风格：温柔、诗意、治愈、简洁。
+
+【JSON示例】
+{
+  "sensation": "在路边找一朵未名的小花，轻嗅它的香气。",
+  "emotion": "泡个热水澡，想象烦恼随蒸汽消散。",
+  "inspiration": "用手机拍下影子的形状，给它起个名字。"
+}`;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify({
+                model: ENDPOINT_ID,
+                messages: [{ role: "system", content: systemPrompt }],
+                stream: false
+            })
+        });
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        const result = JSON.parse(content.replace(/```json|```/g, '').trim());
+
+        // 3. Save to Cache
+        localStorage.setItem(cacheKey, JSON.stringify(result));
         
         return result;
 
     } catch (e) {
-        console.error("Weekly Report AI Generation Failed:", e);
-        
-        // FALLBACK: Use Mock Data if AI fails
-        const baseScore = 7.5 - (weekOffset * 0.1); 
+        console.error("Daily Recommendation API Failed:", e);
+        // Fallback to static content if API fails
         return {
-          dateRange: dateRange,
-          totalScore: (baseScore + 0.3).toFixed(1), 
-          summary: `(AI生成失败，显示默认数据) 本周（${dateRange}）整体健康状况良好。结合您的【${userProfile.constitution?.type || '平和质'}】特征，建议保持规律作息。`,
-          radar: [
-            { subject: '情绪', A: 7, fullMark: 10 },
-            { subject: '饮食', A: 6, fullMark: 10 },
-            { subject: '睡眠', A: 9, fullMark: 10 },
-            { subject: '运动', A: 8, fullMark: 10 },
-            { subject: '消化', A: 7, fullMark: 10 },
-          ],
-          details: {
-            emotion: { score: 7, title: '情绪', status: '波动', trend: 'up', desc: '情绪起伏较大。', breakdown: '暂无详细记录', suggestion: '多做深呼吸。' },
-            diet: { score: 6, title: '饮食', status: '油腻', trend: 'down', desc: '外卖较多。', breakdown: '暂无详细记录', suggestion: '饮食清淡。' },
-            sleep: { score: 9, title: '睡眠', status: '充沛', trend: 'flat', desc: '作息规律。', breakdown: '平均7.5小时', suggestion: '继续保持。' },
-            exercise: { score: 8, title: '运动', status: '达标', trend: 'up', desc: '运动积极。', breakdown: '每周3次', suggestion: '注意拉伸。' },
-            digestion: { score: 7, title: '消化', status: '良好', trend: 'flat', desc: '排便正常。', breakdown: '每日1次', suggestion: '多喝水。' }
-          }
+            sensation: "去窗边看看云的形状，猜猜它像什么。",
+            emotion: "深呼吸三次，告诉自己：今天已经做得很好了。",
+            inspiration: "随手翻开一本书的第 20 页，读第一句话。"
         };
     }
   }

@@ -504,18 +504,22 @@ const WeeklyReportCard = ({ report }) => (
         </div>
       </div>
   
-      {/* Summary - LLM Style */}
-      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
+      {/* 1. AI Insight + TCM */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand" />
-          <h4 className="text-sm font-bold text-text-main">AI 洞察</h4>
+          <h4 className="text-sm font-bold text-text-main">AI 中医洞察</h4>
         </div>
-        <p className="text-xs text-text-main leading-relaxed opacity-90">
-          {report.summary}
-        </p>
+        <div className="text-xs text-text-main leading-relaxed opacity-90 space-y-2">
+            <p>{report.summary}</p>
+            <div className="bg-brand/5 p-3 rounded-lg border border-brand/10 text-brand-dark/90">
+                <span className="font-bold block mb-1">🌿 中医视角：</span>
+                <span dangerouslySetInnerHTML={{ __html: report.tcmInsight }}></span>
+            </div>
+        </div>
       </div>
   
-      {/* Key Metrics Grid */}
+      {/* 2. Key Metrics Grid */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
           <div className="bg-indigo-50 p-2 rounded-lg">
@@ -554,16 +558,34 @@ const WeeklyReportCard = ({ report }) => (
           </div>
         </div>
       </div>
+
+      {/* 3. Correlation Insight (New) */}
+      <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-2">
+         <div className="flex items-center gap-2 text-orange-800">
+            <TrendingUp className="w-4 h-4" />
+            <h4 className="text-sm font-bold">{report.correlationInsight.title}</h4>
+         </div>
+         <p className="text-xs text-orange-900/80 leading-relaxed">
+             <span dangerouslySetInnerHTML={{ __html: report.correlationInsight.content }}></span>
+         </p>
+      </div>
   
-      {/* Suggestion */}
-      <div className="bg-brand/5 p-4 rounded-xl border border-brand/10 flex gap-3 items-start">
-        <TrendingUp className="w-5 h-5 text-brand shrink-0 mt-0.5" />
-        <div>
-          <h4 className="text-xs font-bold text-brand mb-1">下周建议</h4>
-          <p className="text-xs text-text-main opacity-80 leading-relaxed">
-            {report.suggestion}
-          </p>
-        </div>
+      {/* 4. Action Cards (New) */}
+      <div className="space-y-3">
+         <h4 className="text-sm font-bold text-text-main pl-1">下周专属行动卡</h4>
+         <div className="grid grid-cols-1 gap-3">
+            {report.actionCards.map((card, idx) => (
+                <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 flex gap-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div className={`${card.bg} p-2.5 rounded-lg h-fit shrink-0`}>
+                        <card.icon className={`w-5 h-5 ${card.color}`} />
+                    </div>
+                    <div>
+                        <h5 className={`text-xs font-bold mb-1 ${card.color}`}>{card.title}</h5>
+                        <p className="text-xs text-text-muted leading-relaxed">{card.content}</p>
+                    </div>
+                </div>
+            ))}
+         </div>
       </div>
     </div>
   );
@@ -702,11 +724,60 @@ const PoopRecordCard = ({ onConfirm }) => {
   );
 };
 
-const SleepRecordCard = ({ onConfirm }) => {
+const SleepDataVerifyCard = ({ data, onConfirm, onReject }) => {
+  return (
+    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+         <span className="bg-indigo-50 p-1.5 rounded-lg text-indigo-500"><Activity className="w-4 h-4" /></span>
+         <h3 className="font-bold text-text-main">智能设备数据同步</h3>
+      </div>
+      
+      <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+         <div className="flex justify-between items-center">
+            <span className="text-xs text-text-muted">入睡时间</span>
+            <span className="text-sm font-bold text-text-main">{data.sleepTime}</span>
+         </div>
+         <div className="flex justify-between items-center">
+            <span className="text-xs text-text-muted">起床时间</span>
+            <span className="text-sm font-bold text-text-main">{data.wakeTime}</span>
+         </div>
+         <div className="flex justify-between items-center border-t border-gray-200 pt-2">
+            <span className="text-xs text-text-muted">总睡眠时长</span>
+            <span className="text-lg font-bold text-indigo-600">{data.duration}</span>
+         </div>
+         <div className="flex justify-between items-start border-t border-gray-200 pt-2">
+            <span className="text-xs text-text-muted">易醒时段</span>
+            <div className="text-right">
+                {data.wakePeriods && data.wakePeriods.length > 0 && !data.wakePeriods.includes('none') ? (
+                    data.wakePeriods.map(p => (
+                        <span key={p} className="text-xs font-medium text-text-main bg-white border border-gray-200 px-1.5 py-0.5 rounded-md ml-1 inline-block mb-1">
+                            {p === 'zi' ? '子时' : p === 'chou' ? '丑时' : p === 'yin' ? '寅时' : p === 'mao' ? '卯时' : p}
+                        </span>
+                    ))
+                ) : <span className="text-xs text-text-muted">无明显易醒</span>}
+            </div>
+         </div>
+      </div>
+
+      <p className="text-xs text-center text-text-muted">请确认以上数据是否准确？</p>
+
+      <div className="flex gap-3">
+        <button onClick={onConfirm} className="flex-1 bg-brand text-white py-3 rounded-xl text-sm font-bold shadow-md hover:bg-brand/90">
+          准确 (去补充感受)
+        </button>
+        <button onClick={onReject} className="flex-1 bg-white text-text-muted border border-gray-200 py-3 rounded-xl text-sm font-bold hover:bg-gray-50">
+          不准 (手动修改)
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const SleepRecordCard = ({ onConfirm, mode = 'full', initialData = {} }) => {
   const [activeTab, setActiveTab] = useState('night'); // night, nap
-  const [sleepTime, setSleepTime] = useState('23:00');
-  const [wakeTime, setWakeTime] = useState('06:30');
-  const [wakePeriods, setWakePeriods] = useState([]);
+  const [sleepTime, setSleepTime] = useState(initialData.sleepTime || '23:00');
+  const [wakeTime, setWakeTime] = useState(initialData.wakeTime || '06:30');
+  const [wakePeriods, setWakePeriods] = useState(initialData.wakePeriods || []);
   const [dreamState, setDreamState] = useState('基本无梦');
   const [subjectiveEval, setSubjectiveEval] = useState(null); // good, normal, bad
 
@@ -752,45 +823,56 @@ const SleepRecordCard = ({ onConfirm }) => {
 
   return (
     <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-4">
-       {/* Tabs */}
-       <div className="flex bg-white p-1 rounded-xl mb-2">
-         <button onClick={() => setActiveTab('night')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'night' ? 'bg-white shadow-sm text-text-main' : 'text-text-muted'}`}>夜间睡眠</button>
-         <button onClick={() => setActiveTab('nap')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'nap' ? 'bg-white shadow-sm text-text-main' : 'text-text-muted'}`}>午休小憩</button>
-       </div>
+       {/* Tabs - Only show in full mode or if user wants to switch */}
+       {mode === 'full' && (
+        <div className="flex bg-white p-1 rounded-xl mb-2">
+            <button onClick={() => setActiveTab('night')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'night' ? 'bg-white shadow-sm text-text-main' : 'text-text-muted'}`}>夜间睡眠</button>
+            <button onClick={() => setActiveTab('nap')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'nap' ? 'bg-white shadow-sm text-text-main' : 'text-text-muted'}`}>午休小憩</button>
+        </div>
+       )}
 
        {activeTab === 'night' ? (
          <>
-           {/* Time Inputs */}
-           <div className="bg-white p-4 rounded-xl flex items-center justify-between">
-              <div className="text-center">
-                 <div className="text-xs text-text-muted mb-1">入睡</div>
-                 <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)} className="text-xl font-bold text-text-main bg-transparent outline-none w-20 text-center" />
-              </div>
-              <div className="text-center">
-                 <div className="text-xs text-text-muted mb-1">起床</div>
-                 <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} className="text-xl font-bold text-text-main bg-transparent outline-none w-20 text-center" />
-              </div>
-              <div className="text-center">
-                 <div className="text-xs text-text-muted mb-1">时长</div>
-                 <div className="text-xl font-bold text-emerald-500">{calculateDuration()}</div>
-              </div>
-           </div>
+           {/* Time Inputs - Only in Full Mode */}
+           {mode === 'full' ? (
+               <>
+                <div className="bg-white p-4 rounded-xl flex items-center justify-between">
+                    <div className="text-center">
+                        <div className="text-xs text-text-muted mb-1">入睡</div>
+                        <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)} className="text-xl font-bold text-text-main bg-transparent outline-none w-20 text-center" />
+                    </div>
+                    <div className="text-center">
+                        <div className="text-xs text-text-muted mb-1">起床</div>
+                        <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} className="text-xl font-bold text-text-main bg-transparent outline-none w-20 text-center" />
+                    </div>
+                    <div className="text-center">
+                        <div className="text-xs text-text-muted mb-1">时长</div>
+                        <div className="text-xl font-bold text-emerald-500">{calculateDuration()}</div>
+                    </div>
+                </div>
 
-           {/* TCM Wake Periods */}
-           <div className="space-y-2">
-             <label className="text-xs text-text-muted font-bold ml-1">夜间易醒时段</label>
-             <div className="flex flex-wrap gap-2">
-               {tcmWakeOptions.map(opt => (
-                 <button 
-                   key={opt.value} 
-                   onClick={() => handleWakePeriodToggle(opt.value)}
-                   className={`px-3 py-1.5 rounded-full text-xs border transition-all ${wakePeriods.includes(opt.value) ? 'bg-emerald-50 border-emerald-200 text-emerald-600 font-bold' : 'bg-white border-gray-100 text-text-muted'}`}
-                 >
-                   {opt.label}
-                 </button>
-               ))}
-             </div>
-           </div>
+                <div className="space-y-2">
+                    <label className="text-xs text-text-muted font-bold ml-1">夜间易醒时段</label>
+                    <div className="flex flex-wrap gap-2">
+                    {tcmWakeOptions.map(opt => (
+                        <button 
+                        key={opt.value} 
+                        onClick={() => handleWakePeriodToggle(opt.value)}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-all ${wakePeriods.includes(opt.value) ? 'bg-emerald-50 border-emerald-200 text-emerald-600 font-bold' : 'bg-white border-gray-100 text-text-muted'}`}
+                        >
+                        {opt.label}
+                        </button>
+                    ))}
+                    </div>
+                </div>
+               </>
+           ) : (
+               // Supplement Mode: Show read-only summary
+               <div className="bg-white p-3 rounded-xl flex items-center justify-between opacity-80">
+                  <div className="text-xs text-text-muted">已确认数据：<br/>{sleepTime} - {wakeTime} ({calculateDuration()})</div>
+                  <button onClick={() => alert('请在完整模式下修改')} className="text-xs text-brand font-bold">已同步设备</button>
+               </div>
+           )}
 
            {/* Dreams */}
            <div className="space-y-2">
@@ -1011,15 +1093,45 @@ const WeeklyReportPanel = () => {
          await new Promise(r => setTimeout(r, 800));
          const mockReport = {
             dateRange: '2023.10.23 - 2023.10.29',
-            score: 88,
-            summary: '本周您的健康状况整体良好！睡眠质量显著提升，深睡时长增加 15%。运动量达标，但饮食方面碳水摄入略高，建议下周适当减少精米白面，增加粗粮。',
-            metrics: {
-                sleepAvg: 7.2,
-                exerciseDays: 4,
-                dietScore: 85,
-                poopStatus: '正常'
+            score: 85,
+            summary: '本周健康状况整体平稳，但作息与饮食存在改善空间。',
+            tcmInsight: '本周有 3 天晚于 23:00 入睡，此时正是<strong>胆经当令</strong>（23点-1点），“凡十一脏取决于胆”，此时熬夜最伤阳气，易致口苦、两肋胀痛。此外，饮食中<strong>辛辣油腻</strong>占比 40%，这与您的<strong>湿热体质</strong>相悖，如同“火上浇油”，容易加重困倦乏力感。',
+            correlationInsight: {
+                title: '健康连锁反应',
+                content: '监测到您周二、周三连续<strong>熬夜</strong>（睡眠<6h），紧接着周四记录了<strong>“精神不振”</strong>且<strong>排便干结</strong>。这形成了一条明显的证据链：熬夜伤阴 -> 肠道津液不足 -> 排便困难。您的身体正在抗议作息的不规律。'
             },
-            suggestion: '下周建议尝试“轻断食”晚餐，减轻肠胃负担。同时保持目前的运动频率，可以增加一些力量训练。'
+            metrics: {
+                sleepAvg: 6.8,
+                exerciseDays: 3,
+                dietScore: 72,
+                poopStatus: '干结'
+            },
+            actionCards: [
+                {
+                    type: 'diet',
+                    title: '饮食调理',
+                    icon: Utensils,
+                    color: 'text-orange-500',
+                    bg: 'bg-orange-50',
+                    content: '下周重点“清热祛湿”。建议晚餐尝试绿豆薏米粥，减少麻辣火锅频次。多吃冬瓜、丝瓜等甘淡食物。'
+                },
+                {
+                    type: 'exercise',
+                    title: '运动建议',
+                    icon: Activity,
+                    color: 'text-emerald-500',
+                    bg: 'bg-emerald-50',
+                    content: '避免大汗淋漓的剧烈运动。推荐每日 15 分钟八段锦，或傍晚进行快走，以微汗为度，疏通气机。'
+                },
+                {
+                    type: 'mood',
+                    title: '情志调节',
+                    icon: Moon,
+                    color: 'text-indigo-500',
+                    bg: 'bg-indigo-50',
+                    content: '睡前 1 小时放下手机，尝试正念冥想或腹式呼吸。周末建议去森林/公园徒步，吸氧洗肺，舒缓焦虑。'
+                }
+            ]
          };
          setReport(mockReport);
       } catch (e) {
@@ -1111,6 +1223,9 @@ const ChatInterface = ({ onOpenProfile }) => {
     return storageService.getUserProfile().constitution;
   });
 
+  const [sleepRecordMode, setSleepRecordMode] = useState('full');
+  const [tempSleepData, setTempSleepData] = useState(null);
+
   const [isAiTyping, setIsAiTyping] = useState(false);
   // const [showDashboard, setShowDashboard] = useState(true); // Replaced by activeTab
 
@@ -1194,19 +1309,28 @@ const ChatInterface = ({ onOpenProfile }) => {
 
       // Check Morning
       if (timeStr === settings.morning) {
-         // Avoid duplicate if already sent recently (logic simplified for demo)
          const lastMsg = messages[messages.length - 1];
-         if (lastMsg && lastMsg.text.includes('早安') && (Date.now() - lastMsg.id < 60000)) return;
+         // Only trigger if last message was NOT from AI about morning (avoid spam)
+         // And check if user has already interacted today about sleep
+         const hasMorningInteraction = messages.some(m => 
+            m.sender === 'ai' && m.time > settings.morning && m.text.includes('早安')
+         );
          
-         handleSend('触发早安提醒'); // Internal trigger
+         if (!hasMorningInteraction) {
+             handleSend('触发早安提醒');
+         }
       }
 
       // Check Night
       if (timeStr === settings.night) {
          const lastMsg = messages[messages.length - 1];
-         if (lastMsg && lastMsg.text.includes('晚安') && (Date.now() - lastMsg.id < 60000)) return;
+         const hasNightInteraction = messages.some(m => 
+            m.sender === 'ai' && m.time > settings.night && m.text.includes('晚安')
+         );
 
-         handleSend('触发晚安提醒'); // Internal trigger
+         if (!hasNightInteraction) {
+             handleSend('触发晚安提醒');
+         }
       }
 
     }, 30000); // Check every 30s
@@ -1467,18 +1591,21 @@ const ChatInterface = ({ onOpenProfile }) => {
          // Generate personalized response based on new fields
          let feedback = `基础档案已建立。📝\n`;
          
-         // Mock: Fetch constitution to see if we can infer anything early (optional)
-         // const consti = await healthService.get_constitution('user'); 
-         
          if (basicInfo.brainLoad === '高') feedback += `注意到您脑力消耗大，我会特别关注补脑安神的营养搭配。\n`;
          if (basicInfo.sleepHabit === '经常熬夜') feedback += `您的作息需要调整哦，我们会循序渐进地改善。\n`;
          if (basicInfo.gender === 'female' && basicInfo.painLevel === '剧烈痛') feedback += `关于痛经问题，我会结合您的体质给出针对性调理方案。\n`;
          
-         responseText = `${feedback}\n为了精准辨识您的体质，请配合上传一张【舌诊照片】。`;
-         nextStep = 'upload_tongue';
+         responseText = `${feedback}\n接下来，为了更好地照顾您，建议设置每日提醒。`;
+         nextStep = 'reminder_setup';
       } else {
          responseText = '请填写上方的基础信息卡片，让我更全面地了解您。';
       }
+    }
+
+    // --- 6. Reminder Setup (Moved Before Diagnosis) ---
+    else if (stepToProcess === 'reminder_setup') {
+        responseText = '设置成功！\n\n为了精准辨识您的体质，请配合上传一张【舌诊照片】。';
+        nextStep = 'upload_tongue';
     }
     
     // --- 2. Tongue Diagnosis ---
@@ -1496,9 +1623,25 @@ const ChatInterface = ({ onOpenProfile }) => {
       }
     }
 
+
     // --- 9. Sleep Record Flow ---
     else if (stepToProcess === 'sleep_record') {
         responseText = '请在下方卡片中填写睡眠信息。';
+    }
+
+    // --- 9.5 Sleep Verify Flow (New) ---
+    else if (stepToProcess === 'sleep_verify') {
+        if (text.includes('准确') || text.includes('对') || text.includes('是')) {
+            responseText = '好的，设备数据已同步。😴\n请您补充一下昨晚的梦境和整体感受吧。';
+            setSleepRecordMode('supplement');
+            nextStep = 'sleep_record';
+        } else {
+            responseText = '没关系，请您手动修改并记录真实的睡眠情况。📝';
+            setSleepRecordMode('full');
+            // Even if inaccurate, we can pre-fill with device data as a starting point, or clear it.
+            // Let's keep it as initial data for convenience.
+            nextStep = 'sleep_record';
+        }
     }
 
     // --- 10. Diet Summary Flow ---
@@ -1509,12 +1652,12 @@ const ChatInterface = ({ onOpenProfile }) => {
     // --- 3. Confirm Diagnosis ---
     else if (stepToProcess === 'diagnosis_confirm') {
        if (text.includes('不准') || text.includes('不像') || text.includes('不对')) {
-          responseText = '抱歉，AI 舌诊可能受光线影响。为了更准确，建议您填写一份专业的【中医体质辨识问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 支持断点续填（随时暂停，进度自动保存）\n\n是否现在开始填写？';
+          responseText = '抱歉，AI 舌诊可能受光线影响。为了更准确，建议您填写一份专业的【中医体质辨识问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 支持断点续填（随时暂停，进度自动保存）\n\n是否现在开始填写？（如果选“稍后”，您可以随时在个人档案中补充）';
           nextStep = 'questionnaire_intro';
        } else {
           // User says "Yes" / "Accurate"
           const consti = await healthService.get_constitution('user');
-          responseText = `太棒了！那我们就先以“${consti.type}”作为初始调理方向。💪\n\n不过，AI 视觉诊断可能存在局限。为了最科学地评估您的体质，我还为您准备了【国家标准中医体质问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 结果将生成多维雷达图\n\n您想现在进行更精准的测试，还是先跳过？`;
+          responseText = `太棒了！那我们就先以“${consti.type}”作为初始调理方向。💪\n\n不过，AI 视觉诊断可能存在局限。为了最科学地评估您的体质，我还为您准备了【国家标准中医体质问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 结果将生成多维雷达图\n\n您想现在进行更精准的测试，还是先跳过？（跳过并不影响您开始使用产品）`;
           nextStep = 'ask_questionnaire';
        }
     }
@@ -1527,23 +1670,24 @@ const ChatInterface = ({ onOpenProfile }) => {
              nextStep = 'questionnaire_doing';
              setQuestionnaireProgress(1);
         } else {
-             responseText = '没问题，那我们先基于目前的判断开始调理。日后您随时可以在“个人中心”补充问卷。\n\n接下来，为了更好地照顾您，建议设置每日提醒。';
-             nextStep = 'reminder_setup';
+             responseText = '没问题，那我们先基于目前的判断开始调理。日后您随时可以在“个人档案”页面补充问卷。\n\n最后一步，是否需要绑定您的智能设备？';
+             nextStep = 'device_bind';
         }
     }
 
     // --- 4. Questionnaire Intro ---
     else if (stepToProcess === 'questionnaire_intro') {
-        if (text.includes('开始') || text.includes('好')) {
+        if (text.includes('开始') || text.includes('好') || text.includes('填')) {
             const firstQ = questionnaireData[0];
             responseText = `好的，我们开始第一题（1/${questionnaireData.length}）：\n\n${firstQ.question}\n(${firstQ.options.join(' / ')})`;
             nextStep = 'questionnaire_doing';
             setQuestionnaireProgress(1);
         } else {
-            responseText = '没关系，您可以随时告诉我“开始问卷”来补充信息。那我们先进入日常模式。';
-            nextStep = 'reminder_setup';
+            responseText = '没关系，您可以随时告诉我“开始问卷”或去“个人档案”补充信息。那我们先进入日常模式。\n\n最后一步，是否需要绑定您的智能设备？';
+            nextStep = 'device_bind';
         }
     }
+
     
     // --- 5. Questionnaire Doing ---
     else if (stepToProcess === 'questionnaire_doing') {
@@ -1628,11 +1772,46 @@ const ChatInterface = ({ onOpenProfile }) => {
 
         // B. Debug Triggers
         if (text === '触发早安提醒') {
-             responseText = '早安！☀️ 又是充满活力的一天。\n昨晚睡得怎么样？来记录一下睡眠吧。';
-             nextStep = 'sleep_record';
+             // Check device sync (Mock)
+             const hasDevice = true; // storageService.getDevices().length > 0
+             let morningMsg = '早安！☀️ 又是充满活力的一天。';
+             
+             if (hasDevice) {
+                 // Mock Data
+                 const mockSleepData = {
+                     sleepTime: '23:30',
+                     wakeTime: '07:15',
+                     duration: '7h45m',
+                     wakePeriods: ['chou'] // 1-3am
+                 };
+                 setTempSleepData(mockSleepData);
+
+                 morningMsg += '\n⌚️ 收到您的睡眠数据：昨晚睡了 7小时45分，易醒时段：丑时。\n请确认数据是否准确？';
+                 nextStep = 'sleep_verify'; 
+             } else {
+                 morningMsg += '\n昨晚睡得怎么样？来记录一下睡眠吧。';
+                 setSleepRecordMode('full'); // No device, so full manual
+                 setTempSleepData(null);
+                 nextStep = 'sleep_record';
+             }
+             responseText = morningMsg;
         }
         else if (text === '触发晚安提醒') {
-             responseText = '晚安。🌙 忙碌了一天辛苦了。\n让我们来复盘一下今天的饮食情况吧。';
+             // Summarize the day
+             const today = new Date().toISOString().split('T')[0];
+             const dietLogs = storageService.getDailyLogs(today).diet || [];
+             const sleepData = storageService.getLatestHealthRecord('sleep');
+             // const poopData = storageService.getLatestHealthRecord('poop');
+             
+             let summary = '晚安。🌙 忙碌了一天辛苦了。\n\n【今日复盘】\n';
+             summary += `🍱 饮食：记录了 ${dietLogs.length} 餐\n`;
+             if (sleepData && sleepData.date === today) summary += `😴 昨夜睡眠：${sleepData.duration} (${sleepData.subjectiveEval === 'good' ? '不错' : '一般'})\n`;
+             else summary += `😴 昨夜睡眠：暂无记录\n`;
+             
+             // Check missing
+             if (dietLogs.length === 0) summary += '\n⚠️ 还没有记录今天的饮食哦，要不要补记一下？';
+             
+             responseText = summary + '\n\n最后，让我们回顾一下今天的饱腹感和整体状态，为明天生成建议。';
              nextStep = 'diet_summary';
         }
 
@@ -2014,11 +2193,11 @@ const ChatInterface = ({ onOpenProfile }) => {
         {/* Top Buttons */}
         <div className="flex gap-2">
             <button 
-                onClick={() => toggleTab('profile')}
-                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'profile' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
+                onClick={() => toggleTab('daily')}
+                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'daily' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
             >
-                <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : 'text-brand'}`} />
-                <span className="text-xs font-bold">个人档案</span>
+                <Sparkles className={`w-4 h-4 ${activeTab === 'daily' ? 'text-white' : 'text-brand'}`} />
+                <span className="text-xs font-bold">每日推荐</span>
             </button>
             <button 
                 onClick={() => toggleTab('weekly')}
@@ -2028,11 +2207,11 @@ const ChatInterface = ({ onOpenProfile }) => {
                 <span className="text-xs font-bold">健康周报</span>
             </button>
             <button 
-                onClick={() => toggleTab('daily')}
-                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'daily' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
+                onClick={() => toggleTab('profile')}
+                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'profile' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
             >
-                <Sparkles className={`w-4 h-4 ${activeTab === 'daily' ? 'text-white' : 'text-brand'}`} />
-                <span className="text-xs font-bold">每日推荐</span>
+                <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : 'text-brand'}`} />
+                <span className="text-xs font-bold">个人档案</span>
             </button>
         </div>
 
@@ -2127,9 +2306,19 @@ const ChatInterface = ({ onOpenProfile }) => {
            />
         )}
 
+        {currentStep === 'sleep_verify' && tempSleepData && (
+           <SleepDataVerifyCard 
+             data={tempSleepData}
+             onConfirm={() => handleSend('数据准确')}
+             onReject={() => handleSend('数据不准')}
+           />
+        )}
+
         {currentStep === 'sleep_record' && (
            <SleepRecordCard 
              onConfirm={handleSleepSubmit}
+             mode={sleepRecordMode}
+             initialData={tempSleepData || {}}
            />
         )}
 

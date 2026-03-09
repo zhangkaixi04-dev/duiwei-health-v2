@@ -47,11 +47,11 @@ const GlassGreenhouse = ({ stats }) => {
   );
 
   return (
-    <div className="relative w-full flex flex-col items-center mx-auto pt-4 pb-1">
+    <div className="relative flex flex-col items-center pt-0 pb-1">
       
       {/* 1. Warm Light Layer */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none left-0 right-0 mx-auto"
         style={{
           width: '90%', height: 260, top: 40,
           borderRadius: "50%",
@@ -67,19 +67,19 @@ const GlassGreenhouse = ({ stats }) => {
           {/* Roof */}
           <div className="relative">
               <div 
-                  className="w-0 h-0 border-l-[140px] border-l-transparent border-r-[140px] border-r-transparent border-b-[90px] border-b-white/40 backdrop-blur-sm"
+                  className="w-0 h-0 border-l-[165px] border-l-transparent border-r-[165px] border-r-transparent border-b-[90px] border-b-white/40 backdrop-blur-sm"
               />
-              <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-[280px] h-[90px]" viewBox="0 0 280 90" fill="none">
-                  <path d="M140 0L280 90M140 0L0 90" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
-                  <circle cx="140" cy="0" r="3" fill="white" />
+              <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-[330px] h-[90px]" viewBox="0 0 330 90" fill="none">
+                  <path d="M165 0L330 90M165 0L0 90" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
+                  <circle cx="165" cy="0" r="3" fill="white" />
               </svg>
           </div>
 
           {/* Body Container */}
-          <div className="relative w-[260px] h-[200px] mt-[-1px] glass border-t-0 rounded-b-lg shadow-[0_8px_32px_rgba(0,0,0,0.05)]">
+          <div className="relative w-[310px] h-[200px] mt-[-1px] glass border-t-0 rounded-b-lg shadow-[0_8px_32px_rgba(0,0,0,0.05)]">
               
               {/* Icons Grid Layout (Inside Glass) */}
-              <div className="absolute inset-0 z-20 flex justify-between px-4 py-6">
+              <div className="absolute inset-0 z-20 flex justify-between px-6 py-6">
                   {/* Left Column */}
                   <div className="flex flex-col justify-between h-full">
                       <IconWrapper label="感知" count={sensation.count} icon={StarOfBethlehem} delay="0s" type="sensation" />
@@ -102,12 +102,15 @@ const GlassGreenhouse = ({ stats }) => {
               </div>
               <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/30 z-10 opacity-60" />
 
-              {/* Archway (Center) */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[100px] h-[120px] rounded-t-[50px] bg-gradient-to-b from-white/30 to-transparent border-t border-x border-white/50 z-10 backdrop-blur-[2px]" />
+              {/* Archway (Center) + Warm Light Glow */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120px] h-[120px] rounded-t-[60px] bg-gradient-to-b from-white/30 to-transparent border-t border-x border-white/50 z-10 backdrop-blur-[2px] overflow-hidden">
+                  {/* Warm Light Glow inside Arch */}
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-[60%] bg-[#FFD700] opacity-20 blur-[20px] rounded-full pointer-events-none" />
+              </div>
           </div>
 
           {/* Base */}
-          <div className="w-[280px] h-[28px] bg-gradient-to-b from-[#C5CCAE] to-[#B8C4A0] rounded-b-[12px] shadow-xl relative z-20">
+          <div className="w-[330px] h-[28px] bg-gradient-to-b from-[#C5CCAE] to-[#B8C4A0] rounded-b-[12px] shadow-xl relative z-20">
                {/* Flower Decorations */}
                <div className="absolute -top-6 left-[-10px] opacity-90"><LilyOfTheValley size={28} /></div>
                <div className="absolute -top-5 right-[-8px] opacity-90"><IrisFlower size={26} /></div>
