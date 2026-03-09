@@ -1,0 +1,7 @@
+- [x] Personal Center Subpages - Health Profile implemented (No Age/Gender, Editable Height/Weight/Allergies)
+- [x] Personal Center Subpages - Health Report implemented (Mock Trends)
+- [x] Personal Center Subpages - Questionnaire Wrapper implemented (Embedded 72Q)
+- [x] Personal Center Subpages - Manual Entry implemented (Constitution Selection + Activation Archive)
+- [x] Real AI Diet Analysis - Meal recommendations are dynamically generated based on user profile and TDEE
+- [x] Long-term Memory - User data (basic info, constitution, history) is persistently stored and retrievable [COMPLETED]
+- [ ] Medical Guardrails - Sensitive medical terms are intercepted with appropriate disclaimers
