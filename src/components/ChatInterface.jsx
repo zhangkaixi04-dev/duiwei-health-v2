@@ -751,7 +751,7 @@ const SleepDataVerifyCard = ({ data, onConfirm, onReject }) => {
                 {data.wakePeriods && data.wakePeriods.length > 0 && !data.wakePeriods.includes('none') ? (
                     data.wakePeriods.map(p => (
                         <span key={p} className="text-xs font-medium text-text-main bg-white border border-gray-200 px-1.5 py-0.5 rounded-md ml-1 inline-block mb-1">
-                            {p === 'zi' ? '子时' : p === 'chou' ? '丑时' : p === 'yin' ? '寅时' : p === 'mao' ? '卯时' : p}
+                            {p === 'zi' ? '23:00-01:00 (子时)' : p === 'chou' ? '01:00-03:00 (丑时)' : p === 'yin' ? '03:00-05:00 (寅时)' : p === 'mao' ? '05:00-07:00 (卯时)' : p}
                         </span>
                     ))
                 ) : <span className="text-xs text-text-muted">无明显易醒</span>}
@@ -783,10 +783,10 @@ const SleepRecordCard = ({ onConfirm, mode = 'full', initialData = {} }) => {
 
   // TCM Wake Periods
   const tcmWakeOptions = [
-    { label: '23-1点 子时·胆经', value: 'zi' },
-    { label: '1-3点 丑时·肝经', value: 'chou' },
-    { label: '3-5点 寅时·肺经', value: 'yin' },
-    { label: '5-7点 卯时·大肠经', value: 'mao' },
+    { label: '23:00-01:00 (子时)', value: 'zi' },
+    { label: '01:00-03:00 (丑时)', value: 'chou' },
+    { label: '03:00-05:00 (寅时)', value: 'yin' },
+    { label: '05:00-07:00 (卯时)', value: 'mao' },
     { label: '没有', value: 'none' },
   ];
 
@@ -1793,7 +1793,15 @@ const ChatInterface = ({ onOpenProfile }) => {
                  };
                  setTempSleepData(mockSleepData);
 
-                 morningMsg += '\n⌚️ 收到您的睡眠数据：昨晚睡了 7小时45分，易醒时段：丑时。\n请确认数据是否准确？';
+                 const wakePeriodMap = {
+                    'zi': '23:00-01:00 (子时)',
+                    'chou': '01:00-03:00 (丑时)',
+                    'yin': '03:00-05:00 (寅时)',
+                    'mao': '05:00-07:00 (卯时)'
+                 };
+                 const wakeText = mockSleepData.wakePeriods.map(p => wakePeriodMap[p] || p).join('、');
+
+                 morningMsg += `\n⌚️ 收到您的睡眠数据：昨晚睡了 7小时45分，易醒时段：${wakeText}。\n请确认数据是否准确？`;
                  nextStep = 'sleep_verify'; 
              } else {
                  morningMsg += '\n昨晚睡得怎么样？来记录一下睡眠吧。';
