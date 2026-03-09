@@ -402,59 +402,128 @@ export const healthService = {
     // ... (Previous code)
     
   /**
-   * 12. AI 识别食物图片 (New)
-   * 模拟视觉 AI 分析过程：图片 -> 识别物体 -> 估算体积/重量 -> 计算营养
+   * 12. AI 识别食物图片 (Real Vision)
+   * 接入智谱 GLM-4V 进行真实识别
    */
   analyze_food_image: async (imageFile) => {
-    console.log("Analyzing image...", imageFile);
+    console.log("Analyzing food image...", imageFile);
     
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 1. Convert Blob/File to Base64
+    const toBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
 
-    // 这里通常是调用 Vision API，例如 OpenAI GPT-4o Vision 或 豆包视觉版
-    // const formData = new FormData();
-    // formData.append('image', imageFile);
-    // const response = await api.post('/vision', formData);
-
-    // Mock Result (模拟 AI 看到的食物)
-    // 随机返回一种食物组合，模拟识别结果
-    const mockResults = [
-        {
-            food: "红烧牛肉面",
-            weight: "550g",
-            analysis: "识别到一碗红烧牛肉面。根据标准碗的大小（直径约18cm）估算：面条约200g，牛肉约80g，汤料和蔬菜约270g。",
-            nutrition: {
-                calories: 680,
-                nutrients: { carb: 85, protein: 28, fat: 25 },
-                suitability: "中等",
-                advice: "钠含量较高，建议少喝汤。"
-            }
-        },
-        {
-            food: "鸡胸肉沙拉",
-            weight: "320g",
-            analysis: "识别到一份轻食沙拉。包含煎鸡胸肉、生菜、圣女果和少量玉米粒。分量适中。",
-            nutrition: {
-                calories: 350,
-                nutrients: { carb: 20, protein: 35, fat: 12 },
-                suitability: "适宜",
-                advice: "非常健康的减脂餐，蛋白质充足。"
-            }
-        },
-        {
-            food: "扬州炒饭",
-            weight: "300g",
-            analysis: "识别到一盘炒饭，配料有火腿、鸡蛋、豌豆。油脂光泽较明显。",
-            nutrition: {
-                calories: 520,
-                nutrients: { carb: 70, protein: 12, fat: 22 },
-                suitability: "少食",
-                advice: "碳水和油脂较高，建议搭配一份水煮青菜。"
-            }
+    try {
+        // 如果是 File 对象（来自 input type="file"），转 Base64
+        // 如果已经是 URL (blob:...)，需要 fetch 后转 blob 再转 base64
+        let base64Image = '';
+        if (imageFile instanceof File || imageFile instanceof Blob) {
+            base64Image = await toBase64(imageFile);
+        } else if (typeof imageFile === 'string' && imageFile.startsWith('blob:')) {
+             const blob = await fetch(imageFile).then(r => r.blob());
+             base64Image = await toBase64(blob);
+        } else {
+             base64Image = imageFile; // Assume already base64 or url
         }
-    ];
 
-    return mockResults[Math.floor(Math.random() * mockResults.length)];
+        // 2. Call Real API (Zhipu GLM-4V)
+        // 注意：这里复用您在 analyze_tongue 中配置的 Key，或者您可以单独配置
+        return await healthService._zhipuAnalyzeFood(base64Image);
+
+    } catch (e) {
+        console.error("Real Food Analysis Failed, falling back to mock:", e);
+        
+        // Fallback Mock Result (模拟 AI 看到的食物)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const mockResults = [
+            {
+                food: "红烧牛肉面 (模拟结果)",
+                weight: "550g",
+                imageUrl: typeof imageFile === 'string' ? imageFile : null,
+                analysis: "【API调用失败，显示模拟数据】识别到一碗红烧牛肉面。根据标准碗的大小（直径约18cm）估算：面条约200g，牛肉约80g，汤料和蔬菜约270g。",
+                nutrition: {
+                    calories: 680,
+                    nutrients: { carb: 85, protein: 28, fat: 25 },
+                    suitability: "中等",
+                    advice: "钠含量较高，建议少喝汤。"
+                }
+            },
+            {
+                food: "鸡胸肉沙拉 (模拟结果)",
+                weight: "320g",
+                imageUrl: typeof imageFile === 'string' ? imageFile : null,
+                analysis: "【API调用失败，显示模拟数据】识别到一份轻食沙拉。包含煎鸡胸肉、生菜、圣女果和少量玉米粒。",
+                nutrition: {
+                    calories: 350,
+                    nutrients: { carb: 20, protein: 35, fat: 12 },
+                    suitability: "适宜",
+                    advice: "非常健康的减脂餐，蛋白质充足。"
+                }
+            }
+        ];
+        return mockResults[Math.floor(Math.random() * mockResults.length)];
+    }
+  },
+
+  /**
+   * Internal: Zhipu GLM-4V for Food Analysis
+   */
+  _zhipuAnalyzeFood: async (imageData) => {
+    // 使用与舌诊相同的 Key，或者替换为新的
+    const API_KEY = '1e52c1eb939a43cb9aba66a83ed799ef.zF7gmf1FJ3Ayxzyr'; 
+    const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+
+    const base64Url = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+
+    const systemPrompt = `你是一位专业的营养师。请分析这张图片中的食物。
+1. 识别食物名称。
+2. 根据图片中的容器或参照物，预估食物的大致重量(克)。如果不确定，请根据常见份量估算（如一碗饭约200g）。
+3. 估算其热量(kcal)和三大营养素(碳水/蛋白质/脂肪，单位g)。
+4. 返回纯JSON格式，包含以下字段：
+   - food (食物名称)
+   - weight (预估重量，如"约250g")
+   - analysis (简短的视觉分析描述，说明识别到了什么配料)
+   - nutrition: { calories (数字), nutrients: { carb (数字), protein (数字), fat (数字) }, suitability (适宜/中等/少食), advice (一句话建议) }
+
+严禁输出Markdown代码块，直接返回纯JSON字符串。`;
+
+    const payload = {
+        model: "glm-4v",
+        messages: [
+            {
+                role: "user",
+                content: [
+                    { type: "text", text: systemPrompt },
+                    { type: "image_url", image_url: { url: base64Url } }
+                ]
+            }
+        ]
+    };
+
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    
+    if (data.error) throw new Error(data.error.message);
+
+    const text = data.choices[0].message.content;
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(jsonStr);
+
+    return {
+        ...result,
+        imageUrl: base64Url // Pass back for display
+    };
   },
 
   generate_meal_plan: async (userProfile) => {

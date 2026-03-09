@@ -22,14 +22,22 @@ const GlassGreenhouse = ({ stats }) => {
   const inspiration = data.find(d => d.id === 'inspiration') || defaultStats[2];
   const wanxiang = data.find(d => d.id === 'wanxiang') || defaultStats[3];
 
-  const IconWrapper = ({ label, count, icon: Icon, delay }) => (
+  const IconWrapper = ({ label, count, icon: Icon, delay, type }) => (
     <div 
         className="flex flex-col items-center gap-1 group cursor-pointer animate-float"
         style={{ animationDelay: delay }}
         onClick={() => navigate('/cangzhen/museum')}
     >
-        <div className="w-12 h-12 flex items-center justify-center transition-transform duration-300 group-active:scale-95 glass-concave rounded-squircle shadow-inner">
-            <Icon size={20} className="opacity-80" />
+        <div 
+            className="w-12 h-12 flex items-center justify-center transition-transform duration-300 group-active:scale-95 glass-concave rounded-squircle shadow-inner border border-white/20"
+            style={{
+                background: type === 'sensation' ? 'rgba(214, 206, 171, 0.15)' : 
+                           type === 'emotion' ? 'rgba(197, 204, 174, 0.15)' : 
+                           type === 'inspiration' ? 'rgba(196, 186, 208, 0.15)' : 
+                           'rgba(224, 216, 200, 0.15)'
+            }}
+        >
+            <Icon size={20} className="opacity-90" />
         </div>
         <div className="flex flex-col items-center">
             <span className="text-[9px] text-cangzhen-text-secondary font-serif leading-none mb-0.5">{label}</span>
@@ -74,14 +82,14 @@ const GlassGreenhouse = ({ stats }) => {
               <div className="absolute inset-0 z-20 flex justify-between px-4 py-6">
                   {/* Left Column */}
                   <div className="flex flex-col justify-between h-full">
-                      <IconWrapper label="感知" count={sensation.count} icon={StarOfBethlehem} delay="0s" />
-                      <IconWrapper label="情绪" count={emotion.count} icon={LilyOfTheValley} delay="1.2s" />
+                      <IconWrapper label="感知" count={sensation.count} icon={StarOfBethlehem} delay="0s" type="sensation" />
+                      <IconWrapper label="情绪" count={emotion.count} icon={LilyOfTheValley} delay="1.2s" type="emotion" />
                   </div>
 
                   {/* Right Column */}
                   <div className="flex flex-col justify-between h-full">
-                      <IconWrapper label="灵感" count={inspiration.count} icon={IrisFlower} delay="0.6s" />
-                      <IconWrapper label="万象" count={wanxiang.count} icon={BabysBreath} delay="1.8s" />
+                      <IconWrapper label="灵感" count={inspiration.count} icon={IrisFlower} delay="0.6s" type="inspiration" />
+                      <IconWrapper label="万象" count={wanxiang.count} icon={BabysBreath} delay="1.8s" type="wanxiang" />
                   </div>
               </div>
 

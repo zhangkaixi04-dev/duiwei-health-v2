@@ -66,7 +66,15 @@ const Home = () => {
                     }`} />
                     
                     {/* Flower Icon in Concave Container */}
-                    <div className="glass-concave rounded-squircle shadow-inner w-12 h-12 flex items-center justify-center shrink-0 bg-white/10 border border-white/40">
+                    <div 
+                        className="glass-concave rounded-squircle shadow-inner w-12 h-12 flex items-center justify-center shrink-0 border border-white/20"
+                        style={{
+                            background: item.hall === 'sensation' ? 'rgba(214, 206, 171, 0.15)' : 
+                                       item.hall === 'emotion' ? 'rgba(197, 204, 174, 0.15)' : 
+                                       item.hall === 'inspiration' ? 'rgba(196, 186, 208, 0.15)' : 
+                                       'rgba(224, 216, 200, 0.15)'
+                        }}
+                    >
                         <FlowerIcon hallKey={item.hall} size={24} />
                     </div>
                     

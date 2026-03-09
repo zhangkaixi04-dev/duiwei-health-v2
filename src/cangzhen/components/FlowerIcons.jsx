@@ -86,7 +86,7 @@ export function IrisFlower({ size = 24, className }) {
   );
 }
 
-/** 万象 — 满天星花球，自定义馆 (恢复茎叶，保持花球感) */
+/** 万象 — 满天星花球，自定义馆 (多彩花球版) */
 export function BabysBreath({ size = 24, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
@@ -96,17 +96,29 @@ export function BabysBreath({ size = 24, className }) {
         <path d="M0 8 L-4 4" stroke="#8F9E78" strokeWidth="0.8" />
         <path d="M0 8 L4 4" stroke="#8F9E78" strokeWidth="0.8" />
 
-        {/* 花球主体 */}
+        {/* 花球主体 - 五颜六色 */}
         <g transform="translate(0, -2)">
-            <circle cx="0" cy="0" r="2" fill="#E0D8C8" opacity="0.95" />
-            <circle cx="-4" cy="-3" r="1.8" fill="#E0D8C8" opacity="0.9" />
-            <circle cx="4" cy="-3" r="1.8" fill="#E0D8C8" opacity="0.9" />
-            <circle cx="-3" cy="4" r="1.6" fill="#E0D8C8" opacity="0.85" />
-            <circle cx="3" cy="4" r="1.6" fill="#E0D8C8" opacity="0.85" />
-            <circle cx="0" cy="-6" r="1.4" fill="#E0D8C8" opacity="0.8" />
+            {/* 白色基底 */}
+            <circle cx="0" cy="0" r="2" fill="white" opacity="0.95" />
             
-            {/* 花芯 */}
-            <circle cx="0" cy="0" r="0.6" fill="white" />
+            {/* 粉色系 */}
+            <circle cx="-4" cy="-3" r="1.8" fill="#F4D0D8" opacity="0.9" /> {/* 淡粉 */}
+            <circle cx="3" cy="4" r="1.6" fill="#F4D0D8" opacity="0.85" />
+            
+            {/* 蓝色系 */}
+            <circle cx="4" cy="-3" r="1.8" fill="#D4E0EF" opacity="0.9" /> {/* 淡蓝 */}
+            <circle cx="-6" cy="0" r="1.4" fill="#D4E0EF" opacity="0.8" />
+            
+            {/* 紫色系 */}
+            <circle cx="-3" cy="4" r="1.6" fill="#D8D0E3" opacity="0.85" /> {/* 淡紫 */}
+            <circle cx="0" cy="-6" r="1.4" fill="#D8D0E3" opacity="0.8" />
+            
+            {/* 补点 */}
+            <circle cx="6" cy="0" r="1.4" fill="white" opacity="0.8" />
+            <circle cx="0" cy="6" r="1.4" fill="white" opacity="0.8" />
+            
+            {/* 花芯 (点缀) */}
+            <circle cx="0" cy="0" r="0.6" fill="#E0D8C8" />
             <circle cx="-4" cy="-3" r="0.5" fill="white" />
             <circle cx="4" cy="-3" r="0.5" fill="white" />
         </g>

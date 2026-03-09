@@ -68,7 +68,7 @@ const Layout = () => {
     <div className="min-h-screen relative overflow-hidden font-sans text-cangzhen-text-main">
       {/* 1. Ambient Background */}
       <div className="fixed inset-0 ambient-background z-0" />
-
+      
       {/* 2. Noise Overlay */}
       <div className="noise-overlay z-10" />
 

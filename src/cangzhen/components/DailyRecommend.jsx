@@ -69,7 +69,14 @@ const DailyRecommend = () => {
                 <div className={`absolute inset-0 opacity-10 bg-cangzhen-${item.type}-main`} />
                 
                 {/* Icon */}
-                <div className="w-10 h-10 rounded-squircle glass-concave shadow-inner flex items-center justify-center shrink-0">
+                <div 
+                    className={`w-10 h-10 rounded-squircle glass-concave shadow-inner flex items-center justify-center shrink-0 border border-white/20`}
+                    style={{
+                        background: item.type === 'sensation' ? 'rgba(214, 206, 171, 0.15)' : 
+                                   item.type === 'emotion' ? 'rgba(197, 204, 174, 0.15)' : 
+                                   item.type === 'inspiration' ? 'rgba(196, 186, 208, 0.15)' : 'rgba(255, 255, 255, 0.1)'
+                    }}
+                >
                     <FlowerIcon hallKey={item.type} size={20} />
                 </div>
                 
