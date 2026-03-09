@@ -39,7 +39,7 @@ const GlassGreenhouse = ({ stats }) => {
   );
 
   return (
-    <div className="relative w-full flex flex-col items-center mx-auto py-4">
+    <div className="relative w-full flex flex-col items-center mx-auto pt-4 pb-1">
       
       {/* 1. Warm Light Layer */}
       <div

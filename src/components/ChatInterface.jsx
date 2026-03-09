@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Image as ImageIcon, Camera, Sparkles, Activity, Utensils, Moon, FileText, Calendar, PlusCircle, CheckCircle, XCircle, TrendingUp, AlertCircle, ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react';
+import { Send, Mic, Image as ImageIcon, Camera, Sparkles, Activity, Utensils, Moon, FileText, Calendar, PlusCircle, CheckCircle, XCircle, TrendingUp, AlertCircle, ChevronDown, ChevronUp, LayoutDashboard, User } from 'lucide-react';
 import DailyFeed from './DailyFeed';
+import PersonalCenter from './PersonalCenter';
 import { healthService } from '../services/healthService';
 import { storageService } from '../services/storageService';
 import { questionnaireData, calculateConstitution } from '../data/questionnaire';
@@ -408,6 +409,83 @@ const ReminderSetupCard = ({ settings, onConfirm, onChange }) => {
       >
         确认时间，开始合拍之旅
       </button>
+    </div>
+  );
+};
+
+const DeviceSetupCard = ({ onConfirm, onSkip }) => {
+  const [devices, setDevices] = useState({
+    apple: false,
+    huawei: false,
+    xiaomi: false
+  });
+  const [isConnecting, setIsConnecting] = useState(null);
+
+  const toggleDevice = (id) => {
+    if (devices[id]) {
+      setDevices(prev => ({ ...prev, [id]: false }));
+    } else {
+      setIsConnecting(id);
+      setTimeout(() => {
+        setDevices(prev => ({ ...prev, [id]: true }));
+        setIsConnecting(null);
+      }, 1000);
+    }
+  };
+
+  const hasConnected = Object.values(devices).some(Boolean);
+
+  return (
+    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+         <span className="bg-brand/10 p-1.5 rounded-lg text-brand"><Activity className="w-4 h-4" /></span>
+         <h3 className="font-bold text-text-main">绑定智能设备</h3>
+      </div>
+      <p className="text-xs text-text-muted leading-relaxed">
+        连接您的智能手环/手表，AI 将自动同步运动与睡眠数据，提供更精准的建议。
+      </p>
+
+      <div className="space-y-3">
+        {[
+          { id: 'apple', name: 'Apple 健康', icon: '🍎' },
+          { id: 'huawei', name: '华为运动健康', icon: '🔴' },
+          { id: 'xiaomi', name: '小米运动', icon: '🟠' }
+        ].map(dev => (
+          <div key={dev.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+            <div className="flex items-center gap-3">
+              <span className="text-lg">{dev.icon}</span>
+              <span className="text-sm font-bold text-text-main">{dev.name}</span>
+            </div>
+            <button 
+              onClick={() => toggleDevice(dev.id)}
+              disabled={isConnecting === dev.id}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                devices[dev.id] 
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                  : 'bg-white text-text-muted border border-gray-200 hover:border-brand hover:text-brand'
+              }`}
+            >
+              {isConnecting === dev.id ? '连接中...' : devices[dev.id] ? '已连接' : '连接'}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-3 mt-2">
+        <button 
+          onClick={() => onConfirm(devices)}
+          className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all shadow-md ${hasConnected ? 'bg-brand text-white hover:bg-brand/90' : 'bg-gray-100 text-gray-400'}`}
+          disabled={!hasConnected}
+        >
+          确认绑定
+        </button>
+        <button 
+          onClick={onSkip}
+          className="flex-1 py-3 rounded-xl text-sm font-bold text-text-muted hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+        >
+          暂不绑定
+        </button>
+      </div>
     </div>
   );
 };
@@ -919,7 +997,56 @@ const FoodAnalysisCard = ({ data, onConfirm }) => (
   </div>
 );
 
-const ChatInterface = () => {
+const WeeklyReportPanel = () => {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate fetching report
+    const fetchReport = async () => {
+      setLoading(true);
+      try {
+         // In real app: await healthService.report_weekly('current_user');
+         // Mock data for now
+         await new Promise(r => setTimeout(r, 800));
+         const mockReport = {
+            dateRange: '2023.10.23 - 2023.10.29',
+            score: 88,
+            summary: '本周您的健康状况整体良好！睡眠质量显著提升，深睡时长增加 15%。运动量达标，但饮食方面碳水摄入略高，建议下周适当减少精米白面，增加粗粮。',
+            metrics: {
+                sleepAvg: 7.2,
+                exerciseDays: 4,
+                dietScore: 85,
+                poopStatus: '正常'
+            },
+            suggestion: '下周建议尝试“轻断食”晚餐，减轻肠胃负担。同时保持目前的运动频率，可以增加一些力量训练。'
+         };
+         setReport(mockReport);
+      } catch (e) {
+         console.error(e);
+      } finally {
+         setLoading(false);
+      }
+    };
+    
+    fetchReport();
+  }, []);
+
+  if (loading) {
+    return (
+        <div className="p-8 flex flex-col items-center justify-center text-text-muted">
+            <div className="w-8 h-8 border-2 border-brand/30 border-t-brand rounded-full animate-spin mb-2"></div>
+            <span className="text-xs">正在生成健康周报...</span>
+        </div>
+    );
+  }
+
+  if (!report) return <div className="p-4 text-center text-text-muted text-xs">暂无周报数据</div>;
+
+  return <WeeklyReportCard report={report} />;
+};
+
+const ChatInterface = ({ onOpenProfile }) => {
   // --- Constants ---
   const INITIAL_MESSAGE = {
       id: 1,
@@ -937,6 +1064,13 @@ const ChatInterface = () => {
   const [inputValue, setInputValue] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
   
+  // Top Panel State: 'profile', 'weekly', 'daily', or null
+  const [activeTab, setActiveTab] = useState('daily'); 
+  
+  const toggleTab = (tab) => {
+    setActiveTab(prev => prev === tab ? null : tab);
+  };
+
   const [currentStep, setCurrentStep] = useState(() => {
     return storageService.getAppState().currentStep || 'basic_info';
   });
@@ -978,7 +1112,7 @@ const ChatInterface = () => {
   });
 
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(true); // Default open
+  // const [showDashboard, setShowDashboard] = useState(true); // Replaced by activeTab
 
   const messagesEndRef = useRef(null);
   const foodInputRef = useRef(null);
@@ -1468,8 +1602,21 @@ const ChatInterface = () => {
 
     // --- 6. Reminder Setup ---
     else if (stepToProcess === 'reminder_setup') {
-        responseText = '设置成功！合拍 AI 正式为您服务。🎉\n您可以随时告诉我您的饮食、运动或身体感受。';
-        nextStep = 'daily';
+        responseText = '设置成功！最后一步，是否需要绑定您的智能设备？\n\n绑定后，我可以自动同步您的步数、心率和睡眠数据，分析更精准。';
+        nextStep = 'device_bind';
+    }
+
+    // --- 6.5 Device Bind ---
+    else if (stepToProcess === 'device_bind') {
+        if (text.includes('不') || text.includes('跳过')) {
+             responseText = '没问题，您随时可以在“个人中心”进行设备绑定。\n\n合拍 AI 正式为您服务。🎉\n您可以随时告诉我您的饮食、运动或身体感受。';
+             nextStep = 'daily';
+        } else if (text.includes('完成') || text.includes('绑定')) {
+             responseText = '设备绑定成功！合拍 AI 正式为您服务。🎉';
+             nextStep = 'daily';
+        } else {
+             responseText = '请在下方卡片操作绑定，或者点击“暂不绑定”。';
+        }
     }
 
     // --- 7. Daily Flow ---
@@ -1863,21 +2010,43 @@ const ChatInterface = () => {
   return (
     <div className="flex flex-col h-full bg-bg relative">
       {/* Dashboard Area - Fixed at Top */}
-      <div className="px-4 pt-4 pb-2 shrink-0 z-10">
-        <div className="bg-white/80 backdrop-blur-md rounded-3xl border border-white/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+      <div className="px-4 pt-safe-top pb-2 shrink-0 z-10 space-y-2">
+        {/* Top Buttons */}
+        <div className="flex gap-2">
             <button 
-                onClick={() => setShowDashboard(!showDashboard)}
-                className="w-full flex items-center justify-between p-4 hover:bg-white/50 transition-colors"
+                onClick={() => toggleTab('profile')}
+                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'profile' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
             >
-                <div className="flex items-center gap-2 text-brand font-bold">
-                    <LayoutDashboard className="w-5 h-5" />
-                </div>
-                {showDashboard ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : 'text-brand'}`} />
+                <span className="text-xs font-bold">个人档案</span>
             </button>
-            
-            <div className={`transition-all duration-500 ease-in-out overflow-hidden bg-white/40 ${showDashboard ? 'max-h-[80vh] opacity-100 border-t border-gray-100/50' : 'max-h-0 opacity-0'}`}>
-                <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <DailyFeed />
+            <button 
+                onClick={() => toggleTab('weekly')}
+                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'weekly' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
+            >
+                <FileText className={`w-4 h-4 ${activeTab === 'weekly' ? 'text-white' : 'text-brand'}`} />
+                <span className="text-xs font-bold">健康周报</span>
+            </button>
+            <button 
+                onClick={() => toggleTab('daily')}
+                className={`flex-1 backdrop-blur-md p-3 rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 ${activeTab === 'daily' ? 'bg-brand text-white border-brand' : 'bg-white/80 border-white/50 text-text-main hover:bg-white'}`}
+            >
+                <Sparkles className={`w-4 h-4 ${activeTab === 'daily' ? 'text-white' : 'text-brand'}`} />
+                <span className="text-xs font-bold">每日推荐</span>
+            </button>
+        </div>
+
+        {/* Collapsible Content Area */}
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden rounded-3xl ${activeTab ? 'max-h-[80vh] opacity-100 shadow-md' : 'max-h-0 opacity-0'}`}>
+            <div className="max-h-[60vh] overflow-y-auto custom-scrollbar bg-white/40 backdrop-blur-md">
+                <div className={activeTab === 'daily' ? 'block' : 'hidden'}>
+                   <DailyFeed />
+                </div>
+                <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
+                   <PersonalCenter isModal={false} onClose={() => toggleTab(null)} />
+                </div>
+                <div className={activeTab === 'weekly' ? 'block' : 'hidden'}>
+                   <WeeklyReportPanel />
                 </div>
             </div>
         </div>
@@ -1942,6 +2111,16 @@ const ChatInterface = () => {
            />
         )}
 
+        {currentStep === 'device_bind' && (
+           <DeviceSetupCard 
+             onConfirm={(devices) => {
+                 // In a real app, save devices here
+                 handleSend('完成设备绑定');
+             }}
+             onSkip={() => handleSend('暂不绑定')}
+           />
+        )}
+
         {currentStep === 'poop_record' && (
            <PoopRecordCard 
              onConfirm={handlePoopSubmit}
@@ -2002,7 +2181,7 @@ const ChatInterface = () => {
       </div>
 
       {/* Bottom Area */}
-      <div className="absolute bottom-0 left-0 right-0 z-20">
+      <div className="absolute bottom-0 left-0 right-0 z-50">
         {showActionSheet && (
           <div className="bg-white/95 backdrop-blur-xl border-t border-gray-100/50 shadow-lg animate-in slide-in-from-bottom duration-300">
             <div className="px-4 py-4">
@@ -2024,7 +2203,7 @@ const ChatInterface = () => {
           </div>
         )}
 
-        <div className="bg-white/90 backdrop-blur-xl border-t border-gray-100/50 p-3 pb-6 flex items-end gap-3">
+        <div className="bg-white/90 backdrop-blur-xl border-t border-gray-100/50 p-3 pb-safe-bottom flex items-end gap-3">
           <button onClick={() => setShowActionSheet(!showActionSheet)} className={`p-2.5 rounded-full transition-colors mb-0.5 ${showActionSheet ? 'bg-brand/10 text-brand' : 'bg-gray-50 text-text-muted hover:bg-gray-100'}`}>
             <PlusCircle className={`w-6 h-6 transition-transform duration-300 ${showActionSheet ? 'rotate-45' : ''}`} />
           </button>
@@ -2060,7 +2239,12 @@ const ChatInterface = () => {
           {inputValue.trim() ? (
             <button onClick={() => handleSend()} className="p-2.5 rounded-full bg-brand text-white hover:bg-brand/90 transition-all shadow-md mb-0.5"><Send className="w-5 h-5" /></button>
           ) : (
-            <button className="p-2.5 rounded-full bg-gray-50 text-text-muted hover:bg-gray-100 hover:text-brand transition-colors mb-0.5"><Mic className="w-6 h-6" /></button>
+            <button 
+              onClick={() => handleSend('[语音输入] (模拟)')}
+              className="p-2.5 rounded-full bg-gray-50 text-text-muted hover:bg-gray-100 hover:text-brand transition-colors mb-0.5"
+            >
+              <Mic className="w-6 h-6" />
+            </button>
           )}
         </div>
       </div>

@@ -9,7 +9,7 @@ import HealthReport from './personal/HealthReport';
 import QuestionnaireWrapper from './personal/QuestionnaireWrapper';
 import DeviceConnect from './personal/DeviceConnect';
 
-const PersonalCenter = ({ onClose }) => {
+const PersonalCenter = ({ onClose, isModal = true }) => {
   const [userInfo, setUserInfo] = useState({});
   const [constitution, setConstitution] = useState(null);
 
@@ -136,7 +136,7 @@ const PersonalCenter = ({ onClose }) => {
         </div>
 
         {/* Menu Grid - Parallel Layout */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
            <button 
              onClick={() => setActiveTab('profile')}
              className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-200 transition-all relative overflow-hidden group"
@@ -145,16 +145,6 @@ const PersonalCenter = ({ onClose }) => {
                  <FileText className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-text-main">健康档案</span>
-           </button>
-
-           <button 
-             onClick={() => setActiveTab('report')}
-             className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-200 transition-all group"
-           >
-              <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-                 <Calendar className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-text-main">健康周报</span>
            </button>
 
            <button 
@@ -173,16 +163,18 @@ const PersonalCenter = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-50 z-50 animate-slide-in-right overflow-y-auto">
+    <div className={`bg-gray-50 z-50 animate-slide-in-right overflow-y-auto ${isModal ? 'fixed inset-0' : 'w-full h-full min-h-[400px]'}`}>
       {/* Header - Simplified */}
-      <div className="bg-white p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm border-b border-gray-100">
-         <h2 className="text-lg font-bold text-gray-800">个人中心</h2>
-        <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-all">
-          <X className="w-5 h-5 text-text-muted" />
-        </button>
-      </div>
+      {isModal && (
+        <div className="bg-white p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm border-b border-gray-100">
+           <h2 className="text-lg font-bold text-gray-800">个人中心</h2>
+          <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-all">
+            <X className="w-5 h-5 text-text-muted" />
+          </button>
+        </div>
+      )}
 
-      <div className="px-4 pb-20 space-y-4 pt-4">
+      <div className={`px-4 pb-20 space-y-4 ${isModal ? 'pt-4' : 'pt-2'}`}>
          {renderContent()}
          
          {/* Debug / Reset - Only show on main tab */}

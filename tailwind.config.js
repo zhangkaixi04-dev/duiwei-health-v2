@@ -14,7 +14,7 @@ export default {
             main: 'hsl(25, 12%, 20%)',  // 正文深棕
             secondary: 'hsl(25, 8%, 52%)', // 辅助说明
           },
-          sensation: {        // 感知馆 (伯利克之星)
+          sensation: {        // 感知馆 (伯利恒之星)
             main: '#D6CEAB',  // 暖黄绿
           },
           emotion: {          // 情绪馆 (铃兰)

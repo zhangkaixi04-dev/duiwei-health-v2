@@ -2,10 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safe Area Utilities */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem); /* safe area + original padding */
+  }
+}
+
+@supports not (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe-bottom {
+    padding-bottom: 1.5rem; /* fallback to original pb-6 */
+  }
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pt-safe-top {
+    padding-top: calc(env(safe-area-inset-top) + 1rem); /* safe area + original padding */
+  }
+}
+
+@supports not (padding-top: env(safe-area-inset-top)) {
+  .pt-safe-top {
+    padding-top: 1rem; /* fallback to original pt-4 */
+  }
+}
+
 /* Custom Reset */
 body {
   margin: 0;
   padding: 0;
+  overscroll-behavior-y: none; /* Prevent pull-to-refresh effect on body */
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -153,4 +179,46 @@ body {
 
 .animate-float {
   animation: float 4s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mobile Simulation for Desktop */
+/* -------------------------------------------------------------------------- */
+@media (min-width: 768px) {
+  body {
+    background-color: #1a1a1a; /* Dark background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-image: radial-gradient(#333 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  #root {
+    /* iPhone 15 Pro Max Dimensions (Approx. 430x932) */
+    width: 430px;
+    height: 932px;
+    max-height: 95vh; /* Ensure it fits on smaller laptop screens */
+    background-color: #F0E8DD;
+    
+    /* Device Bezel & Shadow */
+    border-radius: 44px;
+    box-shadow: 
+      0 0 0 12px #2c2c2c, /* Inner Bezel */
+      0 0 0 14px #4a4a4a, /* Outer Frame */
+      20px 30px 60px rgba(0,0,0,0.6); /* Deep Shadow */
+      
+    /* Layout & Scrolling */
+    overflow: hidden; /* Prevent internal scrolling of the device frame */
+    position: relative;
+    
+    /* CRITICAL: Create new containing block for fixed children */
+    transform: translateZ(0); 
+  }
+
+  /* Hide Scrollbar inside the "Phone" */
+  #root::-webkit-scrollbar {
+    display: none;
+  }
 }

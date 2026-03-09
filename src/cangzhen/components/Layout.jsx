@@ -16,25 +16,25 @@ const BottomNav = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
-      <div className="mx-4 mb-6 rounded-[28px] glass-strong px-2 py-2">
-        <div className="flex items-center justify-around">
+      <div className="mx-4 mb-6">
+        <div className="relative glass-strong rounded-[28px] px-2 py-2 flex items-center justify-around">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/cangzhen' && location.pathname.startsWith(item.path));
-            const Icon = item.icon;
-
+            
             if (item.isCenter) {
               return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full transition-transform active:scale-90 glass-convex group"
-                  style={{
-                    background: "linear-gradient(135deg, rgba(214,206,171,0.7), rgba(197,204,174,0.5), rgba(196,186,208,0.5))",
-                  }}
-                >
-                  <div className="absolute inset-0 rounded-full glow-pulse group-hover:opacity-100 opacity-70 transition-opacity" />
-                  <Icon className="h-6 w-6 text-cangzhen-text-main relative z-10" strokeWidth={1.8} />
-                </button>
+                <div key={item.path} className="relative -mt-12 group">
+                   <button
+                    onClick={() => navigate(item.path)}
+                    className="flex h-14 w-14 items-center justify-center rounded-full glass-convex transition-transform active:scale-90 shadow-lg"
+                    style={{
+                      background: "linear-gradient(135deg, #EBD2A0 0%, #C5CCAE 100%)",
+                      border: "1px solid rgba(255,255,255,0.8)"
+                    }}
+                  >
+                    <item.icon className="h-6 w-6 text-white relative z-10" strokeWidth={2} />
+                  </button>
+                </div>
               );
             }
 
@@ -43,17 +43,15 @@ const BottomNav = () => {
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className={`
-                  flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-300
-                  ${isActive ? "text-cangzhen-text-main" : "text-cangzhen-text-secondary"}
+                  flex flex-col items-center gap-1 px-3 py-1 transition-all duration-300
+                  ${isActive ? "text-cangzhen-text-main" : "text-cangzhen-text-secondary/60"}
                 `}
               >
-                <Icon
-                  className={`h-5 w-5 transition-all duration-300 ${isActive ? "scale-110" : ""}`}
+                <item.icon
+                  className={`h-6 w-6 transition-all duration-300 ${isActive ? "scale-110" : ""}`}
                   strokeWidth={isActive ? 2 : 1.5}
                 />
-                <span
-                  className="text-[10px] tracking-[0.08em] uppercase font-medium font-sans"
-                >
+                <span className="text-[10px] tracking-widest font-medium">
                   {item.label}
                 </span>
               </button>

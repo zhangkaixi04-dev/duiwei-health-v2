@@ -19,9 +19,10 @@ const Home = () => {
 
   // Mock data for Latest Blooms
   const latestBlooms = [
-    { id: 1, hall: 'sensation', flower: 'star', text: '清晨的雨声，滴答滴答...', time: '2小时前' },
-    { id: 2, hall: 'emotion', flower: 'lily', text: '听到那首歌，突然很想哭。', time: '昨天' },
-    { id: 3, hall: 'inspiration', flower: 'iris', text: '万物皆有裂痕，那是光照进来的地方。', time: '3天前' },
+    { id: 1, hall: 'sensation', flower: 'star', text: '徒步的时候在小河里洗手，初春的河水好凉啊', time: '' },
+    { id: 2, hall: 'emotion', flower: 'lily', text: '跟小猫一起晒太阳，听着小猫的呼噜声，心情大好', time: '' },
+    { id: 3, hall: 'inspiration', flower: 'iris', text: '看到模拟搭建自己卧室的App 装修新家用的上', time: '' },
+    { id: 4, hall: 'wanxiang', flower: 'babysbreath', text: '吃到美味的螺蛳粉，没有想象中臭不可闻 ！吸饱汤汁的炸蛋和有虎皮的鸡爪，加分！', time: '' },
   ];
 
   return (
@@ -29,13 +30,10 @@ const Home = () => {
       {/* 1. 顶部栏 (Top Bar) */}
       <header className="mt-8 mb-4 flex justify-between items-start">
         <div>
-          <p className="text-cangzhen-text-secondary text-sm font-italic italic tracking-wider mb-1">
-            Sunday, March 8
-          </p>
-          <h1 className="text-3xl font-light text-cangzhen-text-main tracking-wide">
-            午安，
+          <h1 className="text-3xl font-light text-cangzhen-text-main tracking-wide leading-tight">
+            累计馆藏 <span className="font-medium">20</span> 件
             <br />
-            <span className="font-medium">今天的风是什么味道？</span>
+            本周新增 <span className="font-medium">3</span> 件
           </h1>
         </div>
         <button className="p-2 rounded-full glass-convex text-cangzhen-text-secondary hover:text-cangzhen-text-main transition-colors">
@@ -43,27 +41,32 @@ const Home = () => {
         </button>
       </header>
 
-      {/* 2. 核心仪表盘区域 (2-Column Grid) */}
-      <div className="grid grid-cols-12 gap-2 mb-8 items-end">
-          {/* Left: Greenhouse Dashboard (7 Columns) */}
-          <div className="col-span-7 flex justify-center pb-8">
-              <GlassGreenhouse stats={pavilionStats} />
-          </div>
-
-          {/* Right: Daily Recommend (5 Columns) */}
-          <div className="col-span-5 flex flex-col justify-end pb-8">
-              <DailyRecommend />
-          </div>
+      {/* 2. 核心仪表盘区域 (Greenhouse Centered) */}
+      <div className="flex justify-center mb-10">
+          <GlassGreenhouse stats={pavilionStats} />
       </div>
 
-      {/* 3. 最新绽放 (Latest Blooms) */}
+      {/* 3. 今日推荐 (Today Recommend) */}
+      <div className="mb-8">
+          <DailyRecommend />
+      </div>
+
+      {/* 4. 最新珍藏 (Recent Collection) */}
       <div className="mb-24">
-        <h3 className="text-sm font-medium text-cangzhen-text-secondary mb-4 px-1 uppercase tracking-widest">Latest Blooms</h3>
+        <h3 className="text-sm font-medium text-cangzhen-text-secondary mb-4 px-1 uppercase tracking-widest">最近珍藏</h3>
         <div className="space-y-3">
             {latestBlooms.map((item) => (
-                <div key={item.id} className="glass rounded-2xl p-4 flex items-center gap-4 hover:scale-[1.02] transition-transform duration-300">
+                <div key={item.id} className="glass rounded-2xl p-4 flex items-center gap-4 hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden group">
+                    {/* Gradient Accent Bar */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${
+                        item.hall === 'sensation' ? 'from-cangzhen-sensation-main to-transparent' :
+                        item.hall === 'emotion' ? 'from-cangzhen-emotion-main to-transparent' :
+                        item.hall === 'inspiration' ? 'from-cangzhen-inspiration-main to-transparent' :
+                        'from-cangzhen-custom-main to-transparent'
+                    }`} />
+                    
                     {/* Flower Icon in Concave Container */}
-                    <div className="glass-concave rounded-squircle shadow-inner w-12 h-12 flex items-center justify-center shrink-0 bg-white/10">
+                    <div className="glass-concave rounded-squircle shadow-inner w-12 h-12 flex items-center justify-center shrink-0 bg-white/10 border border-white/40">
                         <FlowerIcon hallKey={item.hall} size={24} />
                     </div>
                     
@@ -72,13 +75,12 @@ const Home = () => {
                         <div className="flex justify-between items-start mb-1">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-cangzhen-text-main">
-                                    {item.hall === 'sensation' ? '感知馆' : item.hall === 'emotion' ? '情绪馆' : '灵感馆'}
+                                    {item.hall === 'sensation' ? '感知馆' : item.hall === 'emotion' ? '情绪馆' : item.hall === 'inspiration' ? '灵感馆' : '万象馆'}
                                 </span>
                                 <span className="text-[10px] text-cangzhen-text-secondary italic font-italic">
-                                    {item.hall === 'sensation' ? '伯利克之星' : item.hall === 'emotion' ? '铃兰' : '鸢尾花'}
+                                    {item.hall === 'sensation' ? '伯利恒之星' : item.hall === 'emotion' ? '铃兰' : item.hall === 'inspiration' ? '鸢尾花' : '满天星'}
                                 </span>
                             </div>
-                            <span className="text-[10px] text-cangzhen-text-secondary/60">{item.time}</span>
                         </div>
                         <p className="text-sm text-cangzhen-text-main/80 truncate font-serif leading-relaxed">
                             {item.text}
