@@ -2175,9 +2175,9 @@ const ChatInterface = ({ onOpenProfile }) => {
   };
 
   const handlePoopSubmit = (data) => {
-    // Save to storage (mock or real)
+    // Save to storage
     const today = new Date().toISOString().split('T')[0];
-    // storageService.addHealthRecord('poop', data); // Assuming this exists or works generically
+    storageService.saveDailyLog(today, 'poop', data);
 
     // Feedback Logic
     const shapeFeedbacks = {
