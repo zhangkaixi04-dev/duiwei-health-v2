@@ -1,0 +1,47 @@
+<!DOCTYPE html> 
+ <html> 
+ <head> 
+     <meta charset="UTF-8"> 
+     <title>毛玻璃效果演示（你的原代码）</title> 
+     <style> 
+         * { 
+             margin: 0; 
+             padding: 0; 
+             box-sizing: border-box; 
+             font-family: Arial, sans-serif; 
+         } 
+ 
+         body { 
+             /* 背景图，让毛玻璃效果更明显 */ 
+             background: url(' https://picsum.photos/id/1039/1920/1080 ') center/cover no-repeat fixed; 
+             min-height: 100vh; 
+             display: flex; 
+             align-items: center; 
+             justify-content: center; 
+         } 
+ 
+         /* 完全使用你提供的代码 */ 
+         .glass-box { 
+             background: rgba(255, 255, 255, 0.15); 
+             backdrop-filter: blur(20px) saturate(180%); 
+             border: 1px solid rgba(255, 255, 255, 0.2); 
+ 
+             /* 只加了圆角、内边距方便看效果 */ 
+             width: 500px; 
+             padding: 40px; 
+             border-radius: 16px; 
+             color: white; 
+             font-size: 18px; 
+             text-align: center; 
+         } 
+     </style> 
+ </head> 
+ <body> 
+     <div class="glass-box"> 
+         <h2>这是你代码生成的毛玻璃效果</h2> 
+         <p>background: rgba(255,255,255,0.15);</p> 
+         <p>backdrop-filter: blur(20px) saturate(180%);</p> 
+         <p>border: 1px solid rgba(255,255,255,0.2);</p> 
+     </div> 
+ </body> 
+ </html>

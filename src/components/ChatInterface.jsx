@@ -1498,12 +1498,19 @@ const ChatInterface = ({ onOpenProfile }) => {
           const currentDayLogs = storageService.getDailyLogs(today);
           const currentNutrition = currentDayLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
           
+          // Helper to safely parse numbers
+          const safeParse = (val) => {
+             if (typeof val === 'number') return val;
+             if (typeof val === 'string') return parseFloat(val) || 0;
+             return 0;
+          };
+
           const newNutrition = {
-              calories: currentNutrition.calories + (data.nutrition.calories || 0),
+              calories: safeParse(currentNutrition.calories) + safeParse(data.nutrition.calories),
               nutrients: {
-                  carb: currentNutrition.nutrients.carb + (data.nutrition.nutrients.carb || 0),
-                  protein: currentNutrition.nutrients.protein + (data.nutrition.nutrients.protein || 0),
-                  fat: currentNutrition.nutrients.fat + (data.nutrition.nutrients.fat || 0)
+                  carb: safeParse(currentNutrition.nutrients?.carb) + safeParse(data.nutrition.nutrients?.carb),
+                  protein: safeParse(currentNutrition.nutrients?.protein) + safeParse(data.nutrition.nutrients?.protein),
+                  fat: safeParse(currentNutrition.nutrients?.fat) + safeParse(data.nutrition.nutrients?.fat)
               }
           };
           
@@ -1915,12 +1922,19 @@ const ChatInterface = ({ onOpenProfile }) => {
                 const dailyLogs = storageService.getDailyLogs(today);
                 const currentDayNutrition = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
                 
+                // Helper to safely parse numbers (handling legacy string/"%" data)
+                const safeParse = (val) => {
+                    if (typeof val === 'number') return val;
+                    if (typeof val === 'string') return parseFloat(val) || 0;
+                    return 0;
+                };
+
                 const newNutrition = {
-                    calories: currentDayNutrition.calories + (analysis.calories || 0),
+                    calories: safeParse(currentDayNutrition.calories) + safeParse(analysis.calories),
                     nutrients: {
-                        carb: currentDayNutrition.nutrients.carb + (analysis.nutrients?.carb || 0),
-                        protein: currentDayNutrition.nutrients.protein + (analysis.nutrients?.protein || 0),
-                        fat: currentDayNutrition.nutrients.fat + (analysis.nutrients?.fat || 0)
+                        carb: safeParse(currentDayNutrition.nutrients?.carb) + safeParse(analysis.nutrients?.carb),
+                        protein: safeParse(currentDayNutrition.nutrients?.protein) + safeParse(analysis.nutrients?.protein),
+                        fat: safeParse(currentDayNutrition.nutrients?.fat) + safeParse(analysis.nutrients?.fat)
                     }
                 };
                 

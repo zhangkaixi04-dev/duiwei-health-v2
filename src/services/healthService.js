@@ -327,14 +327,14 @@ export const healthService = {
      const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
      const systemPrompt = `你是一位专业营养师兼中医健康顾问。请基于用户输入的食物内容，进行以下分析：
-1. 估算热量(kcal)和三大营养素(碳水/蛋白质/脂肪)占比。
+1. 估算热量(kcal)和三大营养素(碳水/蛋白质/脂肪)的重量(单位:克 g)。
 2. 结合用户的中医体质(如果提供)，判断该食物是否适合，并给出简短建议。
 3. 严禁输出Chain of Thought，直接返回JSON格式结果。
 
 返回格式示例：
 {
   "calories": 650,
-  "nutrients": { "carb": "55%", "protein": "20%", "fat": "25%" },
+  "nutrients": { "carb": 85, "protein": 25, "fat": 20 },
   "suitability": "中等",
   "advice": "红烧牛肉面湿热较重，您是湿热质，建议少喝汤，多配青菜。",
   "tags": ["高碳水", "高钠"]
@@ -388,9 +388,9 @@ export const healthService = {
         return {
             calories: Math.floor(Math.random() * (800 - 200) + 200), // Random 200-800
             nutrients: { 
-                carb: `${Math.floor(Math.random() * 40 + 30)}%`, 
-                protein: `${Math.floor(Math.random() * 20 + 10)}%`, 
-                fat: `${Math.floor(Math.random() * 30 + 10)}%` 
+                carb: Math.floor(Math.random() * 40 + 30), 
+                protein: Math.floor(Math.random() * 20 + 10), 
+                fat: Math.floor(Math.random() * 30 + 10) 
             },
             suitability: ["适宜", "中等", "少食"][Math.floor(Math.random() * 3)],
             advice: "该食物营养尚可，建议搭配蔬菜食用，保持营养均衡。",

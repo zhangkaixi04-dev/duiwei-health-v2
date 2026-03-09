@@ -101,8 +101,13 @@ const DailyFeed = () => {
       const dailyLogs = storageService.getDailyLogs(today);
       const todayData = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
       
-      const currentCalories = todayData.calories || 0;
-      const nutrients = todayData.nutrients || { carb: 0, protein: 0, fat: 0 };
+      const currentCalories = parseFloat(todayData.calories) || 0;
+      const rawNutrients = todayData.nutrients || {};
+      const nutrients = {
+          carb: parseFloat(rawNutrients.carb) || 0,
+          protein: parseFloat(rawNutrients.protein) || 0,
+          fat: parseFloat(rawNutrients.fat) || 0
+      };
       
       // 3. Calculate Dynamic Target (Simplified for now)
       const dynamicTarget = baseTDEE;
