@@ -19,8 +19,8 @@ const Record = () => {
   const halls = [
     { id: 'sensation', label: '感知', color: 'bg-cangzhen-sensation-main' },
     { id: 'emotion', label: '情绪', color: 'bg-cangzhen-emotion-main' },
-    { id: 'inspiration', label: '灵感', color: 'bg-cangzhen-inspiration-main' },
-    { id: 'wanxiang', label: '万象', color: 'bg-cangzhen-custom-main' },
+    { id: 'inspiration', label: '创意', color: 'bg-cangzhen-inspiration-main' },
+    { id: 'wanxiang', label: '决策', color: 'bg-cangzhen-custom-main' },
   ];
 
   const handleSeal = () => {
@@ -106,8 +106,8 @@ const Record = () => {
       {/* Main Container: Single Screen Layout */}
       <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0 h-full">
           
-          {/* 2. 书写区 (Glass Card) */}
-          <div className={`glass-convex rounded-2xl flex-1 flex flex-col p-5 transition-all duration-500 relative group border border-white/40 shadow-sm min-h-[200px] overflow-y-auto ${isSealing ? 'scale-95 opacity-50 blur-sm' : ''}`}>
+          {/* 2. 书写区 (Glass Card with Neumorphism) */}
+          <div className={`glass-convex rounded-2xl flex-1 flex flex-col p-5 transition-all duration-500 relative group min-h-[200px] overflow-y-auto ${isSealing ? 'scale-95 opacity-50 blur-sm' : ''}`}>
             
             {/* Date & Time */}
             <div className="flex justify-between items-center mb-3">

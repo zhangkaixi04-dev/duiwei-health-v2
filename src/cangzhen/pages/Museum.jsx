@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react';
 
 const Museum = () => {
   const [activeTab, setActiveTab] = useState('sensation');
-  const [activeFilter, setActiveFilter] = useState('全部');
   const [localMemories, setLocalMemories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState(''); // YYYY-MM-DD format
 
   // Load memories from localStorage on mount
   useEffect(() => {
@@ -13,16 +14,29 @@ const Museum = () => {
       if (stored) {
           try {
               const parsed = JSON.parse(stored);
-              // Normalize data structure if needed
-              const normalized = parsed.map(item => ({
-                  ...item,
-                  // Ensure date format is consistent (Mock uses "3月8日", Real might be "2026/3/8")
-                  // We can try to reformat real dates to "M月D日" for consistency
-                  date: item.date.includes('月') ? item.date : new Date(item.id).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
-                  tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录', // Default tag if empty
-                  image: item.image || null
-              }));
-              setLocalMemories(normalized.reverse()); // Show newest first
+              // Normalize data structure
+              const normalized = parsed.map(item => {
+                  const timestamp = typeof item.id === 'number' ? item.id : Date.now();
+                  // Create a Date object for easier parsing
+                  const dateObj = new Date(timestamp);
+                  // Format for comparison (YYYY-MM-DD)
+                  const isoDate = dateObj.toISOString().split('T')[0];
+                  // Display format (e.g., "3月8日")
+                  // If item.date is already a string like "3月8日", keep it for display but try to map to ISO
+                  // For real data from Record.jsx, item.id is Date.now(), so we can rely on timestamp
+                  
+                  return {
+                      ...item,
+                      timestamp: timestamp,
+                      isoDate: isoDate, // For filtering
+                      displayDate: item.date.includes('月') ? item.date : dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
+                      tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录',
+                      image: item.image || null
+                  };
+              });
+              // Sort by timestamp descending (newest first)
+              normalized.sort((a, b) => b.timestamp - a.timestamp);
+              setLocalMemories(normalized);
           } catch (e) {
               console.error("Failed to parse memories", e);
           }
@@ -31,89 +45,107 @@ const Museum = () => {
 
   // Halls Configuration
   const halls = [
-    { id: 'sensation', name: '感知馆', desc: '记录看到、听到、闻到、尝到、摸到的真实瞬间' },
-    { id: 'emotion', name: '情绪馆', desc: '安放喜怒哀乐，诚实地面对内心的每一次波动' },
-    { id: 'inspiration', name: '灵感馆', desc: '捕捉那些转瞬即逝的思想火花与奇思妙想' },
-    { id: 'wanxiang', name: '万象馆', desc: '收纳生活中的其他美好碎片，包罗万象' }
+    { id: 'emotion', name: '情绪馆', desc: '真诚连接，真挚表达' },
+    { id: 'sensation', name: '感知馆', desc: '专注当下，亲身体验' },
+    { id: 'inspiration', name: '创意馆', desc: '一念灵动，万般可能' },
+    { id: 'wanxiang', name: '决策馆', desc: '主动选择，勇敢决策' }
   ];
 
-  // Tag Filters (Based on active tab)
-  const filters = {
-      sensation: ['全部', '视觉', '听觉', '嗅觉', '味觉', '触觉'],
-      emotion: ['全部', '开心', '平静', '焦虑', '难过', '感动'],
-      inspiration: ['全部', '灵感', '梦境', '思考', '脑洞'],
-      wanxiang: ['全部', '美食', '旅行', '好物', '碎片']
+  // Helper to get ISO date from "X月X日" mock format (Assuming current year)
+  const getMockIsoDate = (displayStr) => {
+      const currentYear = new Date().getFullYear();
+      const match = displayStr.match(/(\d+)月(\d+)日/);
+      if (match) {
+          const month = match[1].padStart(2, '0');
+          const day = match[2].padStart(2, '0');
+          return `${currentYear}-${month}-${day}`;
+      }
+      return '';
   };
 
-  // Mock Memories Data (Simulating User Posts)
+  // Mock Memories Data
   const mockMemories = [
     {
       id: 'mock-1',
       hall: 'sensation',
+      timestamp: Date.now() - 100000,
       image: 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=600&auto=format&fit=crop',
       content: '下班路上的夕阳，像打翻了的橘子汽水。',
-      date: '3月8日',
+      displayDate: '3月8日',
       tag: '视觉'
     },
     {
       id: 'mock-2',
       hall: 'sensation',
-      image: null, // No image, use default gradient
+      timestamp: Date.now() - 200000,
+      image: null, 
       content: '听到雨滴落在窗台的声音，滴答滴答，很治愈。',
-      date: '3月7日',
+      displayDate: '3月7日',
       tag: '听觉'
     },
     {
       id: 'mock-3',
       hall: 'emotion',
+      timestamp: Date.now() - 300000,
       image: 'https://images.unsplash.com/photo-1516550893723-124266e81e72?q=80&w=600&auto=format&fit=crop',
       content: '今天虽然很累，但是在这个角落里找到了平静。',
-      date: '3月6日',
+      displayDate: '3月6日',
       tag: '平静'
     },
     {
       id: 'mock-4',
       hall: 'inspiration',
+      timestamp: Date.now() - 400000,
       image: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=600&auto=format&fit=crop',
       content: '如果把梦境记录下来做成一个个盲盒，会是什么样？',
-      date: '3月5日',
+      displayDate: '3月5日',
       tag: '脑洞'
     },
     {
       id: 'mock-5',
       hall: 'wanxiang',
+      timestamp: Date.now() - 500000,
       image: 'https://images.unsplash.com/photo-1490750967868-58cb75065ed4?q=80&w=600&auto=format&fit=crop',
       content: '妈妈做的红烧肉，是任何米其林都复刻不了的味道。',
-      date: '3月4日',
+      displayDate: '3月4日',
       tag: '美食'
     },
     {
       id: 'mock-6',
       hall: 'sensation',
+      timestamp: Date.now() - 600000,
       image: 'https://images.unsplash.com/photo-1470058869958-2a77ade41c02?q=80&w=600&auto=format&fit=crop',
       content: '摸到了小猫毛茸茸的爪子，软乎乎的。',
-      date: '3月3日',
+      displayDate: '3月3日',
       tag: '触觉'
     },
-    // Add more mock data to fill the waterfall
-    { id: 'mock-7', hall: 'sensation', image: null, content: '闻到了桂花的香味。', date: '3月2日', tag: '嗅觉' },
-  ];
+    { id: 'mock-7', hall: 'sensation', timestamp: Date.now() - 700000, image: null, content: '闻到了桂花的香味。', displayDate: '3月2日', tag: '嗅觉' },
+  ].map(m => ({
+      ...m,
+      isoDate: getMockIsoDate(m.displayDate) // Add isoDate to mock data for filtering
+  }));
 
   // Combine Real + Mock Data
-  // Priority: Real data first (newest), then mock data
   const allMemories = [...localMemories, ...mockMemories];
 
   // Filter Logic
   const currentMemories = allMemories.filter(m => {
-      // Handle hall matching (Real data might use 'sensation' or '感知馆' depending on how it was saved. 
-      // Record.jsx saves 'selectedHall' which corresponds to 'sensation', 'emotion' etc. ids from the tabs.
-      // So simple equality check should work if Record.jsx uses the same IDs.
-      // Let's assume Record.jsx uses the same IDs. If not, we might need a map.
-      // Checking Record.jsx history: activeHall state uses 'sensation', 'emotion'... YES.
-      
+      // 1. Hall Match
       const matchHall = m.hall === activeTab;
-      const matchTag = activeFilter === '全部' || m.tag === activeFilter;
-      return matchHall && matchTag;
+      
+      // 2. Keyword Search (Fuzzy Match on Content or Tag)
+      const matchKeyword = searchQuery 
+        ? (m.content.includes(searchQuery) || m.tag.includes(searchQuery))
+        : true;
+
+      // 3. Date Filter (ISO Date Match)
+      // selectedDate is "YYYY-MM-DD" from input[type=date]
+      // m.isoDate is also "YYYY-MM-DD"
+      const matchDate = selectedDate 
+        ? m.isoDate === selectedDate
+        : true;
+
+      return matchHall && matchKeyword && matchDate;
   });
 
   // Split into columns for waterfall
@@ -126,7 +158,7 @@ const Museum = () => {
 
   // Memory Card Component
   const MemoryCard = ({ item }) => (
-    <div className={`group relative w-full ${item.image ? 'aspect-[2/3]' : 'aspect-square'} rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-xl mb-3 glass-convex border border-white/40`}>
+    <div className={`group relative w-full aspect-square rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-xl mb-3 glass-convex border border-white/40`}>
        
        {/* Background: Image or Gradient */}
        <div className="absolute inset-0">
@@ -152,7 +184,7 @@ const Museum = () => {
 
        {/* Content Overlay */}
        <div className={`absolute inset-0 p-4 flex flex-col z-10 ${item.image ? 'justify-between' : 'justify-center items-center text-center'}`}>
-          {/* Top: Tag (Only for image mode, or repositioned for text mode) */}
+          {/* Top: Tag */}
           {item.image && (
             <div className="flex justify-end w-full">
                 <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-medium text-white tracking-wider">
@@ -176,7 +208,7 @@ const Museum = () => {
               </p>
               
               <div className={`flex items-center gap-1 ${item.image ? 'justify-start opacity-70' : 'justify-center mt-3 text-cangzhen-text-secondary opacity-60'}`}>
-                  <span className="text-[10px]">{item.date}</span>
+                  <span className="text-[10px]">{item.displayDate}</span>
               </div>
           </div>
        </div>
@@ -192,7 +224,7 @@ const Museum = () => {
           {halls.map(hall => (
             <button
               key={hall.id}
-              onClick={() => { setActiveTab(hall.id); setActiveFilter('全部'); }}
+              onClick={() => { setActiveTab(hall.id); setSearchQuery(''); setSelectedDate(''); }}
               className={`
                 px-5 py-2.5 rounded-full text-sm whitespace-nowrap transition-all duration-300 flex-shrink-0
                 ${activeTab === hall.id 
@@ -212,22 +244,51 @@ const Museum = () => {
               {halls.find(h => h.id === activeTab)?.desc}
           </p>
           
-          {/* Filter Chips / Search Bar Area */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-              {filters[activeTab]?.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setActiveFilter(tag)}
-                    className={`
-                        px-3 py-1.5 rounded-lg text-[11px] whitespace-nowrap transition-all border flex-shrink-0
-                        ${activeFilter === tag 
-                            ? 'bg-cangzhen-text-main/5 border-cangzhen-text-main text-cangzhen-text-main font-bold' 
-                            : 'border-transparent bg-white/40 text-cangzhen-text-secondary hover:bg-white/60'}
-                    `}
-                  >
-                      {tag}
-                  </button>
-              ))}
+          {/* Search & Date Filter Area */}
+          <div className="flex gap-2 items-center">
+              
+              {/* Keyword Search Input */}
+              <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50" size={14} />
+                  <input 
+                      type="text" 
+                      placeholder="搜索关键词..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-main placeholder:text-cangzhen-text-secondary/40 focus:outline-none focus:bg-white/60 focus:border-cangzhen-text-main/30 transition-all"
+                  />
+                  {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50 hover:text-cangzhen-text-main">
+                          <X size={12} />
+                      </button>
+                  )}
+              </div>
+
+              {/* HTML5 Date Picker */}
+              <div className="relative">
+                  <div className="relative">
+                      {/* Standard Date Input - Allows full calendar selection */}
+                      <input 
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="pl-8 pr-2 py-2 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-secondary hover:bg-white/60 focus:outline-none transition-all cursor-pointer min-w-[110px] appearance-none"
+                          style={{ colorScheme: 'light' }} // Ensure calendar icon is visible if supported
+                      />
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50 pointer-events-none" size={14} />
+                      
+                      {/* Clear Button */}
+                      {selectedDate && (
+                          <button 
+                            onClick={(e) => { e.preventDefault(); setSelectedDate(''); }}
+                            className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-0.5 text-cangzhen-text-secondary/50 hover:text-cangzhen-text-main z-10"
+                          >
+                              <X size={10} />
+                          </button>
+                      )}
+                  </div>
+              </div>
+
           </div>
       </div>
 
@@ -249,7 +310,9 @@ const Museum = () => {
           {currentMemories.length === 0 && (
               <div className="flex flex-col items-center justify-center text-cangzhen-text-secondary/50 mt-20">
                   <FlowerIcon hallKey={activeTab} size={48} className="opacity-20 mb-2" />
-                  <p className="text-xs">还没有记录，去添加第一笔吧</p>
+                  <p className="text-xs">
+                      {searchQuery || selectedDate ? '未找到相关内容' : '还没有记录，去添加第一笔吧'}
+                  </p>
               </div>
           )}
       </div>

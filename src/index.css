@@ -180,13 +180,13 @@ body {
     rgba(255, 255, 255, 0.6),
     rgba(255, 255, 255, 0.2)
   );
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 
-    6px 6px 16px rgba(166, 158, 145, 0.08),
-    -4px -4px 12px rgba(255, 255, 255, 0.9),
+    4px 4px 10px rgba(166, 158, 145, 0.1),
+    -3px -3px 8px rgba(255, 255, 255, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 

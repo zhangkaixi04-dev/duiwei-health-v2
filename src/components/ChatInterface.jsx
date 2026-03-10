@@ -1971,7 +1971,32 @@ const ChatInterface = ({ onOpenProfile }) => {
         }
         
         if (!responseText) {
-        // D. Sleep Recording Intent
+        // D. Exercise Recording Intent
+        const exerciseKeywords = ['运动', '锻炼', '健身', '跑步', '游泳', '瑜伽', '普拉提', '力量', '无氧', '有氧', '站桩', '八段锦', '太极', '练了', '跳绳', '骑行'];
+        const isExerciseRecord = exerciseKeywords.some(kw => text.includes(kw)) && (text.includes('分钟') || text.includes('小时') || text.includes('min') || text.includes('km') || text.includes('公里'));
+
+        if (isExerciseRecord) {
+             setIsAiTyping(true);
+             try {
+                 const result = await healthService.analyze_exercise(text, { constitution: constitutionResult });
+                 
+                 // Save to storage
+                 const today = new Date().toISOString().split('T')[0];
+                 storageService.saveDailyLog(today, 'exercise', result);
+                 window.dispatchEvent(new Event('storage')); // Trigger UI update
+                 
+                 responseText = `已记录您的运动：${result.type} ${result.duration}分钟。💪\n消耗约 ${result.calories} 千卡。\n\n${result.advice}`;
+             } catch (e) {
+                 console.error(e);
+                 responseText = '记录运动失败，请稍后再试。';
+             } finally {
+                 setIsAiTyping(false);
+             }
+        }
+        }
+
+        if (!responseText) {
+        // E. Sleep Recording Intent
         // Improved logic: Require time pattern AND context (yesterday/today/past tense) to avoid general chat
         const sleepAntiKeywords = [
             '怎么', '什么', '影响', '好不好', '吗', '?', '？', // Questions
