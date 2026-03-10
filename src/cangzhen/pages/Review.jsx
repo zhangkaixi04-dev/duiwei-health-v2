@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
-import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap } from 'lucide-react';
 
 const Review = () => {
   const [activeTab, setActiveTab] = useState('weekly'); // weekly, monthly, yearly
@@ -9,9 +9,30 @@ const Review = () => {
   const [expandedMonth, setExpandedMonth] = useState(null); // Track which month is expanded
 
   const [localMemories, setLocalMemories] = useState([]);
+  
+  // Weekly Review State
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = Current Week, -1 = Last Week
+  const [isWeekLocked, setIsWeekLocked] = useState(true);
+
+  // Helper to get week range string
+  const getWeekRange = (offset) => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 (Sun) - 6 (Sat)
+    const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
+    
+    const startOfWeek = new Date(today.setDate(diff + (offset * 7)));
+    const endOfWeek = new Date(today.setDate(startOfWeek.getDate() + 6));
+
+    const format = (d) => `${d.getMonth() + 1}月${d.getDate()}日`;
+    return `${format(startOfWeek)} - ${format(endOfWeek)}`;
+  };
 
   useEffect(() => {
     setMounted(true);
+    // Lock Logic: Current week (offset 0) is ALWAYS locked until next Monday.
+    // Past weeks (offset < 0) are unlocked.
+    setIsWeekLocked(weekOffset === 0);
+    
     // Load memories for Yearly Review "Light Up" logic
     const stored = localStorage.getItem('cangzhen_memories');
     if (stored) {
@@ -24,61 +45,122 @@ const Review = () => {
     }
   }, []);
 
-  // Mock Data for Weekly Review - Enhanced for Emotional Palette
-  const weeklyData = {
-      dateRange: '3月02日 - 3月08日',
-      keyword: 'Healing',
-      keywordCN: '治愈',
-      keywordMeaning: 'The art of stitching the soul with time.', // Added meaning
-      // Fallback gradient in case image fails
-      bgGradient: 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]', // Soft botanical green
-      // botanical/nature theme image (Denser texture)
-      bgImage: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop', 
-      moodShadow: 'shadow-green-100',
-      count: 15,
-      // Cohesive AI Summary (Refined: Little Red Book Style, Relaxed, Real)
-      aiSummary: (
-        <>
-            这周过得挺有意思的，好像终于学会了“慢下来”这回事。<br/><br/>
-            
-            周二那场大雨，本来挺烦人的，但你居然没抱怨，反而坐在窗边听了好久。你说那个声音像把世界按了静音键，那一刻，感觉你心里紧绷的那根弦，松了一点点。<br/><br/>
-            
-            这几天你好像更愿意把时间浪费在具体的小事上了。路口那只流浪猫，你停下来逗了它五分钟；周五下班没直接回家，去吃了碗热乎乎的面，还在备忘录里写“今天的夕阳像咸蛋黄”。这些不起眼的瞬间，其实才是生活原本的样子啊。<br/><br/>
-            
-            也有焦虑的时候，特别是周三晚上，看你写了好多关于未来的担忧。但这次你没逼自己马上好起来，而是允许自己丧一会儿，睡了一觉，第二天照样起来面对。这种“允许自己不完美”的心态，真的挺酷的。<br/><br/>
-            
-            总的来说，这周你没那么紧绷了，开始懂得在缝隙里找糖吃。不用急着赶路，现在的节奏就刚刚好。下周继续保持这份松弛感，咱们慢慢来。
-        </>
-      ),
-      trend: [2, 3, 1, 4, 5, 2, 3], // Mon-Sun counts
-      // Weighted Tags for Word Cloud
-      tags: [
-        { text: '雨声', weight: 5 },
-        { text: '猫咪', weight: 4 },
-        { text: '咖啡', weight: 3 },
-        { text: '焦虑', weight: 3 },
-        { text: '夕阳', weight: 2 },
-        { text: '书', weight: 2 },
-        { text: '梦境', weight: 2 },
-        { text: '美食', weight: 1 },
-        { text: '冥想', weight: 1 },
-        { text: '散步', weight: 1 }
-      ],
-      shape: 'heart' // 'heart', 'drop', 'cat'
-  };
+  // Mock Data for Weekly Review (Dynamic based on offset)
+  const weeklyData = useMemo(() => {
+      // Calculate Date Range based on offset
+      const now = new Date();
+      const currentDay = now.getDay(); 
+      const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Monday
+      
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(diff + (weekOffset * 7));
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
+      const format = (d) => `${d.getMonth() + 1}月${d.getDate()}日`;
+      const dateRangeStr = `${format(startOfWeek)} - ${format(endOfWeek)}`;
+
+      // Status: Locked if offset is 0 (Current Week)
+      if (weekOffset === 0) {
+          const today = new Date();
+          const dayOfWeek = today.getDay() || 7; // 1-7 (Mon-Sun)
+          // Mock progress: Random counts for days passed so far
+          const progress = Array.from({length: 7}, (_, i) => i < dayOfWeek ? Math.floor(Math.random() * 5) + 1 : 0);
+          const totalMemories = progress.reduce((a, b) => a + b, 0);
+
+          // Hall Counts (Randomly distributed)
+          const hallCounts = [
+              { id: 'sensation', name: '感知', count: Math.floor(totalMemories * 0.4), icon: 'flower' },
+              { id: 'emotion', name: '情绪', count: Math.floor(totalMemories * 0.3), icon: 'heart' },
+              { id: 'creative', name: '创意', count: Math.floor(totalMemories * 0.2), icon: 'zap' },
+              { id: 'decision', name: '决策', count: Math.ceil(totalMemories * 0.1), icon: 'compass' },
+          ];
+
+          return {
+              status: 'locked',
+              dateRange: dateRangeStr,
+              keywordCN: '???',
+              count: totalMemories, // Accumulating
+              progress: progress,
+              daysLeft: 8 - dayOfWeek, // Days until next Monday
+              hallCounts: hallCounts
+          };
+      }
+
+      // Mock Data for Past Weeks (Alternating)
+      const isEven = Math.abs(weekOffset) % 2 === 0;
+      return {
+          status: 'unlocked',
+          dateRange: dateRangeStr,
+          keyword: isEven ? 'Courage' : 'Healing',
+          keywordCN: isEven ? '勇气' : '治愈',
+          keywordMeaning: isEven ? 'Facing the unknown with a smile.' : 'The art of stitching the soul with time.',
+          bgGradient: isEven ? 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]' : 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]',
+          bgImage: isEven 
+            ? 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop' 
+            : 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop',
+          moodShadow: isEven ? 'shadow-orange-100' : 'shadow-green-100',
+          count: isEven ? 20 : 15,
+          aiSummary: (
+            <>
+                <strong>{startOfWeek.getMonth() + 1}月·周复盘</strong><br/><br/>
+                {isEven 
+                    ? "这周你真的很勇敢。面对那个突如其来的挑战，你没有退缩，而是选择了迎难而上。那种坚定的眼神，真的很迷人。" 
+                    : "这周过得挺有意思的，好像终于学会了“慢下来”这回事。周二那场大雨，本来挺烦人的，但你居然没抱怨，反而坐在窗边听了好久。"}
+                <br/><br/>
+                {isEven
+                    ? "记得周四那天吗？虽然很累，但你还是坚持完成了那个项目。这种坚持，就是你最宝贵的财富。"
+                    : "总的来说，这周你没那么紧绷了，开始懂得在缝隙里找糖吃。不用急着赶路，现在的节奏就刚刚好。"}
+            </>
+          ),
+          trend: [2, 3, 1, 4, 5, 2, 3],
+          tags: [
+            { text: '雨声', weight: 5 },
+            { text: '猫咪', weight: 4 },
+            { text: '咖啡', weight: 3 },
+          ],
+          shape: isEven ? 'heart' : 'drop'
+      };
+  }, [weekOffset]);
 
   // Mock Data for Monthly Review - 12 Glass Cubes
   const currentMonth = new Date().getMonth() + 1; // 1-12
   const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const month = i + 1;
       const isActive = month <= currentMonth; // Active if past or current month
-      const hasContent = isActive && month % 2 !== 0; // Mock: Odd months have content
+      const hasContent = isActive; // Mock: All active months have content for demo
       
+      let keyword = '';
+      if (month === 1) keyword = '萌芽';
+      else if (month === 2) keyword = '喜悦';
+      else if (month === 3) keyword = '探索'; // March default
+      else keyword = ['新生', '绽放', '沉淀', '收获', '归藏'][Math.floor(Math.random() * 5)];
+
+      // Morandi Gradients (Muted, Elegant)
+      const gradients = [
+          'from-[#F1F2B5]/40 to-[#135058]/10', // 1. Vintage Yellow/Green
+          'from-[#E0EAFC]/40 to-[#CFDEF3]/40', // 2. Soft Blue
+          'from-[#D4FC79]/20 to-[#96E6A1]/20', // 3. Fresh Green
+          'from-[#84fab0]/20 to-[#8fd3f4]/20', // 4. Teal/Blue
+          'from-[#cfd9df]/40 to-[#e2ebf0]/40', // 5. Silver/Blue
+          'from-[#a8edea]/30 to-[#fed6e3]/30', // 6. Pink/Teal
+          'from-[#f5f7fa]/60 to-[#c3cfe2]/40', // 7. Misty White
+          'from-[#e0c3fc]/30 to-[#8ec5fc]/30', // 8. Purple/Blue
+          'from-[#f093fb]/20 to-[#f5576c]/20', // 9. Pink/Red
+          'from-[#4facfe]/20 to-[#00f2fe]/20', // 10. Bright Blue
+          'from-[#43e97b]/20 to-[#38f9d7]/20', // 11. Green
+          'from-[#fa709a]/20 to-[#fee140]/20', // 12. Red/Yellow
+      ];
+      
+      const gradient = gradients[i % gradients.length];
+
       return {
           month,
           isActive,
           hasContent,
-          keyword: hasContent ? ['新生', '探索', '绽放', '沉淀', '收获', '归藏'][Math.floor(Math.random() * 6)] : '',
+          keyword,
+          gradient,
           color: hasContent ? `bg-gradient-to-br from-[#FF9A9E]/20 to-[#FECFEF]/20` : 'bg-white/5',
           count: hasContent ? Math.floor(Math.random() * 50) + 10 : 0,
           // Add detailed data for expanded view (mock) - Monthly Differentiation
@@ -198,219 +280,328 @@ const Review = () => {
           {/* CONTENT FOR WEEKLY TAB */}
           {activeTab === 'weekly' && (
              <>
-                {/* A. Emotional Palette (Interactive Museum Box) */}
-                <div className="relative w-full h-[160px]">
-                    {/* The Actual Content (Revealed State) */}
-                    <div className={`absolute inset-0 w-full h-full rounded-xl overflow-hidden group shadow-xl ${weeklyData.moodShadow}/20 transition-all duration-1000 ${isPaletteOpen ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-95 z-0 pointer-events-none'}`}> 
-                        
-                        {/* 1. Background Image Layer - Botanical Theme */}
-                        <div className={`absolute inset-0 ${weeklyData.bgGradient}`}>
-                            <img 
-                                src={weeklyData.bgImage} 
-                                alt="Botanical Background" 
-                                className="w-full h-full object-cover transition-transform duration-[10s] ease-in-out group-hover:scale-110 opacity-80"
-                                onError={(e) => e.target.style.display = 'none'} 
-                            />
-                            {/* Soft Overlay */}
-                            <div className="absolute inset-0 bg-white/10" />
-                        </div>
-
-                        {/* 2. Glass Overlay (Centered, Compact) */}
-                        <div className="absolute inset-x-12 inset-y-6 bg-white/5 backdrop-blur-[10px] border border-white/30 rounded-[1.5rem] shadow-[0_4px_24px_rgba(0,0,0,0.05)] flex flex-col justify-center items-center p-4 overflow-hidden">
-                            
-                            {/* Reflection */}
-                            <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-br from-white/10 via-transparent to-transparent rotate-45 pointer-events-none" />
-                            
-                            {/* Content - All Centered */}
-                            <div className="relative z-10 flex flex-col items-center text-center gap-1">
-                                <span className="text-[10px] font-medium text-white/80 tracking-[0.4em] uppercase mb-1">
-                                    本周关键词
-                                </span>
-                                <h2 className="text-4xl font-serif font-bold text-white drop-shadow-lg tracking-widest">
-                                    {weeklyData.keywordCN}
-                                </h2>
-                            </div>
-                        </div>
-                    </div>
-                    {/* The "Sealed Museum" Overlay */}
-                    <div 
-                        onClick={() => setIsPaletteOpen(true)}
-                        className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-all duration-1000 z-20 ${isPaletteOpen ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 hover:scale-[1.02]'}`}
+                {/* 1. Week Navigation */}
+                <div className="flex items-center justify-between px-6 mb-4 relative z-10">
+                    <button 
+                        onClick={() => { setWeekOffset(prev => prev - 1); setIsPaletteOpen(false); }} 
+                        className="p-2 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm transition-all text-cangzhen-text-secondary"
                     >
-                        <div className="relative transform scale-110">
-                            <div className="relative z-10">
-                                <div className="w-0 h-0 border-l-[100px] border-l-transparent border-r-[100px] border-r-transparent border-b-[60px] border-b-white/50 backdrop-blur-md" />
-                                <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] h-[60px]" viewBox="0 0 200 60" fill="none">
-                                    <path d="M100 0L200 60M100 0L0 60" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
-                                    <circle cx="100" cy="0" r="2" fill="white" />
-                                </svg>
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div className="flex flex-col items-center">
+                        <span className="text-sm font-serif font-bold text-cangzhen-text-main tracking-wide">
+                            {weeklyData.dateRange}
+                        </span>
+                        {weeklyData.status === 'locked' && (
+                            <span className="text-[10px] text-cangzhen-text-secondary uppercase tracking-widest opacity-60">
+                                Current Week
+                            </span>
+                        )}
+                    </div>
+                    <button 
+                        onClick={() => { setWeekOffset(prev => Math.min(prev + 1, 0)); setIsPaletteOpen(false); }} 
+                        disabled={weekOffset === 0}
+                        className={`p-2 rounded-full backdrop-blur-sm transition-all text-cangzhen-text-secondary ${weekOffset === 0 ? 'opacity-30 cursor-not-allowed bg-transparent' : 'bg-white/20 hover:bg-white/40'}`}
+                    >
+                        <ChevronRight size={20} />
+                    </button>
+                </div>
+
+                {/* 2. Main Card (Locked or Unlocked) */}
+                <div className="relative w-full h-[160px]">
+                    {weeklyData.status === 'locked' ? (
+                        /* LOCKED STATE: Mystery Box */
+                        <div className="absolute inset-0 w-full h-full rounded-xl overflow-hidden glass-concave shadow-inner flex flex-col items-center justify-center relative border border-white/20 group">
+                            {/* 1. Background Image (Forest/Elegant) */}
+                            <div className="absolute inset-0 bg-[#F2F0E9]">
+                                <img 
+                                    src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=2948&auto=format&fit=crop" 
+                                    alt="Forest Background" 
+                                    className="w-full h-full object-cover opacity-80 mix-blend-multiply transition-transform duration-[20s] ease-in-out group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px]" />
                             </div>
-                            <div className="w-[180px] h-[120px] mx-auto glass border-t-0 rounded-b-xl shadow-2xl relative bg-white/20 backdrop-blur-xl overflow-hidden mt-[-1px]">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-20 h-20 bg-cangzhen-sensation-main/40 rounded-full blur-[30px] animate-pulse-slow" />
-                                </div>
-                                <div className="absolute inset-0 flex">
-                                    <div className={`flex-1 h-full bg-white/30 border-r border-white/40 backdrop-blur-md relative origin-left transition-transform duration-1000 ease-in-out ${isPaletteOpen ? '-rotate-y-90 opacity-0' : 'rotate-y-0'}`}>
-                                        <div className="absolute top-1/2 right-2 w-1.5 h-1.5 rounded-full bg-cangzhen-text-main/20 shadow-sm" />
-                                        <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+                            
+                            {/* 2. Floating Hall Bubbles (Home Page Texture) */}
+                            <div className="absolute inset-0 pointer-events-none">
+                                {weeklyData.hallCounts.map((hall, i) => (
+                                    <div 
+                                        key={hall.id}
+                                        className="absolute w-11 h-11 rounded-[0.8rem] glass-convex border border-white/40 flex flex-col items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.05)] backdrop-blur-md animate-float cursor-default bg-white/20"
+                                        style={{
+                                            left: i === 0 ? '12%' : i === 1 ? '78%' : i === 2 ? '15%' : '75%',
+                                            top: i === 0 ? '15%' : i === 1 ? '20%' : i === 2 ? '70%' : '65%',
+                                            animationDelay: `${i * 1.5}s`,
+                                            animationDuration: '7s'
+                                        }}
+                                    >
+                                        <div className="text-cangzhen-text-main/80 mb-0.5 drop-shadow-sm">
+                                            {hall.icon === 'flower' && <FlowerIcon type="sakura" className="w-3 h-3" />}
+                                            {hall.icon === 'heart' && <Heart size={10} className="text-cangzhen-emotion-main fill-cangzhen-emotion-main/20" />}
+                                            {hall.icon === 'zap' && <Zap size={10} className="text-cangzhen-inspiration-main fill-cangzhen-inspiration-main/20" />}
+                                            {hall.icon === 'compass' && <Compass size={10} className="text-cangzhen-wisdom-main" />}
+                                        </div>
+                                        <div className="flex flex-col items-center leading-none">
+                                            <span className="text-[6px] text-cangzhen-text-secondary/80 mb-0.5 scale-90 font-medium">{hall.name}</span>
+                                            <span className="text-[10px] font-serif font-bold text-cangzhen-text-main drop-shadow-sm">{hall.count}</span>
+                                        </div>
+                                        {/* Highlight */}
+                                        <div className="absolute inset-0 rounded-[0.8rem] bg-gradient-to-br from-white/60 to-transparent opacity-50 pointer-events-none" />
                                     </div>
-                                    <div className={`flex-1 h-full bg-white/30 border-l border-white/40 backdrop-blur-md relative origin-right transition-transform duration-1000 ease-in-out ${isPaletteOpen ? 'rotate-y-90 opacity-0' : 'rotate-y-0'}`}>
-                                        <div className="absolute top-1/2 left-2 w-1.5 h-1.5 rounded-full bg-cangzhen-text-main/20 shadow-sm" />
-                                        <div className="absolute inset-0 bg-gradient-to-l from-white/10 to-transparent" />
-                                    </div>
-                                </div>
-                                <div className={`absolute bottom-3 left-0 right-0 text-center transition-opacity duration-500 ${isPaletteOpen ? 'opacity-0' : 'opacity-100'}`}>
-                                    <span className="text-[10px] text-cangzhen-text-secondary tracking-[0.3em] uppercase">点击开启</span>
-                                </div>
+                                ))}
+                            </div>
+
+                            {/* 3. Center Text */}
+                            <div className="relative z-20 flex flex-col items-center justify-center h-full pointer-events-none mt-1">
+                                <h3 className="text-xl font-serif font-bold text-cangzhen-text-main tracking-[0.2em] mb-2 drop-shadow-md bg-white/60 px-8 py-3 rounded-full backdrop-blur-md border border-white/50 shadow-sm">布展中...</h3>
+                                <p className="text-[10px] text-cangzhen-text-secondary/80 uppercase tracking-[0.2em] font-medium opacity-70">Coming Soon</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                {/* B. AI Summary */}
-                <div className="px-2 relative">
-                    <Quote className="absolute -top-2 -left-1 text-cangzhen-text-main/10 w-8 h-8 fill-current transform -scale-x-100" />
-                    <div className="text-sm text-cangzhen-text-main/80 leading-[2.2] font-serif text-justify pt-4 pb-2 indent-0">
-                        {weeklyData.aiSummary}
-                    </div>
-                    <div className="flex justify-end mt-4">
-                        <div className="h-0.5 w-12 bg-cangzhen-text-main/10 rounded-full" />
-                    </div>
-                </div>
-
-                {/* C. Sliding Data Modules */}
-                <div className="w-full overflow-x-auto flex gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory scrollbar-hide">
-                    <div className="min-w-[85%] snap-center glass rounded-3xl p-6 flex flex-col justify-between h-60 relative overflow-hidden">
-                         <div className="flex items-center gap-2 mb-4">
-                             <TrendingUp size={16} className="text-cangzhen-text-secondary" />
-                             <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest">新增馆藏</h3>
-                         </div>
-                         <div className="flex items-end justify-between h-full gap-3 px-2">
-                            {weeklyData.trend.map((val, i) => (
-                                <div key={i} className="flex flex-col items-center gap-2 w-full group">
-                                    <div className="w-full bg-black/5 rounded-t-md relative overflow-hidden transition-all duration-500 group-hover:bg-cangzhen-text-main/10" style={{ height: `${(val/5)*100}%` }}>
-                                        <div className={`absolute bottom-0 left-0 right-0 top-0 bg-gradient-to-t from-cangzhen-text-main/20 to-transparent opacity-50`} />
-                                    </div>
-                                    <span className="text-[10px] text-cangzhen-text-secondary font-sans opacity-60">
-                                        {['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i]}
-                                    </span>
+                    ) : (
+                        /* UNLOCKED STATE: Triangle Museum (Existing Code) */
+                        <>
+                            {/* The Actual Content (Revealed State) */}
+                            <div className={`absolute inset-0 w-full h-full rounded-xl overflow-hidden group shadow-xl ${weeklyData.moodShadow}/20 transition-all duration-1000 ${isPaletteOpen ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-95 z-0 pointer-events-none'}`}> 
+                                
+                                {/* 1. Background Image Layer - Botanical Theme */}
+                                <div className={`absolute inset-0 ${weeklyData.bgGradient}`}>
+                                    <img 
+                                        src={weeklyData.bgImage} 
+                                        alt="Botanical Background" 
+                                        className="w-full h-full object-cover transition-transform duration-[10s] ease-in-out group-hover:scale-110 opacity-80"
+                                        onError={(e) => e.target.style.display = 'none'} 
+                                    />
+                                    {/* Soft Overlay */}
+                                    <div className="absolute inset-0 bg-white/10" />
                                 </div>
-                            ))}
-                         </div>
-                         <div className="absolute top-6 right-6">
-                             <span className="text-3xl font-light text-cangzhen-text-main font-serif">{weeklyData.count}</span>
-                             <span className="text-[10px] text-cangzhen-text-secondary ml-1">总计</span>
-                         </div>
-                    </div>
-                    <div className="min-w-[85%] snap-center glass-convex rounded-3xl p-6 h-60 relative overflow-hidden flex flex-col">
-                         <div className="flex items-center justify-between mb-2 z-20 relative">
-                              <div className="flex items-center gap-2">
-                                  <Cloud size={16} className="text-cangzhen-text-secondary" />
-                                  <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest">心境形状</h3>
-                              </div>
-                              <span className="text-[10px] text-cangzhen-text-secondary/50">#{weeklyData.keywordCN}</span>
-                         </div>
-                         <div className="flex-1 relative w-full h-full">
-                             <div className="absolute inset-0 flex items-center justify-center opacity-5">
-                                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-32 h-32">
-                                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                  </svg>
-                             </div>
-                             {weeklyData.tags.map((tag, i) => {
-                                 const pos = shapeLayouts[weeklyData.shape][i] || { left: '50%', top: '50%' };
-                                 const fontSize = tag.weight >= 4 ? 'text-lg font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
-                                 const zIndex = tag.weight;
-                                 return (
-                                     <span 
-                                       key={tag.text} 
-                                       className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 hover:scale-110 cursor-default
-                                          ${fontSize} text-cangzhen-text-main drop-shadow-sm
-                                       `}
-                                       style={{ left: pos.left, top: pos.top, zIndex: zIndex }}
-                                     >
-                                         {tag.text}
-                                     </span>
-                                 );
-                             })}
-                         </div>
-                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cangzhen-sensation-main/20 rounded-full blur-3xl pointer-events-none" />
-                    </div>
+
+                                {/* 2. Glass Overlay (Centered, Compact) */}
+                                <div className="absolute inset-x-12 inset-y-6 bg-white/5 backdrop-blur-[10px] border border-white/30 rounded-[1.5rem] shadow-[0_4px_24px_rgba(0,0,0,0.05)] flex flex-col justify-center items-center p-4 overflow-hidden">
+                                    
+                                    {/* Reflection */}
+                                    <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-br from-white/10 via-transparent to-transparent rotate-45 pointer-events-none" />
+                                    
+                                    {/* Content - All Centered */}
+                                    <div className="relative z-10 flex flex-col items-center text-center gap-1">
+                                        <span className="text-[10px] font-medium text-white/80 tracking-[0.4em] uppercase mb-1">
+                                            本周关键词
+                                        </span>
+                                        <h2 className="text-4xl font-serif font-bold text-white drop-shadow-lg tracking-widest">
+                                            {weeklyData.keywordCN}
+                                        </h2>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* The "Sealed Museum" Overlay */}
+                            <div 
+                                onClick={() => setIsPaletteOpen(true)}
+                                className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-all duration-1000 z-20 ${isPaletteOpen ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 hover:scale-[1.02]'}`}
+                            >
+                                <div className="relative transform scale-110">
+                                    <div className="relative z-10">
+                                        <div className="w-0 h-0 border-l-[100px] border-l-transparent border-r-[100px] border-r-transparent border-b-[60px] border-b-white/50 backdrop-blur-md" />
+                                        <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] h-[60px]" viewBox="0 0 200 60" fill="none">
+                                            <path d="M100 0L200 60M100 0L0 60" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" />
+                                            <circle cx="100" cy="0" r="2" fill="white" />
+                                        </svg>
+                                    </div>
+                                    <div className="w-[180px] h-[120px] mx-auto glass border-t-0 rounded-b-xl shadow-2xl relative bg-white/20 backdrop-blur-xl overflow-hidden mt-[-1px]">
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="w-20 h-20 bg-cangzhen-sensation-main/40 rounded-full blur-[30px] animate-pulse-slow" />
+                                        </div>
+                                        <div className="absolute inset-0 flex">
+                                            <div className={`flex-1 h-full bg-white/30 border-r border-white/40 backdrop-blur-md relative origin-left transition-transform duration-1000 ease-in-out ${isPaletteOpen ? '-rotate-y-90 opacity-0' : 'rotate-y-0'}`}>
+                                                <div className="absolute top-1/2 right-2 w-1.5 h-1.5 rounded-full bg-cangzhen-text-main/20 shadow-sm" />
+                                                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+                                            </div>
+                                            <div className={`flex-1 h-full bg-white/30 border-l border-white/40 backdrop-blur-md relative origin-right transition-transform duration-1000 ease-in-out ${isPaletteOpen ? 'rotate-y-90 opacity-0' : 'rotate-y-0'}`}>
+                                                <div className="absolute top-1/2 left-2 w-1.5 h-1.5 rounded-full bg-cangzhen-text-main/20 shadow-sm" />
+                                                <div className="absolute inset-0 bg-gradient-to-l from-white/10 to-transparent" />
+                                            </div>
+                                        </div>
+                                        <div className={`absolute bottom-3 left-0 right-0 text-center transition-opacity duration-500 ${isPaletteOpen ? 'opacity-0' : 'opacity-100'}`}>
+                                            <span className="text-[10px] text-cangzhen-text-secondary tracking-[0.3em] uppercase">点击开启</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
+
+                {/* 3. Detailed Content (Only if Unlocked) */}
+                {weeklyData.status === 'unlocked' && (
+                    <>
+                        {/* B. AI Summary */}
+                        <div className="px-2 relative">
+                            <Quote className="absolute -top-2 -left-1 text-cangzhen-text-main/10 w-8 h-8 fill-current transform -scale-x-100" />
+                            <div className="text-sm text-cangzhen-text-main/80 leading-[2.2] font-serif text-justify pt-4 pb-2 indent-0">
+                                {weeklyData.aiSummary}
+                            </div>
+                            <div className="flex justify-end mt-4">
+                                <div className="h-0.5 w-12 bg-cangzhen-text-main/10 rounded-full" />
+                            </div>
+                        </div>
+
+                        {/* C. Sliding Data Modules */}
+                        <div className="w-full overflow-x-auto flex gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory scrollbar-hide">
+                            <div className="min-w-[85%] snap-center glass rounded-3xl p-6 flex flex-col justify-between h-60 relative overflow-hidden">
+                                 <div className="flex items-center gap-2 mb-4">
+                                     <TrendingUp size={16} className="text-cangzhen-text-secondary" />
+                                     <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest">新增馆藏</h3>
+                                 </div>
+                                 <div className="flex items-end justify-between h-full gap-3 px-2">
+                                    {weeklyData.trend.map((val, i) => (
+                                        <div key={i} className="flex flex-col items-center gap-2 w-full group">
+                                            <div className="w-full bg-black/5 rounded-t-md relative overflow-hidden transition-all duration-500 group-hover:bg-cangzhen-text-main/10" style={{ height: `${(val/5)*100}%` }}>
+                                                <div className={`absolute bottom-0 left-0 right-0 top-0 bg-gradient-to-t from-cangzhen-text-main/20 to-transparent opacity-50`} />
+                                            </div>
+                                            <span className="text-[10px] text-cangzhen-text-secondary font-sans opacity-60">
+                                                {['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i]}
+                                            </span>
+                                        </div>
+                                    ))}
+                                 </div>
+                                 <div className="absolute top-6 right-6">
+                                     <span className="text-3xl font-light text-cangzhen-text-main font-serif">{weeklyData.count}</span>
+                                     <span className="text-[10px] text-cangzhen-text-secondary ml-1">总计</span>
+                                 </div>
+                            </div>
+                            <div className="min-w-[85%] snap-center glass-convex rounded-3xl p-6 h-60 relative overflow-hidden flex flex-col">
+                                 <div className="flex items-center justify-between mb-2 z-20 relative">
+                                      <div className="flex items-center gap-2">
+                                          <Cloud size={16} className="text-cangzhen-text-secondary" />
+                                          <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest">心境形状</h3>
+                                      </div>
+                                      <span className="text-[10px] text-cangzhen-text-secondary/50">#{weeklyData.keywordCN}</span>
+                                 </div>
+                                 <div className="flex-1 relative w-full h-full">
+                                     <div className="absolute inset-0 flex items-center justify-center opacity-5">
+                                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-32 h-32">
+                                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                          </svg>
+                                     </div>
+                                     {weeklyData.tags.map((tag, i) => {
+                                         const pos = shapeLayouts[weeklyData.shape][i] || { left: '50%', top: '50%' };
+                                         const fontSize = tag.weight >= 4 ? 'text-lg font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
+                                         const zIndex = tag.weight;
+                                         return (
+                                             <span 
+                                               key={tag.text} 
+                                               className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 hover:scale-110 cursor-default
+                                                  ${fontSize} text-cangzhen-text-main drop-shadow-sm
+                                               `}
+                                               style={{ left: pos.left, top: pos.top, zIndex: zIndex }}
+                                             >
+                                                 {tag.text}
+                                             </span>
+                                         );
+                                     })}
+                                 </div>
+                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cangzhen-sensation-main/20 rounded-full blur-3xl pointer-events-none" />
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* LOCKED CONTENT: Fill empty space */}
+                {weeklyData.status === 'locked' && (
+                     <div className="px-6 py-6 space-y-6">
+                         {/* 1. Footprints (Weekly Progress) */}
+                         <div>
+                            <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <Sparkles size={14} /> 新增馆藏
+                            </h3>
+                            <div className="flex justify-between items-center px-2">
+                                {weeklyData.progress.map((count, i) => (
+                                    <div key={i} className="flex flex-col items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full transition-all duration-500 ${count > 0 ? 'bg-cangzhen-text-main shadow-lg scale-110' : 'bg-cangzhen-text-secondary/10'}`} />
+                                        <span className={`text-[10px] font-sans ${count > 0 ? 'text-cangzhen-text-main font-bold' : 'text-cangzhen-text-secondary/40'}`}>
+                                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+
+                         {/* 2. Countdown */}
+                         <div className="glass rounded-2xl p-6 flex items-center justify-between">
+                             <div className="flex flex-col">
+                                 <span className="text-xs text-cangzhen-text-secondary mb-1">距离展馆开启还有</span>
+                                 <span className="text-2xl font-serif font-bold text-cangzhen-text-main">
+                                     {weeklyData.daysLeft} <span className="text-sm font-normal opacity-60">天</span>
+                                 </span>
+                             </div>
+                             <div className="w-12 h-12 rounded-full bg-cangzhen-text-main/5 flex items-center justify-center">
+                                 <Gift size={20} className="text-cangzhen-text-main opacity-60" />
+                             </div>
+                         </div>
+                         
+                         {/* 3. Motivational Quote */}
+                         <div className="text-center pt-8">
+                             <p className="text-xs text-cangzhen-text-secondary/60 italic font-serif">
+                                 "Keep collecting moments, <br/> not things."
+                             </p>
+                         </div>
+                     </div>
+                )}
              </>
           )}
 
           {/* CONTENT FOR MONTHLY TAB */}
           {activeTab === 'monthly' && (
-             <div className="flex-1 h-full flex flex-col justify-center relative">
-                 {/* Standard View: 12 Glass Cubes */}
+             <div className="flex-1 h-full flex flex-col relative">
+                 {/* Standard View: Double Column Grid */}
                  {!expandedMonth && (
-                    <>
-                         <div className="w-full overflow-x-auto flex gap-6 px-6 pb-10 pt-4 snap-x snap-mandatory scrollbar-hide items-center h-[400px]">
-                             {monthlyData.map((data, i) => (
-                                 <div 
-                                     key={i}
-                                     onClick={() => data.hasContent && setExpandedMonth(data)}
-                                     className={`
-                                        min-w-[260px] h-[340px] snap-center rounded-[2.5rem] relative overflow-hidden transition-all duration-500 flex flex-col justify-between p-8 group
-                                        ${data.hasContent 
-                                            ? 'glass-convex shadow-2xl scale-100 opacity-100 hover:scale-[1.02] cursor-pointer' 
-                                            : 'glass-concave shadow-inner scale-95 opacity-50 grayscale cursor-not-allowed'}
-                                     `}
-                                 >
-                                     {/* Month Number (Large background) */}
-                                     <div className={`absolute -top-6 -right-6 text-[120px] font-serif font-bold opacity-5 leading-none select-none ${data.hasContent ? 'text-cangzhen-text-main' : 'text-gray-400'}`}>
-                                         {data.month}
-                                     </div>
+                    <div className="w-full px-6 pt-4 pb-24 grid grid-cols-2 gap-4 animate-fade-in">
+                         {monthlyData.map((data, i) => (
+                             <div 
+                                 key={i}
+                                 onClick={() => data.hasContent && setExpandedMonth(data)}
+                                 className={`
+                                    aspect-square rounded-[1.5rem] relative overflow-hidden transition-all duration-500 flex flex-col justify-between p-5 group
+                                    ${data.hasContent 
+                                        ? 'glass-convex shadow-lg hover:shadow-xl hover:scale-[1.02] cursor-pointer bg-white/40 border border-white/40' 
+                                        : `glass-concave cursor-not-allowed bg-gradient-to-br ${data.gradient} border border-white/20 opacity-90`}
+                                 `}
+                             >
+                                 {/* Background Decor */}
+                                 {data.hasContent && (
+                                     <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full ${data.color} blur-2xl opacity-60 group-hover:opacity-80 transition-opacity`} />
+                                 )}
 
-                                     {/* Content or "Empty" State */}
-                                     {data.hasContent ? (
-                                         <>
-                                             <div className="relative z-10">
-                                                 <span className="text-xs font-medium text-cangzhen-text-secondary tracking-widest uppercase border border-cangzhen-text-secondary/20 px-3 py-1 rounded-full">
-                                                     {data.month}月 · Monthly
-                                                 </span>
-                                             </div>
-                                             
-                                             <div className="relative z-10 flex-1 flex flex-col justify-center items-center gap-4">
-                                                 <div className={`w-24 h-24 rounded-full ${data.color} blur-2xl absolute`} />
-                                                 <h2 className="text-4xl font-serif font-bold text-cangzhen-text-main relative z-10">
-                                                     {data.keyword}
-                                                 </h2>
-                                             </div>
-
-                                             <div className="relative z-10 flex justify-between items-end border-t border-cangzhen-text-secondary/10 pt-4">
-                                                 <div className="flex flex-col">
-                                                     <span className="text-2xl font-light text-cangzhen-text-main font-serif">{data.count}</span>
-                                                     <span className="text-[10px] text-cangzhen-text-secondary uppercase">Memories</span>
-                                                 </div>
-                                                 <div className="w-8 h-8 rounded-full bg-cangzhen-text-main/5 flex items-center justify-center group-hover:bg-cangzhen-text-main/10 transition-colors">
-                                                     <ChevronRight size={14} className="text-cangzhen-text-main" />
-                                                 </div>
-                                             </div>
-                                         </>
-                                     ) : (
-                                         <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-60">
-                                             <div className="w-12 h-12 rounded-full border-2 border-dashed border-cangzhen-text-secondary/30 flex items-center justify-center">
-                                                 <span className="text-lg font-serif text-cangzhen-text-secondary/50">{data.month}</span>
-                                             </div>
-                                             <span className="text-xs text-cangzhen-text-secondary/50 tracking-widest">
-                                                 {data.isActive ? '暂无内容' : '未开启'}
-                                             </span>
+                                 {/* Header: Month & Arrow */}
+                                 <div className="flex justify-between items-start relative z-10">
+                                     <span className={`text-3xl font-serif font-bold ${data.hasContent ? 'text-cangzhen-text-main' : 'text-cangzhen-text-secondary/50'}`}>
+                                         {data.month} <span className="text-[10px] font-sans font-normal opacity-60">月</span>
+                                     </span>
+                                     {data.hasContent && (
+                                         <div className="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center backdrop-blur-sm shadow-sm">
+                                             <ChevronRight size={14} className="text-cangzhen-text-secondary" />
                                          </div>
                                      )}
                                  </div>
-                             ))}
-                         </div>
-                         {/* Scroll Hint */}
-                         <div className="flex justify-center gap-2 mt-4">
-                             {monthlyData.map((_, i) => (
-                                 <div 
-                                     key={i} 
-                                     className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === currentMonth - 1 ? 'bg-cangzhen-text-main w-3' : 'bg-cangzhen-text-secondary/20'}`} 
-                                 />
-                             ))}
-                         </div>
-                    </>
+
+                                 {/* Content: Keyword & Count */}
+                                 {data.hasContent ? (
+                                     <div className="relative z-10 flex-1 flex flex-col justify-center items-center gap-2">
+                                         <h3 className="text-2xl font-serif font-bold text-cangzhen-text-main tracking-widest drop-shadow-sm">
+                                             {data.keyword}
+                                         </h3>
+                                         <span className="inline-block px-3 py-1 rounded-full bg-white/60 border border-white/40 backdrop-blur-sm text-[10px] text-cangzhen-text-secondary/80 font-medium tracking-wider shadow-sm">
+                                             {data.count} 馆藏
+                                         </span>
+                                     </div>
+                                 ) : (
+                                     <div className="flex-1 flex items-center justify-center">
+                                         <span className="text-[10px] text-cangzhen-text-secondary/40 tracking-widest uppercase rotate-90 origin-center whitespace-nowrap">
+                                             Coming Soon
+                                         </span>
+                                     </div>
+                                 )}
+                             </div>
+                         ))}
+                    </div>
                  )}
 
                  {/* Expanded Detail View */}
