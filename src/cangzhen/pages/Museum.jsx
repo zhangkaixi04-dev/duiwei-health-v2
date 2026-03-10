@@ -1,9 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
+import { Search, SlidersHorizontal } from 'lucide-react';
 
 const Museum = () => {
   const [activeTab, setActiveTab] = useState('sensation');
   const [activeFilter, setActiveFilter] = useState('全部');
+  const [localMemories, setLocalMemories] = useState([]);
+
+  // Load memories from localStorage on mount
+  useEffect(() => {
+      const stored = localStorage.getItem('cangzhen_memories');
+      if (stored) {
+          try {
+              const parsed = JSON.parse(stored);
+              // Normalize data structure if needed
+              const normalized = parsed.map(item => ({
+                  ...item,
+                  // Ensure date format is consistent (Mock uses "3月8日", Real might be "2026/3/8")
+                  // We can try to reformat real dates to "M月D日" for consistency
+                  date: item.date.includes('月') ? item.date : new Date(item.id).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
+                  tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录', // Default tag if empty
+                  image: item.image || null
+              }));
+              setLocalMemories(normalized.reverse()); // Show newest first
+          } catch (e) {
+              console.error("Failed to parse memories", e);
+          }
+      }
+  }, []);
 
   // Halls Configuration
   const halls = [
@@ -22,9 +46,9 @@ const Museum = () => {
   };
 
   // Mock Memories Data (Simulating User Posts)
-  const memories = [
+  const mockMemories = [
     {
-      id: 1,
+      id: 'mock-1',
       hall: 'sensation',
       image: 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=600&auto=format&fit=crop',
       content: '下班路上的夕阳，像打翻了的橘子汽水。',
@@ -32,7 +56,7 @@ const Museum = () => {
       tag: '视觉'
     },
     {
-      id: 2,
+      id: 'mock-2',
       hall: 'sensation',
       image: null, // No image, use default gradient
       content: '听到雨滴落在窗台的声音，滴答滴答，很治愈。',
@@ -40,7 +64,7 @@ const Museum = () => {
       tag: '听觉'
     },
     {
-      id: 3,
+      id: 'mock-3',
       hall: 'emotion',
       image: 'https://images.unsplash.com/photo-1516550893723-124266e81e72?q=80&w=600&auto=format&fit=crop',
       content: '今天虽然很累，但是在这个角落里找到了平静。',
@@ -48,7 +72,7 @@ const Museum = () => {
       tag: '平静'
     },
     {
-      id: 4,
+      id: 'mock-4',
       hall: 'inspiration',
       image: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=600&auto=format&fit=crop',
       content: '如果把梦境记录下来做成一个个盲盒，会是什么样？',
@@ -56,7 +80,7 @@ const Museum = () => {
       tag: '脑洞'
     },
     {
-      id: 5,
+      id: 'mock-5',
       hall: 'wanxiang',
       image: 'https://images.unsplash.com/photo-1490750967868-58cb75065ed4?q=80&w=600&auto=format&fit=crop',
       content: '妈妈做的红烧肉，是任何米其林都复刻不了的味道。',
@@ -64,7 +88,7 @@ const Museum = () => {
       tag: '美食'
     },
     {
-      id: 6,
+      id: 'mock-6',
       hall: 'sensation',
       image: 'https://images.unsplash.com/photo-1470058869958-2a77ade41c02?q=80&w=600&auto=format&fit=crop',
       content: '摸到了小猫毛茸茸的爪子，软乎乎的。',
@@ -72,38 +96,35 @@ const Museum = () => {
       tag: '触觉'
     },
     // Add more mock data to fill the waterfall
-    { id: 7, hall: 'sensation', image: null, content: '闻到了桂花的香味。', date: '3月2日', tag: '嗅觉' },
+    { id: 'mock-7', hall: 'sensation', image: null, content: '闻到了桂花的香味。', date: '3月2日', tag: '嗅觉' },
   ];
 
+  // Combine Real + Mock Data
+  // Priority: Real data first (newest), then mock data
+  const allMemories = [...localMemories, ...mockMemories];
+
   // Filter Logic
-  const currentMemories = memories.filter(m => {
+  const currentMemories = allMemories.filter(m => {
+      // Handle hall matching (Real data might use 'sensation' or '感知馆' depending on how it was saved. 
+      // Record.jsx saves 'selectedHall' which corresponds to 'sensation', 'emotion' etc. ids from the tabs.
+      // So simple equality check should work if Record.jsx uses the same IDs.
+      // Let's assume Record.jsx uses the same IDs. If not, we might need a map.
+      // Checking Record.jsx history: activeHall state uses 'sensation', 'emotion'... YES.
+      
       const matchHall = m.hall === activeTab;
       const matchTag = activeFilter === '全部' || m.tag === activeFilter;
       return matchHall && matchTag;
   });
 
-  // Reorder mock data to ensure visual variety (Mix Image/Text)
-  // This is just for demo purpose to show "staggered" effect
-  const demoMemories = [
-      memories[0], // Image (Tall)
-      memories[5], // Image (Tall)
-      memories[1], // Text (Short)
-      memories[6], // Text (Short)
-      memories[2], // Image (Tall)
-      memories[3], // Image (Tall)
-      memories[4], // Image (Tall)
-  ];
-  
-  // Override currentMemories with mixed demo data if in sensation tab (for better visual demo)
-  const displayMemories = activeTab === 'sensation' ? demoMemories : currentMemories;
-
+  // Split into columns for waterfall
   const col1 = [];
   const col2 = [];
-  displayMemories.forEach((item, i) => {
+  currentMemories.forEach((item, i) => {
       if (i % 2 === 0) col1.push(item);
       else col2.push(item);
   });
 
+  // Memory Card Component
   const MemoryCard = ({ item }) => (
     <div className={`group relative w-full ${item.image ? 'aspect-[2/3]' : 'aspect-square'} rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-xl mb-3 glass-convex border border-white/40`}>
        
@@ -163,17 +184,17 @@ const Museum = () => {
   );
 
   return (
-    <div className="min-h-screen relative flex flex-col pt-12 pb-24 font-serif bg-gradient-to-b from-white/50 to-transparent">
+    <div className="h-screen flex flex-col bg-[#F9F7F2] font-serif overflow-hidden">
       
-      {/* 1. Top Tabs (Switch Halls) */}
-      <div className="px-4 mb-6 overflow-x-auto no-scrollbar">
-        <div className="flex gap-3">
+      {/* 1. Top Tabs (Switch Halls) - Fixed Header */}
+      <div className="pt-12 px-4 pb-2 bg-[#F9F7F2]/90 backdrop-blur-md z-20">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
           {halls.map(hall => (
             <button
               key={hall.id}
               onClick={() => { setActiveTab(hall.id); setActiveFilter('全部'); }}
               className={`
-                px-5 py-2.5 rounded-full text-sm whitespace-nowrap transition-all duration-300
+                px-5 py-2.5 rounded-full text-sm whitespace-nowrap transition-all duration-300 flex-shrink-0
                 ${activeTab === hall.id 
                     ? 'bg-cangzhen-text-main text-white shadow-lg scale-105 font-medium' 
                     : 'glass-convex text-cangzhen-text-secondary hover:bg-white/40'}
@@ -185,9 +206,9 @@ const Museum = () => {
         </div>
       </div>
 
-      {/* 2. Hall Description & Search/Filter */}
-      <div className="px-6 mb-6 space-y-4">
-          <p className="text-xs text-cangzhen-text-secondary/80 italic tracking-wide leading-relaxed pl-1">
+      {/* 2. Hall Description & Search/Filter - Fixed Sub-Header */}
+      <div className="px-6 pb-4 bg-[#F9F7F2]/90 backdrop-blur-md z-10 shadow-sm border-b border-white/50">
+          <p className="text-xs text-cangzhen-text-secondary/80 italic tracking-wide leading-relaxed pl-1 mb-3">
               {halls.find(h => h.id === activeTab)?.desc}
           </p>
           
@@ -198,7 +219,7 @@ const Museum = () => {
                     key={tag}
                     onClick={() => setActiveFilter(tag)}
                     className={`
-                        px-3 py-1.5 rounded-lg text-[11px] whitespace-nowrap transition-all border
+                        px-3 py-1.5 rounded-lg text-[11px] whitespace-nowrap transition-all border flex-shrink-0
                         ${activeFilter === tag 
                             ? 'bg-cangzhen-text-main/5 border-cangzhen-text-main text-cangzhen-text-main font-bold' 
                             : 'border-transparent bg-white/40 text-cangzhen-text-secondary hover:bg-white/60'}
@@ -210,26 +231,28 @@ const Museum = () => {
           </div>
       </div>
 
-      {/* 3. Waterfall Content (2 Columns) */}
-      <div className="flex gap-3 px-3 items-start">
-         {/* Left Column */}
-         <div className="flex-1 flex flex-col gap-3">
-            {col1.map(item => <MemoryCard key={item.id} item={item} />)}
-         </div>
-         
-         {/* Right Column (Staggered) */}
-         <div className="flex-1 flex flex-col gap-3 pt-12">
-            {col2.map(item => <MemoryCard key={item.id} item={item} />)}
-         </div>
-      </div>
-
-      {/* Empty State */}
-      {currentMemories.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-cangzhen-text-secondary/50 mt-12">
-              <FlowerIcon hallKey={activeTab} size={48} className="opacity-20 mb-2" />
-              <p className="text-xs">还没有记录，去添加第一笔吧</p>
+      {/* 3. Waterfall Content (2 Columns) - Scrollable Area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 scrollbar-hide">
+          <div className="flex gap-3 items-start">
+             {/* Left Column */}
+             <div className="flex-1 flex flex-col gap-3">
+                {col1.map(item => <MemoryCard key={item.id} item={item} />)}
+             </div>
+             
+             {/* Right Column (Staggered) */}
+             <div className="flex-1 flex flex-col gap-3 pt-12">
+                {col2.map(item => <MemoryCard key={item.id} item={item} />)}
+             </div>
           </div>
-      )}
+
+          {/* Empty State */}
+          {currentMemories.length === 0 && (
+              <div className="flex flex-col items-center justify-center text-cangzhen-text-secondary/50 mt-20">
+                  <FlowerIcon hallKey={activeTab} size={48} className="opacity-20 mb-2" />
+                  <p className="text-xs">还没有记录，去添加第一笔吧</p>
+              </div>
+          )}
+      </div>
     </div>
   );
 };

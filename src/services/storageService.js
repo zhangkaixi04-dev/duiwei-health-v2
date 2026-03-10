@@ -169,6 +169,7 @@ export const storageService = {
         diet: [],
         exercise: [],
         poop: [],
+        mood: [],
         period: null
       };
     }
@@ -178,14 +179,14 @@ export const storageService = {
   /**
    * Update daily log entry (replace array)
    * @param {string} date YYYY-MM-DD
-   * @param {string} type 'diet' | 'exercise' | 'poop'
+   * @param {string} type 'diet' | 'exercise' | 'poop' | 'mood'
    * @param {Array} data Array of items
    */
   updateDailyLog: (date, type, data) => {
     const allLogs = getLocal(STORAGE_KEYS.DAILY_LOGS, {});
     
     if (!allLogs[date]) {
-      allLogs[date] = { diet: [], exercise: [], poop: [], period: null };
+      allLogs[date] = { diet: [], exercise: [], poop: [], mood: [], period: null };
     }
 
     allLogs[date][type] = data;

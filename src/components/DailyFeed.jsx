@@ -99,6 +99,13 @@ const DailyFeed = () => {
       // 2. Get Daily Log (Calories, Nutrients)
       const today = new Date().toISOString().split('T')[0];
       const dailyLogs = storageService.getDailyLogs(today);
+      
+      // Load latest mood
+      const moodLogs = dailyLogs.mood || [];
+      if (moodLogs.length > 0) {
+        setSelectedMood(moodLogs[moodLogs.length - 1].value);
+      }
+
       const todayData = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
       
       const currentCalories = parseFloat(todayData.calories) || 0;
@@ -197,9 +204,18 @@ const DailyFeed = () => {
   };
 
   const handleMoodSelect = (mood) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Optimistic UI update
     setSelectedMood(mood);
-    // In a real app, save to storage
-    alert(`心情已记录：${mood}`);
+    
+    // Save to storage
+    storageService.saveDailyLog(todayStr, 'mood', { value: mood });
+    
+    // Dispatch event to update other components if needed
+    window.dispatchEvent(new Event('storage'));
+    
+    // alert(`心情已记录：${mood}`); // Removed alert for smoother experience
   };
 
   const handleExerciseCheckIn = () => {

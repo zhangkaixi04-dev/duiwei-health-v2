@@ -20,7 +20,7 @@ const Record = () => {
     { id: 'sensation', label: '感知', color: 'bg-cangzhen-sensation-main' },
     { id: 'emotion', label: '情绪', color: 'bg-cangzhen-emotion-main' },
     { id: 'inspiration', label: '灵感', color: 'bg-cangzhen-inspiration-main' },
-    { id: 'wanxiang', label: '万象', color: 'bg-cangzhen-wanxiang-main' },
+    { id: 'wanxiang', label: '万象', color: 'bg-cangzhen-custom-main' },
   ];
 
   const handleSeal = () => {
@@ -28,20 +28,28 @@ const Record = () => {
 
     setIsSealing(true);
 
-    // Sequence:
-    // 1. Stamp Animation (0.6s) -> handled by CSS class 'animate-stamp'
-    // 2. Flower Bloom (0.8s) -> show after stamp
-    // 3. Undo Toast (5 mins) -> show after bloom
+    // Save to LocalStorage
+    const newEntry = {
+        id: Date.now(),
+        date: new Date().toLocaleDateString(),
+        content: content,
+        hall: selectedHall,
+        tags: [] // Future: Add tags support
+    };
 
+    // Get existing entries
+    const existingEntries = JSON.parse(localStorage.getItem('cangzhen_memories') || '[]');
+    const updatedEntries = [newEntry, ...existingEntries];
+    localStorage.setItem('cangzhen_memories', JSON.stringify(updatedEntries));
+
+    // Simulate API delay & Animation
     setTimeout(() => {
         setShowFlowerBloom(true);
-    }, 600);
+    }, 800);
 
     setTimeout(() => {
         setShowUndo(true);
-        // In real app, navigate away or clear form after some time
-        // navigate('/cangzhen/museum');
-    }, 1500);
+    }, 2500);
   };
 
   if (showUndo) {
@@ -82,9 +90,9 @@ const Record = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col p-6 font-serif overflow-hidden">
+    <div className="h-screen relative flex flex-col p-6 pb-24 font-serif overflow-hidden">
       {/* 1. 顶部导航 (Compact) */}
-      <header className="flex items-center justify-between mb-4 relative z-10">
+      <header className="flex items-center justify-between mb-2 shrink-0 relative z-10">
         <button 
             onClick={() => navigate(-1)} 
             className="glass-convex p-2 rounded-full text-cangzhen-text-secondary hover:text-cangzhen-text-main transition-colors"
@@ -96,10 +104,10 @@ const Record = () => {
       </header>
 
       {/* Main Container: Single Screen Layout */}
-      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0 h-full">
           
           {/* 2. 书写区 (Glass Card) */}
-          <div className={`glass-convex rounded-2xl flex-1 flex flex-col p-5 transition-all duration-500 relative group border border-white/40 shadow-sm ${isSealing ? 'scale-95 opacity-50 blur-sm' : ''}`}>
+          <div className={`glass-convex rounded-2xl flex-1 flex flex-col p-5 transition-all duration-500 relative group border border-white/40 shadow-sm min-h-[200px] overflow-y-auto ${isSealing ? 'scale-95 opacity-50 blur-sm' : ''}`}>
             
             {/* Date & Time */}
             <div className="flex justify-between items-center mb-3">
@@ -123,7 +131,7 @@ const Record = () => {
           </div>
 
           {/* 3. 存入展馆 (Compact Selection) */}
-          <div className={`transition-all duration-300 ${isSealing ? 'opacity-0 translate-y-4' : ''}`}>
+          <div className={`transition-all duration-300 shrink-0 ${isSealing ? 'opacity-0 translate-y-4' : ''}`}>
               <div className="glass-concave rounded-2xl p-1.5 flex gap-1">
                   {halls.map(hall => (
                       <button
@@ -136,7 +144,12 @@ const Record = () => {
                                 : 'text-cangzhen-text-secondary hover:bg-white/40'}
                         `}
                       >
-                          <span className={`w-1.5 h-1.5 rounded-full ${hall.color}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                              hall.id === 'sensation' ? 'bg-[#D6CEAB]' : 
+                              hall.id === 'emotion' ? 'bg-[#A0C4A0]' : 
+                              hall.id === 'inspiration' ? 'bg-[#C4BAD0]' : 
+                              'bg-[#E0D8C8]'
+                          }`} />
                           {hall.label}
                       </button>
                   ))}
@@ -148,7 +161,7 @@ const Record = () => {
             onClick={handleSeal}
             disabled={!content.trim() || !selectedHall || isSealing}
             className={`
-                w-full py-3.5 rounded-2xl text-sm font-medium tracking-[0.2em] transition-all duration-500
+                w-full py-3.5 rounded-2xl text-sm font-medium tracking-[0.2em] transition-all duration-500 shrink-0
                 ${!content.trim() || !selectedHall 
                     ? 'glass-convex text-cangzhen-text-secondary/40 cursor-not-allowed bg-white/20' 
                     : 'bg-cangzhen-text-main text-white shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-95'}

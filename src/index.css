@@ -50,6 +50,16 @@ body {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Alias for no-scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+
 /* -------------------------------------------------------------------------- */
 /* Design System: Atmosphere & Glassmorphism */
 /* -------------------------------------------------------------------------- */
@@ -79,6 +89,18 @@ body {
 @keyframes ambientFlow {
   0% { background-position: 0% 0%; }
   100% { background-position: 100% 100%; }
+}
+
+/* Gradient Animation */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-slow {
+  background-size: 200% 200%;
+  animation: gradient 8s ease infinite;
 }
 
 /* 2. Noise Overlay (颗粒质感 - 极轻微) */
