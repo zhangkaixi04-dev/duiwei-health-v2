@@ -63,70 +63,8 @@ const Museum = () => {
       return '';
   };
 
-  // Mock Memories Data
-  const mockMemories = [
-    {
-      id: 'mock-1',
-      hall: 'sensation',
-      timestamp: Date.now() - 100000,
-      image: 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=600&auto=format&fit=crop',
-      content: '下班路上的夕阳，像打翻了的橘子汽水。',
-      displayDate: '3月8日',
-      tag: '视觉'
-    },
-    {
-      id: 'mock-2',
-      hall: 'sensation',
-      timestamp: Date.now() - 200000,
-      image: null, 
-      content: '听到雨滴落在窗台的声音，滴答滴答，很治愈。',
-      displayDate: '3月7日',
-      tag: '听觉'
-    },
-    {
-      id: 'mock-3',
-      hall: 'emotion',
-      timestamp: Date.now() - 300000,
-      image: 'https://images.unsplash.com/photo-1516550893723-124266e81e72?q=80&w=600&auto=format&fit=crop',
-      content: '今天虽然很累，但是在这个角落里找到了平静。',
-      displayDate: '3月6日',
-      tag: '平静'
-    },
-    {
-      id: 'mock-4',
-      hall: 'inspiration',
-      timestamp: Date.now() - 400000,
-      image: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=600&auto=format&fit=crop',
-      content: '如果把梦境记录下来做成一个个盲盒，会是什么样？',
-      displayDate: '3月5日',
-      tag: '脑洞'
-    },
-    {
-      id: 'mock-5',
-      hall: 'wanxiang',
-      timestamp: Date.now() - 500000,
-      image: 'https://images.unsplash.com/photo-1490750967868-58cb75065ed4?q=80&w=600&auto=format&fit=crop',
-      content: '妈妈做的红烧肉，是任何米其林都复刻不了的味道。',
-      displayDate: '3月4日',
-      tag: '美食'
-    },
-    {
-      id: 'mock-6',
-      hall: 'sensation',
-      timestamp: Date.now() - 600000,
-      image: 'https://images.unsplash.com/photo-1470058869958-2a77ade41c02?q=80&w=600&auto=format&fit=crop',
-      content: '摸到了小猫毛茸茸的爪子，软乎乎的。',
-      displayDate: '3月3日',
-      tag: '触觉'
-    },
-    { id: 'mock-7', hall: 'sensation', timestamp: Date.now() - 700000, image: null, content: '闻到了桂花的香味。', displayDate: '3月2日', tag: '嗅觉' },
-  ].map(m => ({
-      ...m,
-      isoDate: getMockIsoDate(m.displayDate) // Add isoDate to mock data for filtering
-  }));
-
-  // Combine Real + Mock Data
-  const allMemories = [...localMemories, ...mockMemories];
+  // Combine Real Data
+  const allMemories = [...localMemories];
 
   // Filter Logic
   const currentMemories = allMemories.filter(m => {

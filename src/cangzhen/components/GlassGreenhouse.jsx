@@ -87,8 +87,8 @@ const GlassGreenhouse = ({ stats, onOpen, isOpen }) => {
 
                   {/* Right Column */}
                   <div className="flex flex-col justify-between h-full pointer-events-auto">
-                      <IconWrapper label="灵感" count={inspiration.count} icon={IrisFlower} delay="0.6s" type="inspiration" />
-                      <IconWrapper label="万象" count={wanxiang.count} icon={BabysBreath} delay="1.8s" type="wanxiang" />
+                      <IconWrapper label="创意" count={inspiration.count} icon={IrisFlower} delay="0.6s" type="inspiration" />
+                      <IconWrapper label="决策" count={wanxiang.count} icon={BabysBreath} delay="1.8s" type="wanxiang" />
                   </div>
               </div>
 

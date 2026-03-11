@@ -18,14 +18,14 @@ const Record = () => {
   const halls = [
     { id: 'sensation', label: '感知' },
     { id: 'emotion', label: '情绪' },
-    { id: 'inspiration', label: '灵感' },
-    { id: 'wanxiang', label: '万象' }
+    { id: 'inspiration', label: '创意' },
+    { id: 'wanxiang', label: '决策' }
   ];
 
   const milestones = {
-    1: { plant: 'rose', plantNameCN: '初见玫瑰', meaning: '开始', desc: '每一个开始都值得被记录。' },
-    3: { plant: 'lily', plantNameCN: '坚持百合', meaning: '纯洁', desc: '坚持本身就是一种美德。' },
-    7: { plant: 'sunflower', plantNameCN: '向日葵', meaning: '希望', desc: '一周的积累，如阳光般灿烂。' }
+    1: { plant: 'Snowdrop', plantNameCN: '初见·萌芽', meaning: '希望', desc: '每一个开始都值得被记录。' },
+    3: { plant: 'Rosemary', plantNameCN: '坚持·苏醒', meaning: '回忆', desc: '坚持本身就是一种美德。' },
+    7: { plant: 'Lily', plantNameCN: '习惯·破土', meaning: '幸福归来', desc: '一周的积累，如阳光般灿烂。' }
   };
 
   // Handle Image Upload

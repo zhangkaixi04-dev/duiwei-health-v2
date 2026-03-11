@@ -9,15 +9,27 @@ const Review = () => {
   const [isBadgeWallExpanded, setIsBadgeWallExpanded] = useState(false); // Badge Wall State
   const [expandedMonth, setExpandedMonth] = useState(null); // Expanded Month View
 
-  // Badges Data (Initially Locked)
-  const badges = [
-      { id: 1, count: 0, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '雪滴花', meaning: '希望', unlocked: false, date: null, color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
-      { id: 2, count: 0, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '迷迭香', meaning: '回忆', unlocked: false, date: null, color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
-      { id: 3, count: 0, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '铃兰', meaning: '幸福归来', unlocked: false, date: null, color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
-      { id: 4, count: 0, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '睡莲', meaning: '悟性', unlocked: false, date: null, color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
-      { id: 5, count: 0, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '满天星', meaning: '思念', unlocked: false, date: null, color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
-      { id: 6, count: 0, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '橡树', meaning: '永恒', unlocked: false, date: null, color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
-  ];
+  // Badges Data (Dynamic based on real count)
+  const badges = useMemo(() => {
+      const totalCount = localMemories.length;
+      
+      // Define Milestones & Metadata
+      const definitions = [
+          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '雪滴花', meaning: '希望', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
+          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '迷迭香', meaning: '回忆', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
+          { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '铃兰', meaning: '幸福归来', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
+          { id: 4, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '睡莲', meaning: '悟性', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
+          { id: 5, threshold: 50, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '满天星', meaning: '思念', color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
+          { id: 6, threshold: 100, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '橡树', meaning: '永恒', color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
+      ];
+
+      return definitions.map(def => ({
+          ...def,
+          count: totalCount, // Current total
+          unlocked: totalCount >= def.threshold,
+          date: null // Ideally we would store unlock date in localStorage too, but for now derive from count
+      }));
+  }, [localMemories]);
 
   const [localMemories, setLocalMemories] = useState([]);
   

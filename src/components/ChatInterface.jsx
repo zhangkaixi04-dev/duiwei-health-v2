@@ -1585,56 +1585,67 @@ const ChatInterface = ({ onOpenProfile }) => {
   };
 
   const generateWeeklyReport = async () => {
-    // Call the Service Layer instead of local mock
+    // Call the Service Layer for REAL data analysis
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const logs = storageService.getDailyLogs(today);
+      // 1. Get Analysis from Health Service
+      const report = await healthService.report_weekly('user');
       
-      // Mock data: Unhealthy (Insomnia + Yang Deficiency + Blood Stasis)
+      if (!report.success) {
+          return {
+              dateRange: '本周数据不足',
+              score: 0,
+              summary: '本周记录较少，暂时无法生成深度报告。请多记录饮食和睡眠哦！',
+              metrics: { sleepAvg: 0, exerciseDays: 0, dietScore: 0, poopStatus: '无记录' },
+              actionCards: []
+          };
+      }
+
+      // 2. Map Service Result to UI Card Format
+      const { stats, summary } = report;
+      
+      // Calculate a simple health score based on stats
+      let healthScore = 60; // Base
+      if (stats.avgCalories > 1200 && stats.avgCalories < 2500) healthScore += 10;
+      if (stats.exerciseMins > 60) healthScore += 10;
+      if (stats.poopIssues === 0) healthScore += 10;
+      if (stats.sleepAvg > 6) healthScore += 10;
+
       return {
-        dateRange: '本周健康数据',
-        score: 58,
-        summary: '本周健康状况需引起重视。频繁失眠与阳虚体质叠加，导致身体修复能力下降。',
-        tcmInsight: '本周有 <strong>3 天</strong> 出现失眠（入睡困难/易醒）。这与您的<strong>阳虚兼血瘀</strong>体质密切相关：“阳气不足则寒凝，寒凝则血瘀”，气血运行不畅，夜间阳气不能潜藏入阴，导致心神不宁。舌象显示舌质紫暗、苔白滑，也印证了这一点。',
+        dateRange: '本周健康周报',
+        score: healthScore,
+        summary: summary.replace(/<[^>]+>/g, ''), // Strip HTML for summary preview if needed, or keep it
+        tcmInsight: summary, // Use the AI summary as the main insight
         correlationInsight: {
-            title: '恶性循环预警',
-            content: '连续失眠（<5h） -> 白天精神萎靡（阳气无法升发） -> 缺乏运动（加重血瘀） -> 再次失眠。需尽快打破此循环。'
+            title: '健康趋势',
+            content: `本周平均热量 ${stats.avgCalories}kcal，运动 ${stats.exerciseMins}分钟。`
         },
         metrics: {
-            sleepAvg: 5.2,
-            exerciseDays: 1,
-            dietScore: 65,
-            poopStatus: '干结难解'
+            sleepAvg: stats.sleepAvg || 0, // Need to ensure report_weekly returns this
+            exerciseDays: Math.ceil(stats.exerciseMins / 30), // Approx
+            dietScore: stats.avgCalories > 0 ? 80 : 0,
+            poopStatus: stats.poopIssues > 0 ? '需关注' : '正常'
         },
         actionCards: [
             {
-                type: 'sleep',
-                title: '助眠调理',
-                icon: Moon,
-                color: 'text-indigo-500',
-                bg: 'bg-indigo-50',
-                content: '睡前 1 小时用艾叶/花椒泡脚（温经通络），并按揉涌泉穴。'
-            },
-            {
                 type: 'diet',
-                title: '饮食温通',
+                title: '饮食建议',
                 icon: Utensils,
                 color: 'text-orange-500',
                 bg: 'bg-orange-50',
-                content: '忌生冷寒凉。早餐建议吃姜枣粥或当归煮蛋，温补阳气，活血化瘀。'
+                content: stats.avgCalories > 2500 ? '热量略高，建议下周增加蔬菜摄入。' : '热量控制不错，继续保持。'
             },
             {
                 type: 'exercise',
-                title: '适度运动',
+                title: '运动建议',
                 icon: Activity,
                 color: 'text-emerald-500',
                 bg: 'bg-emerald-50',
-                content: '建议每日午后（阳气最盛时）快走 20 分钟，以微汗为度，鼓舞阳气。'
+                content: stats.exerciseMins < 100 ? '运动量稍显不足，下周试试快走或瑜伽？' : '运动习惯很好，为您点赞！'
             }
         ]
       };
     } catch (e) {
-      console.error(e);
+      console.error("Generate Report Error:", e);
       return null;
     }
   };

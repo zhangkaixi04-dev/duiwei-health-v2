@@ -11,8 +11,8 @@ const Home = () => {
   const [pavilionStats, setPavilionStats] = useState([
     { id: 'sensation', label: '感知', count: 0, color: 'bg-cangzhen-sensation-main' },
     { id: 'emotion', label: '情绪', count: 0, color: 'bg-cangzhen-emotion-main' },
-    { id: 'inspiration', label: '灵感', count: 0, color: 'bg-cangzhen-inspiration-main' },
-    { id: 'wanxiang', label: '万象', count: 0, color: 'bg-cangzhen-custom-main' }
+    { id: 'inspiration', label: '创意', count: 0, color: 'bg-cangzhen-inspiration-main' },
+    { id: 'wanxiang', label: '决策', count: 0, color: 'bg-cangzhen-custom-main' }
   ]);
   const [showRecommendModal, setShowRecommendModal] = useState(false);
   const [hasOpenedToday, setHasOpenedToday] = useState(false);
