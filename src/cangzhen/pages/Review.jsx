@@ -9,14 +9,14 @@ const Review = () => {
   const [isBadgeWallExpanded, setIsBadgeWallExpanded] = useState(false); // Badge Wall State
   const [expandedMonth, setExpandedMonth] = useState(null); // Expanded Month View
 
-  // Mock Badges Data
+  // Badges Data (Initially Locked)
   const badges = [
-      { id: 1, count: 1, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '雪滴花', meaning: '希望', unlocked: true, date: '2026.01.05', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
-      { id: 2, count: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '迷迭香', meaning: '回忆', unlocked: true, date: '2026.01.12', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
-      { id: 3, count: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '铃兰', meaning: '幸福归来', unlocked: true, date: '2026.01.15', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
-      { id: 4, count: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '睡莲', meaning: '悟性', unlocked: false, date: null, color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
-      { id: 5, count: 50, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '满天星', meaning: '思念', unlocked: false, date: null, color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
-      { id: 6, count: 100, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '橡树', meaning: '永恒', unlocked: false, date: null, color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
+      { id: 1, count: 0, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '雪滴花', meaning: '希望', unlocked: false, date: null, color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
+      { id: 2, count: 0, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '迷迭香', meaning: '回忆', unlocked: false, date: null, color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
+      { id: 3, count: 0, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '铃兰', meaning: '幸福归来', unlocked: false, date: null, color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
+      { id: 4, count: 0, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '睡莲', meaning: '悟性', unlocked: false, date: null, color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
+      { id: 5, count: 0, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '满天星', meaning: '思念', unlocked: false, date: null, color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
+      { id: 6, count: 0, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '橡树', meaning: '永恒', unlocked: false, date: null, color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
   ];
 
   const [localMemories, setLocalMemories] = useState([]);
@@ -230,11 +230,7 @@ const Review = () => {
             </>
           )),
           trend: trend, // REAL DATA
-          tags: [
-            { text: '雨声', weight: 5 },
-            { text: '猫咪', weight: 4 },
-            { text: '咖啡', weight: 3 },
-          ],
+          tags: [], // Cleared Mock Data
           shape: isEven ? 'heart' : 'drop',
           progress: trend, // Use same real trend for progress dots
           daysLeft: 7 - (new Date().getDay() || 7),
@@ -242,73 +238,73 @@ const Review = () => {
       };
   }, [weekOffset, localMemories]);
 
-  // Mock Data for Monthly Review - 12 Glass Cubes
+  // Real Data for Monthly Review
   const currentMonth = new Date().getMonth() + 1; // 1-12
-  const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const month = i + 1;
-      const isActive = month <= currentMonth; // Active if past or current month
-      const hasContent = isActive; // Mock: All active months have content for demo
-      
-      let keyword = '';
-      if (month === 1) keyword = '萌芽';
-      else if (month === 2) keyword = '喜悦';
-      else if (month === 3) keyword = '探索'; // March default
-      else keyword = ['新生', '绽放', '沉淀', '收获', '归藏'][Math.floor(Math.random() * 5)];
+  
+  const monthlyData = useMemo(() => {
+      return Array.from({ length: 12 }, (_, i) => {
+          const month = i + 1;
+          const isActive = month <= currentMonth; // Active if past or current month
+          
+          // Calculate Real Count
+          const monthMemories = localMemories.filter(m => {
+             const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+             return mDate.getMonth() + 1 === month && mDate.getFullYear() === new Date().getFullYear();
+          });
+          const count = monthMemories.length;
+          const hasContent = isActive && count > 0;
+          
+          let keyword = '';
+          if (month === 1) keyword = '萌芽';
+          else if (month === 2) keyword = '喜悦';
+          else if (month === 3) keyword = '探索'; // March default
+          else keyword = '未知'; // Default for empty
 
-      // Morandi Gradients (Muted, Elegant)
-      const gradients = [
-          'from-[#F1F2B5]/40 to-[#135058]/10', // 1. Vintage Yellow/Green
-          'from-[#E0EAFC]/40 to-[#CFDEF3]/40', // 2. Soft Blue
-          'from-[#D4FC79]/20 to-[#96E6A1]/20', // 3. Fresh Green
-          'from-[#84fab0]/20 to-[#8fd3f4]/20', // 4. Teal/Blue
-          'from-[#cfd9df]/40 to-[#e2ebf0]/40', // 5. Silver/Blue
-          'from-[#a8edea]/30 to-[#fed6e3]/30', // 6. Pink/Teal
-          'from-[#f5f7fa]/60 to-[#c3cfe2]/40', // 7. Misty White
-          'from-[#e0c3fc]/30 to-[#8ec5fc]/30', // 8. Purple/Blue
-          'from-[#f093fb]/20 to-[#f5576c]/20', // 9. Pink/Red
-          'from-[#4facfe]/20 to-[#00f2fe]/20', // 10. Bright Blue
-          'from-[#43e97b]/20 to-[#38f9d7]/20', // 11. Green
-          'from-[#fa709a]/20 to-[#fee140]/20', // 12. Red/Yellow
-      ];
-      
-      const gradient = gradients[i % gradients.length];
+          // Morandi Gradients (Muted, Elegant)
+          const gradients = [
+              'from-[#F1F2B5]/40 to-[#135058]/10', // 1. Vintage Yellow/Green
+              'from-[#E0EAFC]/40 to-[#CFDEF3]/40', // 2. Soft Blue
+              'from-[#D4FC79]/20 to-[#96E6A1]/20', // 3. Fresh Green
+              'from-[#84fab0]/20 to-[#8fd3f4]/20', // 4. Teal/Blue
+              'from-[#cfd9df]/40 to-[#e2ebf0]/40', // 5. Silver/Blue
+              'from-[#a8edea]/30 to-[#fed6e3]/30', // 6. Pink/Teal
+              'from-[#f5f7fa]/60 to-[#c3cfe2]/40', // 7. Misty White
+              'from-[#e0c3fc]/30 to-[#8ec5fc]/30', // 8. Purple/Blue
+              'from-[#f093fb]/20 to-[#f5576c]/20', // 9. Pink/Red
+              'from-[#4facfe]/20 to-[#00f2fe]/20', // 10. Bright Blue
+              'from-[#43e97b]/20 to-[#38f9d7]/20', // 11. Green
+              'from-[#fa709a]/20 to-[#fee140]/20', // 12. Red/Yellow
+          ];
+          
+          const gradient = gradients[i % gradients.length];
 
-      return {
-          month,
-          isActive,
-          hasContent,
-          keyword,
-          gradient,
-          color: hasContent ? `bg-gradient-to-br from-[#FF9A9E]/20 to-[#FECFEF]/20` : 'bg-white/5',
-          count: hasContent ? Math.floor(Math.random() * 50) + 10 : 0,
-          // Add detailed data for expanded view (mock) - Monthly Differentiation
-          aiSummary: (
-            <>
-                <strong>{month}月·状态复盘</strong><br/><br/>
-                这个月回头看，感觉你像是从那种“紧绷绷”的状态里一点点把自己给松绑了。<br/><br/>
-                
-                <strong>关于“松绑”</strong><br/>
-                月初那周，你哪怕在休息日也要把计划排得满满的，生怕漏掉什么，那时候你的关键词全是“效率”。但到了中旬，明显感觉到不一样了。你开始允许自己在周三晚上什么都不做，就发呆；你也开始在日记里写“不想讨好任何人了”。这种从“必须做”到“我想做”的转变，真的挺难得的。<br/><br/>
+          // Calculate Trend
+          const daysInMonth = new Date(new Date().getFullYear(), month, 0).getDate();
+          const trend = Array(daysInMonth).fill(0);
+          monthMemories.forEach(m => {
+              const d = (typeof m.id === 'number' ? new Date(m.id) : new Date(m.date)).getDate();
+              if (d >= 1 && d <= daysInMonth) trend[d-1]++;
+          });
 
-                <strong>那些被留住的瞬间</strong><br/>
-                虽然心态在变，但你骨子里那种对美好的捕捉力一直没变。这四周里，你一共记录了 5 次晚霞、3 次路边的花，还有好几次关于食物的热气。这些细碎的瞬间，就像是你生活的锚点，无论多忙，都能把你拉回当下。<br/><br/>
-
-                <strong>本月最酷的事</strong><br/>
-                必须要提的是 18 号那天，你拒绝了一个让你不舒服的请求。以前你可能会纠结好久，但这次你很干脆。那一刻的你，真的很帅。这就是成长的痕迹吧。<br/><br/>
-                
-                {month}月过得挺扎实的。哪怕有些天还是会迷茫，但那种“知道自己在变好”的底气，已经慢慢出来了。下个月，继续按自己的节奏走。
-            </>
-          ),
-          trend: Array.from({length: 30}, () => Math.floor(Math.random() * 5)),
-          tags: [
-            { text: '成长', weight: 5 },
-            { text: '治愈', weight: 4 },
-            { text: '勇气', weight: 3 },
-            { text: '松弛感', weight: 3 },
-            { text: '坚持', weight: 2 },
-          ]
-      };
-  });
+          return {
+              month,
+              isActive,
+              hasContent,
+              keyword,
+              gradient,
+              color: hasContent ? `bg-gradient-to-br from-[#FF9A9E]/20 to-[#FECFEF]/20` : 'bg-white/5',
+              count: count,
+              aiSummary: (
+                <>
+                    <strong>{month}月·状态复盘</strong><br/><br/>
+                    {count > 0 ? "暂无详细分析报告，请继续保持记录习惯。" : "本月暂无记录。"}
+                </>
+              ),
+              trend: trend,
+              tags: [] // Clear Mock Tags
+          };
+      });
+  }, [localMemories, currentMonth]);
 
 
   // Data for Yearly Review - Real Data Mapping
