@@ -17,6 +17,7 @@ const DailyFeed = () => {
       fat: { current: 0, target: 60 },
     },
     food_variety: 0, // Target 12
+    judgment: '', // New field for AI judgment
   });
   
   const [selectedMood, setSelectedMood] = useState(null);
@@ -119,6 +120,43 @@ const DailyFeed = () => {
       // 3. Calculate Dynamic Target (Simplified for now)
       const dynamicTarget = baseTDEE;
 
+      // --- New Judgment Logic ---
+      const ratio = dynamicTarget > 0 ? currentCalories / dynamicTarget : 0;
+      let judgment = "今天也要好好吃饭哦";
+      
+      const constitutionType = userProfile.constitution?.type || '平和质';
+      const goals = basicInfo.goal || [];
+      
+      if (currentCalories === 0) {
+          judgment = "还没有记录饮食，快去记录一下吧。";
+      } else if (ratio < 0.85) {
+          // Logic: < 85% is considered "Not Enough" (1525 / 1800 = 0.847)
+          judgment = "热量摄入不足。";
+          if (constitutionType.includes('虚')) {
+              judgment += "气虚体质切忌过度节食，容易导致代谢降低，建议加餐。";
+          } else if (goals.includes('精力充沛')) {
+              judgment += "能量不足会影响精力，建议补充优质碳水。";
+          } else {
+              judgment += "长期低热量可能导致代谢损伤，建议适当加餐。";
+          }
+      } else if (ratio > 1.15) {
+          judgment = "热量摄入略高。";
+          if (constitutionType.includes('痰') || constitutionType.includes('湿')) {
+              judgment += "痰湿体质代谢较慢，建议晚餐少吃，多吃绿叶菜。";
+          } else if (goals.includes('身体轻盈')) {
+              judgment += "想要身体轻盈，记得控制总量哦。";
+          } else {
+              judgment += "建议饭后散步消食。";
+          }
+      } else {
+          judgment = "热量摄入达标！";
+          if (constitutionType === '平和质') {
+              judgment += "继续保持，均衡饮食最重要。";
+          } else {
+              judgment += "非常棒，适合您当前的体质调理节奏。";
+          }
+      }
+
       setDailyLog(prev => ({
           ...prev,
           calories: { current: currentCalories, target: dynamicTarget },
@@ -127,7 +165,8 @@ const DailyFeed = () => {
             protein: { current: nutrients.protein, target: Math.round(dynamicTarget * 0.15 / 4) }, // 15% Protein
             fat: { current: nutrients.fat, target: Math.round(dynamicTarget * 0.3 / 9) }, // 30% Fat
           },
-          food_variety: dailyLogs.diet ? new Set(dailyLogs.diet.map(d => d.name)).size : 0 // Count unique food items
+          food_variety: dailyLogs.diet ? new Set(dailyLogs.diet.map(d => d.name)).size : 0, // Count unique food items
+          judgment: judgment
       }));
     };
 
@@ -263,11 +302,16 @@ const DailyFeed = () => {
               <span className="text-text-muted">热量摄入</span>
               <span className="font-medium text-brand">{dailyLog.calories.current} / {dailyLog.calories.target}</span>
             </div>
-            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
               <div 
                 className="h-full bg-brand rounded-full transition-all duration-500" 
                 style={{ width: `${dailyLog.calories.target > 0 ? (dailyLog.calories.current / dailyLog.calories.target) * 100 : 0}%` }}
               ></div>
+            </div>
+            {/* AI Judgment */}
+            <div className="text-[10px] text-orange-800 bg-orange-50 px-2 py-1.5 rounded-lg border border-orange-100/50 leading-relaxed flex items-start gap-1.5">
+               <Sparkles className="w-3 h-3 shrink-0 mt-0.5 text-orange-500" />
+               <span>{dailyLog.judgment || "今天也要好好吃饭哦"}</span>
             </div>
           </div>
 

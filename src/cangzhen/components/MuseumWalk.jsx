@@ -1,54 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlowerIcon } from './FlowerIcons';
-import { Quote, X } from 'lucide-react';
+import { Quote, X, Lock } from 'lucide-react';
 
 const MuseumWalk = () => {
   const [activeCard, setActiveCard] = useState(null);
+  const [displayMemories, setDisplayMemories] = useState([]);
+  const [isLocked, setIsLocked] = useState(true);
+  const [randomDateStr, setRandomDateStr] = useState('');
 
-  // Mock Data: "Random" past memories
-  const memories = [
-    {
-      id: 1,
-      date: '5天前',
-      tag: '遇见',
-      hall: 'sensation',
-      content: '下班路上偶遇一只橘猫，它竟然主动蹭了我的裤脚。那一瞬间，工作的疲惫好像都消失了。',
-      color: 'bg-cangzhen-sensation-main'
-    },
-    {
-      id: 2,
-      date: '上周三',
-      tag: '独处',
-      hall: 'emotion',
-      content: '关掉灯听了一整晚的雨声。原来这种“什么都不做”的时刻，才是最奢侈的充电。',
-      color: 'bg-cangzhen-emotion-main'
-    },
-    {
-      id: 3,
-      date: '2月14日',
-      tag: '灵感',
-      hall: 'inspiration',
-      content: '突然想到，如果把梦境记录下来做成一个个盲盒，会是什么样？',
-      color: 'bg-cangzhen-inspiration-main'
-    },
-    {
-      id: 4,
-      date: '很久以前',
-      tag: '味道',
-      hall: 'wanxiang',
-      content: '妈妈做的红烧肉，那种甜咸适中的味道，是任何米其林餐厅都复刻不了的记忆。',
-      color: 'bg-cangzhen-custom-main'
+  // Helper: Map Hall ID to Color
+  const getHallColor = (hall) => {
+    switch(hall) {
+      case 'sensation': return 'bg-cangzhen-sensation-main';
+      case 'emotion': return 'bg-cangzhen-emotion-main';
+      case 'inspiration': return 'bg-cangzhen-inspiration-main';
+      case 'wanxiang': return 'bg-cangzhen-custom-main';
+      default: return 'bg-[#E0E0E0]';
     }
-  ];
+  };
+
+  useEffect(() => {
+      const stored = localStorage.getItem('cangzhen_memories');
+      if (stored) {
+          try {
+              const parsed = JSON.parse(stored);
+              const now = Date.now();
+              const fiveDaysAgo = now - (5 * 24 * 60 * 60 * 1000);
+
+              // 1. Filter memories older than 5 days
+              const olderMemories = parsed.filter(item => {
+                  const timestamp = typeof item.id === 'number' ? item.id : new Date(item.date).getTime(); // Fallback if id is not timestamp
+                  return timestamp < fiveDaysAgo;
+              });
+
+              // 2. Check if total older records < 4
+              if (olderMemories.length < 4) {
+                  setIsLocked(true);
+              } else {
+                  setIsLocked(false);
+
+                  // 3. Group by Date (YYYY-MM-DD)
+                  const groupedByDate = {};
+                  olderMemories.forEach(item => {
+                      const timestamp = typeof item.id === 'number' ? item.id : new Date(item.date).getTime();
+                      const dateObj = new Date(timestamp);
+                      const dateKey = dateObj.toLocaleDateString(); // Local format as key
+                      
+                      if (!groupedByDate[dateKey]) {
+                          groupedByDate[dateKey] = [];
+                      }
+                      
+                      // Normalize item structure
+                      groupedByDate[dateKey].push({
+                          id: item.id,
+                          date: dateKey, // Display date
+                          tag: (item.tags && item.tags[0]) || '记录',
+                          hall: item.hall || 'sensation',
+                          content: item.content,
+                          color: getHallColor(item.hall)
+                      });
+                  });
+
+                  // 4. Pick a random date
+                  const dates = Object.keys(groupedByDate);
+                  if (dates.length > 0) {
+                      const randomDate = dates[Math.floor(Math.random() * dates.length)];
+                      setRandomDateStr(randomDate);
+                      setDisplayMemories(groupedByDate[randomDate]);
+                  }
+              }
+
+          } catch (e) {
+              console.error("Failed to parse memories for Museum Walk", e);
+              setIsLocked(true);
+          }
+      } else {
+          setIsLocked(true);
+      }
+  }, []);
+
+  if (isLocked) {
+      return (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-medium text-cangzhen-text-secondary uppercase tracking-widest">博物馆漫步</h3>
+          </div>
+          <div className="w-full h-32 glass-concave rounded-2xl flex flex-col items-center justify-center text-cangzhen-text-secondary/50 gap-2 border border-black/5">
+              <Lock size={20} />
+              <span className="text-xs tracking-widest font-serif">馆藏不足 · 敬请期待</span>
+              <span className="text-[10px] opacity-60">记录满5天后开启时空漫游</span>
+          </div>
+        </div>
+      );
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-sm font-medium text-cangzhen-text-secondary uppercase tracking-widest">博物馆漫步</h3>
+        <h3 className="text-sm font-medium text-cangzhen-text-secondary uppercase tracking-widest">博物馆漫步 · {randomDateStr}</h3>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {memories.map((item, index) => (
+        {displayMemories.map((item, index) => (
           <div 
             key={item.id}
             onClick={() => setActiveCard(item)}
@@ -70,7 +123,7 @@ const MuseumWalk = () => {
                   <span className="block text-[10px] text-cangzhen-text-secondary tracking-wider mb-0.5 font-sans opacity-70">
                     {item.date}
                   </span>
-                  <span className="block text-sm font-bold text-cangzhen-text-main font-serif tracking-wide group-hover:scale-110 transition-transform duration-500">
+                  <span className="block text-sm font-bold text-cangzhen-text-main font-serif tracking-wide group-hover:scale-110 transition-transform duration-500 line-clamp-1">
                     {item.tag}
                   </span>
                </div>

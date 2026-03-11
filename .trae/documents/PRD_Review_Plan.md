@@ -1,24 +1,156 @@
-# 藏真APP PRD 评审与完善计划
+# 藏真 (Cangzhen) Review Module - Feature Specification & Implementation Plan
 
-## 1. 文档归档与初始化
-- **动作**：将用户提供的 PRD 文本内容保存为项目文档 `docs/PRD_Cangzhen_v1.0.md`。
-- **目的**：确保需求有据可依，便于后续的版本管理和修订。
+## 1. Overview
+The **Review Module** is a core component of the Cangzhen app, designed to help users reflect on their journey through "Ritualistic Data Visualization." It moves away from traditional charts and lists, adopting a **Museum/Gallery** metaphor with **Glassmorphism** aesthetics.
 
-## 2. 产品核心价值与逻辑审查
-- **核心悖论分析**：深入探讨“对抗数字沉迷”与“做记录、看回顾”这一产品行为之间的潜在冲突，确保产品机制能真正实现“治愈”而非制造新的焦虑。
-- **版本边界界定**：严格检查 MVP (V1.0) 与 V2.0 (共建功能) 的边界。例如，V1.0 阶段“共建博物馆”Tab 的具体展示逻辑（是完全隐藏、置灰还是作为预告）。
+### Key Philosophy
+- **Anti-Anxiety**: No red dots, no rush.
+- **Ritual**: Unlocking memories feels like opening a time capsule.
+- **Growth**: Visualizing progress as a growing garden or collection.
 
-## 3. UI/UX 与技术可行性评估 (重点)
-- **视觉性能评估**：PRD 强调“玻璃拟态 (Glassmorphism)”和“实时模糊”，需评估在移动端（特别是中低端安卓机型）的渲染性能和耗电量。
-- **交互实现难度**：审查“长按拖拽分类”、“入馆仪式感动效”等复杂交互的开发成本，评估是否需要降级方案。
-- **多端适配**：检查“玻璃质感”在深色模式、不同屏幕比例下的适配规范是否完整。
+---
 
-## 4. 功能完整性查漏补缺
-- **账号与数据体系**：PRD 中未详细提及“注册/登录”流程及数据同步机制（本地 vs 云端）。考虑到“隐私”和“珍藏”，这一点至关重要。
-- **异常流程覆盖**：补充网络异常、上传失败、权限被拒（相机/麦克风/相册）、存储空间不足等边缘情况的处理定义。
-- **内容安全**：虽然是个人记录，但若涉及云端存储或未来的共建分享，需考虑内容审核或合规性（特别是文本/图片/音频）。
+## 2. Functional Architecture
 
-## 5. 输出评审报告与优化
-- **问题清单 (Questions)**：列出需要 PM/设计师 确认的模糊点。
-- **修订建议 (Suggestions)**：提出具体的文档修改方案，使 PRD 更加严谨、可落地。
-- **完善文档**：在确认后，协助更新 `docs/PRD_Cangzhen_v1.0.md`，使其成为一份可直接用于开发的文档。
+### 2.1 Weekly Review (周回顾)
+*   **Concept**: "The Curator's Desk"
+*   **State A: Current Week (Locked/Accumulating)**
+    *   **Visual**: A mysterious, foggy glass box ("Mystery Box").
+    *   **Interaction**:
+        *   **Mouse Move**: A "Glass Press" light effect follows the cursor/finger, revealing glimpses of the content inside.
+        *   **Content**: Floating glass bubbles representing different data dimensions (Sensation, Emotion, Creativity, Decision).
+        *   **Text**: "布展中..." (Curating...) with a countdown to next Monday.
+    *   **Data**: Real-time accumulation of the current week's records.
+*   **State B: Past Weeks (Unlocked/Exhibit)**
+    *   **Visual**: A clear, beautiful glass frame with a "Theme Keyword" (e.g., "Courage", "Healing").
+    *   **Content**:
+        *   **AI Summary**: A warm, second-person narrative summarizing the week's tone.
+        *   **Trend Chart**: "New Collections" (daily record counts).
+        *   **Word Cloud**: "Mind Shape" (emotional keywords).
+    *   **Navigation**: Left/Right arrows to switch weeks.
+
+### 2.2 Monthly Review (月回顾)
+*   **Concept**: "Specimen Collection"
+*   **Layout**: A double-column masonry/grid layout.
+*   **Items**:
+    *   Each month is a square glass block.
+    *   **Future Months**: Faint, glass-like placeholders (Locked).
+    *   **Past Months**:
+        *   **Visual**: Colored Morandi gradients based on the month's mood.
+        *   **Content**: Month Number, Keyword (e.g., "Sprout"), Record Count.
+    *   **Expansion**: Clicking a month expands it into a detailed view (similar to Weekly Review but aggregated).
+
+### 2.3 Yearly Review (年回顾)
+*   **Concept**: "The Badge Wall & The Long River"
+*   **Badge Wall (Top Section)**:
+    *   **Logic**: Milestones based on total record count (1, 3, 7, 21, 50, 100).
+    *   **Visual**:
+        *   **Style**: Clear Glass Spheres (通透玻璃球) with high transparency.
+        *   **Effect**: Realistic convexity with subtle rim lighting (thin white edge).
+        *   **Core**: 
+            *   **Center**: Concentrated radial gradient matching plant color (e.g., Green/Pink).
+            *   **Ambient**: Warm yellow fill (`mix-blend-screen`) for sunlight effect.
+            *   **Bottom**: Soft reflection of the plant's main color.
+        *   **Highlight**: Sharp, realistic specular dot (Top-Left) + Soft secondary diffusion.
+        *   **Background**: Tender Green/Yellow/Beige gradient (`from-[#E8F5E9] via-[#FDF6E3] to-[#F0E8DD]`).
+    *   **Interaction**: Collapsible (Default: show top row; Expand: show all).
+*   **365-Day Grid (Bottom Section)**:
+    *   **Visual**: A grid of small glass beads.
+    *   **State**:
+        *   **Empty**: Faint trace.
+        *   **Filled**: Glowing warm yellow bead (like a firefly).
+    *   **Goal**: To light up the year, creating a "Galaxy of Memories."
+
+---
+
+## 3. Interaction & Animation Details
+
+### 3.1 The "Seal" Ritual (Recording)
+*   **Trigger**: User finishes writing and clicks "Seal This Moment" (封存此刻).
+*   **Animation Sequence**:
+    1.  **Stamp**: A "SEALED" stamp animates onto the card.
+    2.  **Bloom**: A flower blooms briefly over the seal (0.5s).
+    3.  **Standard Success**: A "Sealed Letter" view appears ("Safe in [Hall Name]") with a postmark (1.5s).
+*   **Milestone Surprise**:
+    *   If a milestone (1, 3, 7, 21...) is reached:
+    *   **Delay**: Wait 5 seconds after the standard feedback (to ensure user sees the "success" state first).
+    *   **Reveal**: A modal fades in -> Glowing Light -> Glass Sphere appears -> Plant grows inside.
+    *   **Text**: "Badge Unlocked: [Plant Name] - [Flower Language]."
+
+### 3.2 Navigation
+*   **Tabs**: Weekly / Monthly / Yearly (Pill-shaped glass toggle).
+*   **Gestures**: Horizontal swipe for Weekly; Vertical scroll for Monthly/Yearly.
+
+---
+
+## 4. Data Structures (Mock & Real)
+
+### 4.1 Local Storage Schema (`cangzhen_memories`)
+```json
+[
+  {
+    "id": 1709923401234,
+    "date": "3/9/2026",
+    "content": "Today I felt...",
+    "hall": "emotion", // sensation, emotion, inspiration, wanxiang
+    "tags": ["calm", "rain"]
+  }
+]
+```
+
+### 4.2 Badge Logic (Hardcoded Rules)
+| Count | Badge Name | Plant (EN/CN) | Meaning | Color (Core) |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | 初见·萌芽 | Snowdrop / 雪滴花 | 希望 | #D6CEAB |
+| 3 | 坚持·苏醒 | Rosemary / 迷迭香 | 回忆 | #A0C4A0 |
+| 7 | 习惯·破土 | Lily / 铃兰 | 幸福归来 | #F4D0D8 |
+| 21 | 蜕变·绽放 | Lotus / 睡莲 | 悟性 | #C4BAD0 |
+
+---
+
+## 5. Technical Stack & Dependencies
+*   **Framework**: React 18
+*   **Styling**: Tailwind CSS (Custom classes: `glass`, `glass-convex`, `glass-concave`, `animate-float`, `animate-pulse-slow`).
+*   **Icons**: `lucide-react` (Feather icons).
+*   **State Management**: `useState`, `useEffect`, `useMemo` (Local state + localStorage).
+
+## 6. Known Issues & Future Optimization
+*   **Performance**: The "Glass Press" effect uses `onMouseMove` which triggers frequent re-renders. Consider using CSS variables or `requestAnimationFrame` optimization if lag occurs on mobile.
+*   **Data Persistence**: Currently relies on `localStorage`. Needs migration to a backend database for multi-device sync.
+*   **Accessibility**: Glassmorphism can have low contrast. Ensure text colors meet WCAG standards (currently using dark gray on glass).
+
+---
+
+## 7. Deployment & Preview Guide (Added 2026-03-10)
+
+### 7.1 Mobile Preview (Local Network)
+To preview on a mobile device connected to the same Wi-Fi:
+1.  **Expose Host**: Run `npm run dev -- --host` in the terminal.
+2.  **Find IP**: Look for the "Network" URL in the terminal output (e.g., `http://192.168.1.5:5173`).
+3.  **Access**: Open that URL in your mobile browser.
+
+### 7.2 Production Build (Online Deployment)
+To deploy to the internet (e.g., Vercel, Netlify):
+1.  **Build**: Run `npm run build`. This creates a `dist` folder with static files.
+2.  **Deploy**:
+    *   **Vercel (Recommended)**: Install Vercel CLI (`npm i -g vercel`) and run `vercel`. Follow the prompts.
+    *   **Static Hosting**: Upload the contents of the `dist` folder to any static file host.
+
+---
+
+## 8. Recent Updates (2026-03-11)
+
+### 8.1 Home Page (首页) - Glass Greenhouse Interaction
+*   **Door Logic**:
+    *   **Interaction**: Click to Open -> Door Animation (3D Rotate Y) -> Modal Popup (Daily Inspiration) -> User Clicks "Accept" -> Modal Closes & Placeholder Replaced.
+    *   **Persistence**: `localStorage.getItem('cangzhen_daily_opened')`. Resets daily.
+    *   **Visuals**: High-quality glass texture, transparent with "Pale Goose Yellow" inner light (`radial-gradient`), rippling light effect.
+*   **Data Integration**:
+    *   **Stats**: Top bar shows "Total Collection" and "Weekly New" from `cangzhen_memories`.
+    *   **Pavilions**: Greenhouse icons reflect real counts per hall.
+
+### 8.2 Design Refinements
+*   **Badges**: Improved glass texture (frosted feel), white bottom glow, removed dirty shadows.
+*   **Modal**: Switched to "Crystal Glass" style (transparent, blur-xl, white border) from solid card.
+
+*Last Updated: 2026-03-11*

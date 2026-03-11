@@ -3,13 +3,19 @@
  * Handles structured storage for user profile, health records, and daily logs.
  */
 
+import { supabase } from './authService.js';
+
 const STORAGE_KEYS = {
   USER_PROFILE: 'hepai_user_profile',
   HEALTH_RECORDS: 'hepai_health_records',
   DAILY_LOGS: 'hepai_daily_logs',
   SETTINGS: 'hepai_settings',
   MESSAGES: 'hepai_messages',
-  APP_STATE: 'hepai_app_state'
+  APP_STATE: 'hepai_app_state',
+  // Cangzhen Keys (should be migrated to centralized management)
+  CANGZHEN_MEMORIES: 'cangzhen_memories',
+  CANGZHEN_DAILY_OPENED: 'cangzhen_daily_opened',
+  CANGZHEN_WEEKLY_SUMMARY: 'weekly_summary_' // prefix
 };
 
 const getLocal = (key, defaultVal) => {
@@ -27,12 +33,94 @@ const setLocal = (key, value) => {
     localStorage.setItem(key, JSON.stringify(value));
     // Dispatch storage event for cross-component updates
     window.dispatchEvent(new Event('storage'));
+    
+    // Trigger Sync if user is logged in
+    storageService.syncToCloud(key, value);
   } catch (e) {
     console.error(`Error writing ${key} to localStorage`, e);
   }
 };
 
 export const storageService = {
+  // ============================================================
+  // Cloud Sync Logic (Dual-Write)
+  // ============================================================
+  
+  /**
+   * Sync a specific key's data to Supabase
+   * @param {string} key LocalStorage Key
+   * @param {any} data Data to sync
+   */
+  syncToCloud: async (key, data) => {
+      // 1. Check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user) return; // No user, local only
+      
+      const userId = session.user.id;
+      
+      // 2. Map Local Keys to DB Tables/Columns
+      try {
+          if (key === STORAGE_KEYS.USER_PROFILE) {
+              // Upsert Profile
+              const { error } = await supabase
+                  .from('profiles')
+                  .upsert({ 
+                      id: userId, 
+                      basic_info: data.basicInfo,
+                      constitution: data.constitution,
+                      medical_history: data.medicalHistory,
+                      updated_at: new Date()
+                  });
+              if (error) console.error('Sync Profile Error:', error);
+          } 
+          else if (key === STORAGE_KEYS.CANGZHEN_MEMORIES) {
+              // Sync Memories (Bulk or Incremental? For simplicity, we sync all for now or check diffs)
+              // Ideally, we should only sync the *new* memory. 
+              // But since setLocal receives the full array, we might need a smarter diffing strategy.
+              // A better approach for memories is to use an 'addMemory' function that calls API directly.
+              // For now, let's just log that we would sync.
+              console.log('Syncing Memories to Cloud...', data.length);
+              
+              // In a real implementation:
+              // await supabase.from('memories').upsert(data.map(m => ({ ...m, user_id: userId })));
+          }
+          // Add other keys as needed
+      } catch (err) {
+          console.error('Cloud Sync Exception:', err);
+      }
+  },
+
+  /**
+   * Pull latest data from Cloud (On Login/Load)
+   */
+  pullFromCloud: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user) return;
+      
+      const userId = session.user.id;
+      
+      // 1. Pull Profile
+      const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+          
+      if (profile) {
+          const localProfile = {
+              basicInfo: profile.basic_info || {},
+              constitution: profile.constitution || {},
+              medicalHistory: profile.medical_history || {}
+          };
+          // Update Local without triggering another sync loop (use localStorage directly or flag)
+          localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(localProfile));
+      }
+      
+      // 2. Pull Memories, etc.
+      // ...
+      
+      window.dispatchEvent(new Event('storage')); // Refresh UI
+  },
   // ============================================================
   // Chat Messages
   // ============================================================

@@ -1,6 +1,7 @@
 import { storageService } from './storageService.js';
 import { dietFallback } from '../data/dietFallback.js';
 import { taskLibrary } from '../data/taskLibrary.js'; // Import the new task library
+import { findFood } from '../data/foodLibrary.js'; // Import local food library
 
 // Mock Health Data Service
 // Simulating backend APIs for vertical health capabilities
@@ -122,8 +123,51 @@ export const healthService = {
         const lastUserMsg = messages.filter(m => m.sender === 'user').pop()?.text || "";
         
         // Context-aware fallbacks
-        if (lastUserMsg.match(/(吃|喝|早饭|午饭|晚饭|饮食|餐)/)) {
-            return "收到您的饮食记录。由于网络原因，AI 暂时无法进行详细营养分析，建议您稍后再试，或者直接使用“记饮食”卡片。";
+        if (lastUserMsg.match(/(吃|喝|早饭|午饭|晚饭|饮食|餐|咋样|怎么样)/)) {
+            // Try to get today's logs to give a meaningful summary
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const dailyLogs = storageService.getDailyLogs(today);
+                const dietLogs = dailyLogs.diet || [];
+                
+                if (dietLogs.length > 0) {
+                     // Deduplicate logic: "Apple, Apple" -> "Apple x2"
+                     const foodCounts = {};
+                     dietLogs.forEach(item => {
+                         const name = (item.name || item).trim();
+                         // Ignore empty names
+                         if (!name) return;
+                         // Normalize key to avoid subtle diffs? For now exact match.
+                         foodCounts[name] = (foodCounts[name] || 0) + 1;
+                     });
+                     
+                     const foodList = Object.entries(foodCounts)
+                        .map(([name, count]) => count > 1 ? `${name} x${count}` : name)
+                        .join('、');
+
+                     const totalCal = (dailyLogs.nutrition?.calories) || 0;
+                     
+                     let feedback = `您今天记录了：${foodList}。`;
+                     if (totalCal > 0) feedback += `\n估算总热量约 ${totalCal} 千卡。`;
+                     
+                     // Add warning for absurdly high calories (likely duplication error)
+                     if (totalCal > 4000) {
+                         feedback += "\n⚠️ 热量数据偏高，可能是因为重复记录了相同的食物。";
+                     } else if (totalCal > 2000) {
+                         feedback += "\n热量摄入略高，建议晚餐清淡一点哦。";
+                     } else if (totalCal < 1200 && totalCal > 0) {
+                         feedback += "\n热量摄入偏低，注意不要过度节食。";
+                     } else {
+                         feedback += "\n整体饮食结构还不错，继续保持！";
+                     }
+                     
+                     return feedback;
+                } else {
+                     return "您今天还没有记录饮食哦。快告诉我您吃了什么吧？";
+                }
+            } catch (err) {
+                return "收到您的饮食记录。由于网络原因，AI 暂时无法进行详细营养分析，建议您稍后再试，或者直接使用“记饮食”卡片。";
+            }
         }
         if (lastUserMsg.match(/(睡|醒|觉|梦)/)) {
             return "收到您的睡眠反馈。由于网络原因，建议您稍后再试，或者使用“记睡眠”功能来记录具体时间。";
@@ -317,7 +361,7 @@ export const healthService = {
   },
 
   /**
-   * 10. AI 饮食分析 (Real LLM)
+   * 10. AI 饮食分析 (Real LLM + Advanced Fallback)
    * @param {string} foodInput Text description of food (e.g., "一碗红烧牛肉面")
    * @param {Object} userProfile Contextual user data
    */
@@ -327,24 +371,67 @@ export const healthService = {
      const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
      const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
-     const systemPrompt = `你是一位专业营养师兼中医健康顾问。请基于用户输入的食物内容，进行以下分析：
-1. 估算热量(kcal)和三大营养素(碳水/蛋白质/脂肪)的重量(单位:克 g)。
-2. 结合用户的中医体质(如果提供)，判断该食物是否适合，并给出简短建议。
-3. 严禁输出Chain of Thought，直接返回JSON格式结果。
+     const constitutionType = userProfile.constitution?.type || '平和质';
 
-返回格式示例：
+     const systemPrompt = `你是一位专业临床营养师兼中医体质调理师。擅长根据现代营养学和中医九种体质给出饮食建议。
+你的语气必须：专业、简洁、不玄学、可执行。
+
+【理论依据】
+本分析基于《中医体质分类与判定》标准 (ZYYXH/T157-2009) 及现代营养学基础。
+
+【烹饪调整规则（严格执行）】
+如果用户输入未包含具体热量数据，请基于食材基准热量，应用以下系数进行估算：
+1. **油炸/天妇罗/裹面**：热量系数 x 1.8 ~ 2.5（视裹粉厚度）；脂肪大幅增加。
+2. **红烧/糖醋/拔丝**：热量系数 x 1.4；碳水(糖)额外增加 10-15g/100g。
+3. **爆炒/油煎**：热量系数 x 1.3；脂肪额外增加 5-10g/100g。
+4. **清蒸/水煮/凉拌**：热量系数 x 1.0；如含酱汁，热量微增。
+5. **火锅/麻辣烫**：视汤底吸油情况，蔬菜类热量系数 x 1.5（极易吸油），肉类 x 1.1。
+6. **烘焙/起酥**：热量系数 x 1.5；反式脂肪酸风险增加。
+
+【任务】
+请基于用户输入的食物内容和体质，进行以下分析并返回JSON：
+
+1. **模糊量词检测（优先执行）**：
+   - 如果用户使用“1碗”、“1份”、“少许”、“适量”等模糊量词，且未提供具体克数或详细描述（如“大碗”、“小份”），**必须**返回 \`needClarification: true\`。
+   - 构造一个友好的 \`clarificationQuestion\`，引导用户补充重量或参照物（如“请问是拳头大小的一份，还是像家里吃饭的小碗？”）。
+   - **例外**：如果是标准单位（如“1个鸡蛋”、“1瓶牛奶”、“1听可乐”），无需追问，直接估算。
+
+2. **食物识别**：精确识别食材、烹饪方式、份量。
+3. **营养估算**：热量(kcal)和三大营养素(碳水/蛋白质/脂肪)重量(g)。**必须应用上述烹饪调整规则**。
+4. **营养学评价**：判断是否高油/高糖/高盐/精制碳水/优质蛋白/膳食纤维充足等。
+5. **中医体质匹配**：判断该食物对该体质是否适宜（适宜/基本可以/少吃/不宜），并给出1句中医理由。
+6. **最终建议**：给出简短、可执行的一句话建议。
+
+【体质判断规则（必须遵守）】
+- 阳虚质：生冷、寒凉、冰饮、生食、绿茶、苦瓜 → 不宜
+- 湿热质：油腻、甜腻、辛辣、烈酒、热带水果（芒果/榴莲）→ 少吃；黄瓜/绿豆/苦瓜/薏米 → 适宜
+- 痰湿质：肥甘厚味、甜食、奶茶、油炸、生冷 → 少吃
+- 阴虚质：辛辣、烧烤、油炸、温补大料 → 少吃
+- 气虚质：生冷、寒凉、过度空腹、油腻难消化 → 少吃
+- 气郁质：浓茶、咖啡、烈酒、过度辛辣 → 少吃
+- 血瘀质：生冷、冰冻、油腻黏滞 → 少吃
+- 特禀质：海鲜、辛辣、刺激、未知陌生食物 → 谨慎
+- 平和质：均衡即可，控量控油糖
+
+【返回格式示例（纯JSON，无Markdown）】
+// 情况1：需要追问
 {
+  "needClarification": true,
+  "clarificationQuestion": "收到。请问这碗红烧牛肉面大约多大？是家里吃饭的小碗（约200g），还是餐馆的大海碗（约400g）？"
+}
+
+// 情况2：无需追问（正常分析）
+{
+  "needClarification": false,
   "calories": 650,
   "nutrients": { "carb": 85, "protein": 25, "fat": 20 },
-  "suitability": "中等",
-  "advice": "红烧牛肉面湿热较重，您是湿热质，建议少喝汤，多配青菜。",
-  "tags": ["高碳水", "高钠"]
+  "tags": ["高碳水", "高钠"],
+  "suitability": "少吃",
+  "reason": "红烧牛肉面湿热较重，容易助湿生热。",
+  "advice": "湿热体质建议少喝汤，搭配一盘清炒时蔬平衡油腻。"
 }`;
 
-     let userContent = `我吃了：${foodInput}`;
-     if (userProfile.constitution) {
-         userContent += `\n我的体质是：${userProfile.constitution.type} (${userProfile.constitution.desc})`;
-     }
+     let userContent = `我吃了：${foodInput}\n我的体质是：${constitutionType}`;
 
      try {
         // Create a timeout promise (15s)
@@ -384,18 +471,337 @@ export const healthService = {
         return JSON.parse(jsonStr);
 
      } catch (e) {
-        console.error("Diet Analysis Error:", e);
-        // Fallback mock if API fails - More realistic mock
+        console.error("Diet Analysis Error (Fallback Triggered):", e);
+        
+        // --- 兜底层：本地规则引擎 (重大优化) ---
+        const input = foodInput || "";
+        let category = '其他';
+        let tags = [];
+        let baseCalories = 0; // 单份基准热量
+        let suitability = "基本可以";
+        let reason = "";
+        let advice = "";
+
+        // 辅助函数：提取数量
+        const extractQuantity = (text) => {
+            // 匹配 "5个", "半碗", "300g" 等
+            const quantityMap = { '半': 0.5, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+            
+            // 1. 优先匹配数字 + 单位
+            const numMatch = text.match(/(\d+(\.\d+)?)\s*(个|只|块|片|碗|份|g|克|ml|毫升|斤|两|杯)/);
+            if (numMatch) {
+                let num = parseFloat(numMatch[1]);
+                const unit = numMatch[3];
+                // 简单的单位归一化 (以"份"为基准)
+                if (unit === 'g' || unit === '克') return num / 100; // 100g = 1份
+                if (unit === 'ml' || unit === '毫升') return num / 100; // 100ml = 1份
+                if (unit === 'kg' || unit === '千克') return num * 10;
+                if (unit === '斤') return num * 5;
+                if (unit === '两') return num * 0.5;
+                if (unit === '片' || unit === '块') return num * 0.5; // 假设一片/块较小
+                return num; // 个/碗/杯/份 默认为1
+            }
+
+            // 2. 匹配中文数字 + 单位 (e.g., "两个")
+            for (const [key, val] of Object.entries(quantityMap)) {
+                if (text.includes(key)) return val;
+            }
+            
+            return 1; // 默认为1份
+        };
+
+        const quantity = extractQuantity(input);
+
+        // 1. 优先尝试本地食物库 (New Feature)
+        const libraryMatch = findFood(input);
+        
+        if (libraryMatch) {
+            category = libraryMatch.type; // e.g. 'fruit', 'veggie'
+            // Calculate base calories per unit (weight * calories/100g)
+            baseCalories = Math.round((libraryMatch.weight * libraryMatch.calories) / 100);
+            
+            // Generate dynamic tags based on nutrients
+            if (libraryMatch.carbs > 20) tags.push("高碳水");
+            if (libraryMatch.protein > 10) tags.push("高蛋白");
+            if (libraryMatch.fat > 10) tags.push("高脂");
+            if (libraryMatch.calories < 50) tags.push("低卡");
+            
+            // Add category-specific tags
+            if (category === 'fruit') tags.push("维生素");
+            if (category === 'veggie') tags.push("膳食纤维");
+            
+        } else {
+            // 2. 关键词分类 (Fallback if not in library)
+            const keywords = {
+                fruit: /(果|橙|梨|桃|瓜|莓|橘|柚|蕉|葡萄)/, // 优先匹配水果
+                highOil: /(炸|烤|煎|红烧|肥|奶油|酥|排|火锅|串)/,
+                highSugar: /(糖|甜|蛋糕|奶茶|巧克力|蜜|汁|冰淇淋|可乐)/,
+                veggie: /(菜|蔬|菇|海带|木耳|笋|豆芽)/,
+                protein: /(鱼|虾|鸡|蛋|奶|豆|牛|肉|瘦|排骨)/,
+                staple: /(面|饭|粉|粥|馒头|饼|包子|薯)/,
+                cold: /(冰|冷|生|沙拉|刺身|苦瓜|冬瓜)/
+            };
+
+            // Determine Category & Base Calories (Per Unit)
+            if (input.match(keywords.fruit)) {
+                category = 'fruit';
+                tags = ["维生素", "天然糖分"];
+                baseCalories = 50; // 一个水果约50-60kcal
+            } else if (input.match(keywords.highOil)) {
+                category = 'highOil';
+                tags = ["高油", "重口味"];
+                baseCalories = 400; // 一份炸鸡/烧烤
+            } else if (input.match(keywords.highSugar)) {
+                category = 'highSugar';
+                tags = ["高糖", "快乐水"];
+                baseCalories = 350; // 一块蛋糕/一杯奶茶
+            } else if (input.match(keywords.staple)) {
+                category = 'staple';
+                tags = ["碳水", "主食"];
+                baseCalories = 250; // 一碗饭
+            } else if (input.match(keywords.protein)) {
+                category = 'protein';
+                tags = ["高蛋白", "营养"];
+                baseCalories = 150; // 一份肉/蛋
+            } else if (input.match(keywords.veggie)) {
+                category = 'veggie';
+                tags = ["低卡", "膳食纤维"];
+                baseCalories = 30; // 一份蔬菜
+            } else if (input.match(keywords.cold)) {
+                category = 'cold';
+                tags = ["生冷", "寒凉"];
+                baseCalories = 100;
+            } else {
+                baseCalories = 200; // Default
+            }
+        }
+
+        // Calculate Total Calories
+        const totalCalories = Math.round(baseCalories * quantity);
+
+        // 2. 体质 x 食物 联动规则
+        const type = constitutionType; // Short alias
+        // 判断语态
+        const isQuery = /(能|可|该|要)不(能|可|该|要)|(吗|么|？|\?)/.test(input);
+        const isPastTense = (text) => {
+            return /(吃|喝|尝|用)了|(完)了|已经/.test(text) || !/(能|可|该|要)不(能|可|该|要)|(吗|么|？|\?)/.test(text);
+        };
+        const hasEaten = isPastTense(input);
+
+        // 特殊处理：如果输入包含“冰”或“雪糕”，强制设为 cold 且给出严重警告
+        if (input.includes('冰') || input.includes('雪糕')) {
+            category = 'cold';
+            // 确保 tags 里有寒凉
+            if (!tags.includes('生冷') && !tags.includes('寒凉')) tags.push('生冷');
+        }
+
+        // --- 九大体质判定逻辑 ---
+        // 依据标准：《中医体质分类与判定》 (ZYYXH/T157-2009)
+        // 核心原则：
+        // 1. 虚则补之，实则泻之
+        // 2. 寒者热之，热者寒之
+        // 3. 顺时而食，因人制宜
+
+        if (type.includes('阳虚')) {
+            // 阳虚：忌生冷，宜温补
+            if (category === 'cold' || category === 'fruit') {
+                suitability = category === 'fruit' ? '适量' : '不宜';
+                reason = category === 'fruit' ? '大多数水果性质偏凉，阳虚体质不宜多吃。' : '生冷寒凉损耗阳气，雪上加霜。';
+                advice = isQuery ? (category === 'fruit' ? '建议每次只吃一点点，或者煮热了吃。' : '建议忍住别吃，换成热饮吧。') 
+                                 : '既然吃了，建议喝杯姜枣茶暖暖胃，注意保暖。';
+            } else if (category === 'highOil') {
+                suitability = '不宜';
+                reason = '阳虚者脾胃运化无力，油腻极难代谢。';
+                advice = '建议少吃，以免加重脾胃负担。';
+            } else {
+                suitability = '适宜';
+                reason = '温补营养，适合您的体质。';
+                advice = '吃得很好！保持脾胃温暖。';
+            }
+        } 
+        else if (type.includes('阴虚')) {
+            // 阴虚：忌辛辣/燥热，宜滋阴
+            if (input.match(/(辣|烤|炸|羊肉|姜|蒜)/) || category === 'highOil') {
+                suitability = '少吃';
+                reason = '辛辣燥热伤阴助火，容易导致口干舌燥。';
+                advice = isQuery ? '建议少吃，容易上火。' : '既然吃了，建议多喝温水，或者吃点银耳/梨润一润。';
+            } else if (category === 'cold' || category === 'fruit') {
+                suitability = '适宜';
+                reason = '性质清凉，有助于滋阴降火。';
+                advice = '非常适合您，可以适量多吃点。';
+            } else {
+                suitability = '适宜';
+                reason = '清润滋养。';
+                advice = '保持清淡饮食对您很有好处。';
+            }
+        }
+        else if (type.includes('气虚')) {
+            // 气虚：忌耗气/生冷/难消化，宜益气/易消化
+            if (category === 'cold' || input.match(/(萝卜|山楂)/)) { // 萝卜破气
+                suitability = '少吃';
+                reason = input.match(/(萝卜|山楂)/) ? '萝卜/山楂虽好但破气，气虚者不宜多食。' : '生冷食物耗损脾胃之气。';
+                advice = isQuery ? '建议少吃，以免气短乏力。' : '注意观察身体反应，如果觉得累就歇一歇。';
+            } else if (category === 'highOil' || category === 'staple' && input.match(/(糯米|年糕)/)) {
+                suitability = '少吃';
+                reason = '黏腻难消化，容易困阻脾胃。';
+                advice = '建议细嚼慢咽，避免积食。';
+            } else if (input.match(/(鸡|薯|山药|土豆|牛肉|大枣)/)) {
+                suitability = '推荐';
+                reason = '甘温补气，非常适合气虚体质。';
+                advice = '这类食物可以常吃，增强体力。';
+            } else {
+                suitability = '适宜';
+                reason = '营养均衡。';
+                advice = '注意按时吃饭，不要过度空腹。';
+            }
+        }
+        else if (type.includes('痰湿')) {
+            // 痰湿：忌肥甘厚味/甜腻，宜清淡/健脾
+            if (category === 'highOil' || category === 'highSugar' || input.match(/(肥|腻|奶茶|炸)/)) {
+                suitability = '少吃';
+                reason = '肥甘厚味和甜食是生痰之源，加重身体沉重感。';
+                advice = isQuery ? '建议少吃或不吃，甜食和油腻最伤脾胃。' : '这一顿稍微有点油腻/甜了，建议下一餐多吃绿叶菜，或者去快走30分钟。';
+            } else if (input.match(/(冬瓜|萝卜|薏米|陈皮|普洱)/)) {
+                suitability = '推荐';
+                reason = '理气化痰，有助于改善体质。';
+                advice = '非常棒的选择，有助于代谢痰湿。';
+            } else {
+                suitability = '基本可以';
+                reason = '注意控制总量。';
+                advice = '饮食宜清淡，只吃七分饱。';
+            }
+        }
+        else if (type.includes('湿热')) {
+            // 湿热：忌辛辣/滋腻/热带水果，宜清热祛湿
+             // 1. 湿热/痰湿的核心忌口：高糖、高油、辛辣、酒
+             if (category === 'highOil' || category === 'highSugar' || input.match(/(酒|辣|炸|烤|肥|腻)/)) {
+                 suitability = '少吃';
+                 reason = '湿热体质最怕肥甘厚味与辛辣助热，容易加重湿热内蕴。';
+                 advice = isQuery ? '建议大幅减少摄入，或者浅尝辄止。' : '既然吃了，建议喝点金银花茶或菊花茶清热，或者去运动出点汗。';
+             } 
+             // 2. 热带水果（湿热特忌）
+             else if (input.match(/(芒果|榴莲|荔枝|龙眼|菠萝蜜)/)) {
+                 suitability = '慎食';
+                 reason = '这类水果糖分高且性质湿热，犹如火上浇油，助湿生热。';
+                 advice = isQuery ? '建议最好别吃，容易诱发痤疮或口苦。' : '建议多喝温水，或者喝点绿豆汤平衡一下。';
+             }
+             // 3. 海鲜（发物）
+             else if (input.match(/(虾|蟹|海鲜|蚝|鱿鱼)/)) {
+                 suitability = '注意';
+                 reason = '海鲜属于“发物”，湿热体质容易诱发皮肤过敏或湿疹。';
+                 advice = isQuery ? '如果近期皮肤状态不稳定，建议暂时别吃。' : '注意观察皮肤反应，如有瘙痒请暂停食用。';
+             }
+             // 4. 推荐食材：清热祛湿/粗粮
+             else if (input.match(/(黄瓜|苦瓜|冬瓜|丝瓜|绿豆|薏米|赤小豆|玉米|燕麦|芹菜|荷叶)/)) {
+                 suitability = '适宜';
+                 reason = '清热祛湿，有助于平衡体质，减轻身体沉重感。';
+                 advice = '非常适合您！建议适量食用，烹饪方式以清淡为主。';
+             }
+             else {
+                 suitability = '基本可以';
+                 reason = '饮食清淡为佳。';
+                 advice = '注意避免重口味，保持清淡。';
+             }
+        }
+        else if (type.includes('血瘀')) {
+            // 血瘀：忌寒凉/收涩，宜活血
+            if (category === 'cold' || input.match(/(冰|冷)/)) {
+                suitability = '少吃';
+                reason = '寒凝血瘀，冷食会加重血液凝滞，导致疼痛。';
+                advice = isQuery ? '建议别吃冷饮，喝点热的吧。' : '既然吃了，建议泡个热水脚促进循环。';
+            } else if (input.match(/(山楂|黑豆|木耳|醋|玫瑰)/)) {
+                suitability = '推荐';
+                reason = '行气活血，有助于改善微循环。';
+                advice = '这类食物对您很有好处，可以常吃。';
+            } else if (category === 'highOil') {
+                suitability = '少吃';
+                reason = '油脂过多会增加血液粘稠度。';
+                advice = '建议饮食清淡，少吃油腻。';
+            } else {
+                suitability = '适宜';
+                reason = '营养均衡。';
+                advice = '保持心情舒畅，饮食有节。';
+            }
+        }
+        else if (type.includes('气郁')) {
+            // 气郁：忌刺激/收敛，宜疏肝
+            if (input.match(/(咖啡|浓茶|酒|辣)/)) {
+                suitability = '慎食';
+                reason = '过度刺激可能加重焦虑或烦躁。';
+                advice = isQuery ? '建议少喝，以免影响情绪或睡眠。' : '如果感到心烦，建议听听音乐放松一下。';
+            } else if (input.match(/(玫瑰|金桔|佛手|橙|柚)/)) { // 芳香理气
+                suitability = '推荐';
+                reason = '芳香类食物有助于疏肝解郁，调节情绪。';
+                advice = '闻起来香香的食物能让心情变好哦！';
+            } else {
+                suitability = '适宜';
+                reason = '正常饮食。';
+                advice = '吃饭时保持心情愉快最重要。';
+            }
+        }
+        else if (type.includes('特禀')) {
+            // 特禀：忌发物/致敏源
+            if (input.match(/(虾|蟹|海鲜|鹅|笋|酒|辣)/)) {
+                suitability = '慎食';
+                reason = '特禀体质易过敏，海鲜、辛辣等“发物”需格外小心。';
+                advice = isQuery ? '如果不确定是否过敏，建议别吃。' : '注意观察皮肤和呼吸道反应。';
+            } else {
+                suitability = '基本可以';
+                reason = '清淡饮食，避开过敏源。';
+                advice = '饮食宜清淡、均衡，增强免疫力。';
+            }
+        }
+        else {
+            // 平和质
+            if (category === 'highOil' || category === 'highSugar') {
+                suitability = '少吃';
+                reason = '热量与脂肪较高，虽无特定禁忌，但需节制。';
+                advice = isQuery ? '偶尔解馋可以，别吃太多。' : '这一餐热量有点高，建议下一餐多吃蔬菜平衡一下。';
+            } else if (category === 'veggie' || category === 'fruit') {
+                suitability = '推荐';
+                reason = '富含膳食纤维和维生素，非常健康。';
+                advice = '完美的清淡选择！';
+            } else if (category === 'protein') {
+                suitability = '推荐';
+                reason = '优质蛋白质是身体修复的基础。';
+                advice = '很棒的营养来源！注意烹饪方式不要太油哦。';
+            } else {
+                suitability = '适宜';
+                reason = '营养均衡。';
+                advice = '保持多样化饮食，您吃得很健康！';
+            }
+        }
+
+
+
+        // Quantity Check (Global Override)
+        if (quantity > 3) {
+            if (hasEaten) {
+                advice += ` 另外，您这一顿吃的分量（${quantity}份）有点多了，建议饭后适当走动消食，下一餐记得减量哦。`;
+            } else {
+                advice += ` 另外，${quantity}份的分量确实有点多，建议分次食用或与人分享，避免积食。`;
+            }
+            if (category === 'fruit' || category === 'highSugar') {
+                reason += ' 且摄入糖分总量已超标。';
+                suitability = '少吃';
+            }
+        }
+
+        // Defaults
+        if (!advice) advice = "营养尚可，注意细嚼慢咽。";
+        if (!reason) reason = "符合基础营养需求。";
+
         return {
-            calories: Math.floor(Math.random() * (800 - 200) + 200), // Random 200-800
+            calories: totalCalories, 
             nutrients: { 
-                carb: Math.floor(Math.random() * 40 + 30), 
-                protein: Math.floor(Math.random() * 20 + 10), 
-                fat: Math.floor(Math.random() * 30 + 10) 
+                carb: Math.round(totalCalories * 0.5 / 4), 
+                protein: Math.round(totalCalories * 0.2 / 4), 
+                fat: Math.round(totalCalories * 0.3 / 9) 
             },
-            suitability: ["适宜", "中等", "少食"][Math.floor(Math.random() * 3)],
-            advice: "该食物营养尚可，建议搭配蔬菜食用，保持营养均衡。",
-            tags: ["家常菜", "热量适中"]
+            suitability: suitability,
+            reason: reason,
+            advice: advice,
+            tags: tags
         };
      }
   },
@@ -445,16 +851,108 @@ export const healthService = {
     if (text.includes('跑步') || text.includes('跳绳') || text.includes('游泳')) calories = totalDuration * 10;
     else if (text.includes('站桩') || text.includes('太极')) calories = totalDuration * 3.5;
 
+    // --- 体质关联建议 (New Feature) ---
+    const type = userProfile.constitution?.type || '平和质';
+    let advice = `${mainType}对您的健康很有益处。`;
+    
+    // 运动强度判断
+    const isHighIntensity = calories / totalDuration > 8; // >8kcal/min
+
+    if (type.includes('阳虚')) {
+        if (isHighIntensity && totalDuration > 45) {
+            advice = `${mainType}强度较大，阳虚体质不宜大汗淋漓，请注意防风保暖，避免耗损阳气。`;
+        } else {
+            advice = `动则生阳，${mainType}非常适合您！建议在阳光充足时进行，有助于提升阳气。`;
+        }
+    } else if (type.includes('阴虚')) {
+        if (isHighIntensity) {
+            advice = `阴虚体质津液不足，${mainType}出汗较多，运动后请务必及时补充水分，避免熬夜。`;
+        } else {
+            advice = `${mainType}比较温和，适合阴虚体质，有助于调养心神。`;
+        }
+    } else if (type.includes('湿热') || type.includes('痰湿')) {
+        if (!isHighIntensity && totalDuration < 30) {
+            advice = `${mainType}强度稍低，对于${type}，建议适当增加强度或时长，微微出汗才能有效排湿。`;
+        } else {
+            advice = `非常棒！${mainType}能有效促进代谢，帮助排出体内湿气，坚持就是胜利。`;
+        }
+    } else if (type.includes('气虚')) {
+        if (isHighIntensity) {
+            advice = `气虚体质不宜过度劳累，${mainType}如果感到气喘吁吁，请务必减量，以免耗气。`;
+        } else {
+            advice = `适度的${mainType}有助于补气，但请量力而行，以运动后不感到极度疲乏为度。`;
+        }
+    } else if (type.includes('气郁')) {
+        advice = `${mainType}有助于疏肝解郁，宣泄情绪。运动时试着大口呼吸，把烦恼都呼出去！`;
+    } else if (type.includes('血瘀')) {
+        advice = `${mainType}能促进气血运行，对改善血瘀非常有帮助。建议坚持，并在运动后做些拉伸。`;
+    }
+
     return {
         type: mainType,
         duration: totalDuration,
         calories: Math.round(calories),
-        advice: `${mainType}对${userProfile.constitution?.type || '您'}的体质很有帮助，保持规律是关键。`
+        advice: advice
     };
   },
 
   /**
-   * 12. AI 识别食物图片 (Real Vision)
+   * 12. AI 排便/消化分析 (New)
+   * @param {string} text User input (e.g., "便秘", "拉肚子", "羊屎蛋")
+   * @param {Object} userProfile
+   */
+  analyze_bowel: async (text, userProfile = {}) => {
+      // Simulate AI Analysis delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const type = userProfile.constitution?.type || '平和质';
+      let issue = '正常';
+      let advice = '消化功能正常，继续保持。';
+      let tags = [];
+
+      // Simple keyword analysis
+      if (text.match(/(干|硬|球|羊|难|秘|费力|痛|血)/)) {
+          issue = '便秘/干结';
+          tags.push('便秘');
+          
+          if (type.includes('阴虚') || type.includes('湿热')) {
+              advice = `${type}容易肠燥或湿热蕴结，导致大便干结。建议多吃火龙果、蜂蜜水，少吃辛辣。`;
+          } else if (type.includes('气虚') || type.includes('阳虚')) {
+              advice = `${type}往往因推动无力导致排便困难（虚秘）。不宜盲目吃泻药，建议吃点肉苁蓉、黑芝麻润肠通便。`;
+          } else if (type.includes('气郁')) {
+              advice = '气机郁滞也会导致排便不畅（气秘）。建议多做腹部按摩，保持心情舒畅。';
+          } else {
+              advice = '建议多喝水，增加膳食纤维摄入（如玉米、芹菜）。';
+          }
+      } 
+      else if (text.match(/(稀|水|喷|泻|烂|不成形|多次)/)) {
+          issue = '腹泻/便溏';
+          tags.push('腹泻');
+
+          if (type.includes('阳虚') || type.includes('气虚')) {
+              advice = `${type}脾胃虚寒，运化无力。建议少吃生冷水果，可以用生姜贴肚脐或喝点热粥。`;
+          } else if (type.includes('湿热') || type.includes('痰湿')) {
+              advice = '湿气下注导致大便粘腻不成形。建议食用薏米、白扁豆健脾祛湿。';
+          } else {
+              advice = '注意腹部保暖，近期饮食宜清淡易消化。';
+          }
+      }
+      else if (text.match(/(粘|黏|沾|不净)/)) {
+          issue = '粘滞不爽';
+          tags.push('湿气重');
+          advice = '大便粘滞是湿气重的典型表现。建议减少油腻甜食，多做运动出汗排湿。';
+      }
+
+      return {
+          issue,
+          advice,
+          tags,
+          timestamp: new Date().toISOString()
+      };
+  },
+
+  /**
+   * 13. AI 识别食物图片 (Real Vision)
    * 接入智谱 GLM-4V 进行真实识别
    */
   analyze_food_image: async (imageFile) => {
@@ -866,71 +1364,71 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
    */
   report_weekly: async (userId, weekOffset = 0) => {
     // 1. Calculate Date Range
-    const end = new Date();
-    end.setDate(end.getDate() - (weekOffset * 7));
-    const start = new Date(end);
-    start.setDate(start.getDate() - 6);
+    const now = new Date();
+    const currentDay = now.getDay(); 
+    const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Monday
+    
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(diff + (weekOffset * 7));
+    startOfWeek.setHours(0,0,0,0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23,59,59,999);
     
     const formatDate = (d) => `${d.getMonth() + 1}.${d.getDate()}`;
-    const dateRange = `${formatDate(start)}-${formatDate(end)}`;
+    const dateRange = `${formatDate(startOfWeek)}-${formatDate(endOfWeek)}`;
 
-    // 2. Gather Data
-    const userProfile = storageService.getUserProfile();
-    const allLogs = storageService.getDailyLogs();
-    const healthRecords = storageService.getHealthRecords();
+    // 2. Gather Data from LocalStorage (Mocked "Backend")
+    // In a real app, this would be a DB query. Here we read from localStorage.
+    // Note: Since healthService is a JS module, it can't directly access React State,
+    // so we rely on localStorage being the source of truth.
+    const stored = localStorage.getItem('cangzhen_memories');
+    let memories = [];
+    if (stored) {
+        try { memories = JSON.parse(stored); } catch (e) {}
+    }
 
     // Filter logs for the selected week
-    const weeklyLogs = [];
-    let currentDate = new Date(start);
-    while (currentDate <= end) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        if (allLogs[dateStr]) {
-            weeklyLogs.push({ date: dateStr, ...allLogs[dateStr] });
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
+    const weeklyMemories = memories.filter(m => {
+        const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+        return mDate >= startOfWeek && mDate <= endOfWeek;
+    });
 
     // 3. Prepare AI Prompt
     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
+    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
-     const systemPrompt = `你是一位资深中医健康顾问。请基于用户档案和本周数据生成健康周报。
+    // Summarize data for AI
+    const memorySummary = weeklyMemories.map(m => `[${m.hall}] ${m.content} (Tags: ${m.tags?.join(',')})`).join('\n');
+    const hallCounts = {
+        sensation: weeklyMemories.filter(m => m.hall === 'sensation').length,
+        emotion: weeklyMemories.filter(m => m.hall === 'emotion').length,
+        inspiration: weeklyMemories.filter(m => m.hall === 'inspiration').length,
+        wanxiang: weeklyMemories.filter(m => m.hall === 'wanxiang').length,
+    };
+
+    // Prompt Template: "Personal Growth & Emotion Review" Style
+    const systemPrompt = `Role: 你是一位私人成长教练，擅长通过提问引导我发现生活中的“微光”和“缝隙里的糖”。
     
-【用户档案】
-- 性别/年龄：${userProfile.basicInfo?.gender === 'female' ? '女' : '男'} ${userProfile.basicInfo?.age || '?'}岁
-- 中医体质：${userProfile.constitution?.type || '未知'} (${userProfile.constitution?.desc || ''})
-- 既往病史：${userProfile.medicalHistory?.diseases?.join(',') || '无'}
+    Input Data:
+    - 本周记录数：${weeklyMemories.length}
+    - 记录分布：感知(${hallCounts.sensation}), 情绪(${hallCounts.emotion}), 灵感(${hallCounts.inspiration}), 决策(${hallCounts.wanxiang})
+    - 详细记录内容：
+    ${memorySummary.substring(0, 2000)} (截取部分)
 
-【本周数据 (${dateRange})】
-- 记录天数：${weeklyLogs.length}天
-- 饮食记录：${JSON.stringify(weeklyLogs.map(l => ({ d: l.date, food: l.diet?.length || 0 })))}
-- 睡眠记录：${JSON.stringify(healthRecords.sleep?.slice(-7) || [])}
-- 运动记录：${JSON.stringify(weeklyLogs.map(l => ({ d: l.date, ex: l.exercise })))}
-- 情绪记录：(假设数据) ${weeklyLogs.length > 0 ? '有波动' : '暂无详细记录'}
+    Output Requirements:
+    请为我写一封简短的周回顾信（HTML格式，无Markdown代码块），包含：
+    1. **本周关键词**：提炼一个词。
+    2. **心境形状分析**：描述我本周的情绪流向（如“像一条缓慢的河流”）。
+    3. **温柔的提醒**：针对我的记录，给我一些不必紧绷的建议。
+    4. **下周的种子**：为下周埋下一个小小的期待。
 
-【输出要求】
-1. **必须返回纯JSON格式**，严禁Markdown。
-2. 包含字段：
-   - dateRange (字符串)
-   - score (数字, 0-100)
-   - summary (简短总结，不超过50字)
-   - tcmInsight (中医视角分析，包含体质和节气建议)
-   - metrics (对象: sleepAvg, exerciseDays, dietScore, poopStatus)
-   - actionCards (数组，3个对象: type, title, icon(字符串名), color, bg, content)
-
-返回示例：
-{
-  "dateRange": "10.23-10.29",
-  "score": 85,
-  "summary": "本周整体状态良好，睡眠质量提升。",
-  "tcmInsight": "您属于<b>气虚质</b>，本周作息规律，但运动量略少。秋分将至，建议多吃润肺食物。",
-  "metrics": { "sleepAvg": 7.5, "exerciseDays": 3, "dietScore": 80, "poopStatus": "正常" },
-  "actionCards": [
-     { "type": "diet", "title": "饮食建议", "icon": "Utensils", "color": "text-orange-500", "bg": "bg-orange-50", "content": "多吃山药、莲子。" },
-     ...
-  ]
-}`;
+    Style:
+    散文诗般的语言，温暖、治愈、充满同理心，避免说教。字数控制在 200 字以内。
+    请直接返回 HTML 字符串，例如：<strong>关键词：...</strong><br/><br/>...
+    `;
 
     try {
         const response = await fetch(API_URL, {
@@ -947,12 +1445,28 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         });
 
         const data = await response.json();
-        const content = data.choices[0].message.content;
-        return JSON.parse(content.replace(/```json|```/g, '').trim());
+        if (data.error) throw new Error(data.error.message);
+        
+        const aiText = data.choices[0].message.content;
+
+        return {
+            success: true,
+            summary: aiText, // HTML string
+            keyword: aiText.match(/关键词[：:]\s*(\S+)/)?.[1] || "成长", // Simple regex extraction
+            count: weeklyMemories.length,
+            hallCounts
+        };
 
     } catch (e) {
         console.error("Weekly Report Generation Failed:", e);
-        throw e; // Let caller handle fallback
+        // Fallback
+        return {
+            success: false,
+            summary: "网络似乎有点拥堵，但我依然为你记录下了这周的点点滴滴。无论数据如何，每一个当下都值得被珍藏。",
+            keyword: "记录",
+            count: weeklyMemories.length,
+            hallCounts
+        };
     }
   },
 
@@ -971,7 +1485,8 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
     
     if (cached) {
         try {
-            return JSON.parse(cached);
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.sensation) return parsed;
         } catch (e) {
             console.warn("Cache parse failed.");
         }

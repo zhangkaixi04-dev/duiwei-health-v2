@@ -227,18 +227,20 @@ const BasicInfoCard = ({ info, setInfo, onSubmit }) => {
                    '气色红润', '心情舒畅', '身体轻盈', 
                    '安睡整晚', '规律月经', '精力充沛', 
                    '护眼明目', '头发浓密'
-               ].map(opt => (
+               ].filter(opt => info.gender === 'female' || opt !== '规律月经').map(opt => {
+                 const currentGoals = info.goal || [];
+                 return (
                  <button 
                    key={opt} 
                    onClick={() => {
-                     const newGoals = info.goal.includes(opt) ? info.goal.filter(g => g !== opt) : [...info.goal, opt];
+                     const newGoals = currentGoals.includes(opt) ? currentGoals.filter(g => g !== opt) : [...currentGoals, opt];
                      setInfo({...info, goal: newGoals});
                    }} 
-                   className={`px-3 py-1.5 rounded-full text-xs border transition-all ${info.goal.includes(opt) ? 'bg-brand text-white border-brand' : 'border-gray-100 text-text-muted'}`}
+                   className={`px-3 py-1.5 rounded-full text-xs border transition-all ${currentGoals.includes(opt) ? 'bg-brand text-white border-brand' : 'border-gray-100 text-text-muted'}`}
                  >
                    {opt}
                  </button>
-               ))}
+               )})}
              </div>
           </div>
 
@@ -490,17 +492,24 @@ const DeviceSetupCard = ({ onConfirm, onSkip }) => {
   );
 };
 
-const WeeklyReportCard = ({ report }) => (
+const WeeklyReportCard = ({ report }) => {
+    if (!report) return null;
+    // Defensive coding: Ensure all nested properties exist to prevent crashes from old/bad data
+    const metrics = report.metrics || { sleepAvg: 0, exerciseDays: 0, dietScore: 0, poopStatus: '未知' };
+    const correlationInsight = report.correlationInsight || { title: '暂无洞察', content: '继续保持记录，AI将为您发现健康规律。' };
+    const actionCards = report.actionCards || [];
+
+    return (
     <div className="bg-gradient-to-br from-[#FAF9F6] to-[#EDF5F0] p-5 rounded-2xl border border-gray-100 shadow-lg space-y-5 animate-fade-in-up mx-2 mb-4">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h3 className="text-lg font-bold text-brand font-serif">本周健康周报</h3>
-          <p className="text-xs text-text-muted mt-1">{report.dateRange}</p>
+          <p className="text-xs text-text-muted mt-1">{report.dateRange || '本周'}</p>
         </div>
         <div className="bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-brand/10 shadow-sm">
           <span className="text-xs text-text-muted block text-center">健康分</span>
-          <span className="text-xl font-bold text-brand block text-center leading-none mt-0.5">{report.score}</span>
+          <span className="text-xl font-bold text-brand block text-center leading-none mt-0.5">{report.score || 0}</span>
         </div>
       </div>
   
@@ -511,11 +520,13 @@ const WeeklyReportCard = ({ report }) => (
           <h4 className="text-sm font-bold text-text-main">AI 中医洞察</h4>
         </div>
         <div className="text-xs text-text-main leading-relaxed opacity-90 space-y-2">
-            <p>{report.summary}</p>
-            <div className="bg-brand/5 p-3 rounded-lg border border-brand/10 text-brand-dark/90">
-                <span className="font-bold block mb-1">🌿 中医视角：</span>
-                <span dangerouslySetInnerHTML={{ __html: report.tcmInsight }}></span>
-            </div>
+            <p>{report.summary || '暂无总结'}</p>
+            {report.tcmInsight && (
+                <div className="bg-brand/5 p-3 rounded-lg border border-brand/10 text-brand-dark/90">
+                    <span className="font-bold block mb-1">🌿 中医视角：</span>
+                    <span dangerouslySetInnerHTML={{ __html: report.tcmInsight }}></span>
+                </div>
+            )}
         </div>
       </div>
   
@@ -527,7 +538,7 @@ const WeeklyReportCard = ({ report }) => (
           </div>
           <div>
             <div className="text-xs text-text-muted">平均睡眠</div>
-            <div className="text-sm font-bold text-text-main">{report.metrics.sleepAvg}h</div>
+            <div className="text-sm font-bold text-text-main">{metrics.sleepAvg}h</div>
           </div>
         </div>
         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
@@ -536,7 +547,7 @@ const WeeklyReportCard = ({ report }) => (
           </div>
           <div>
             <div className="text-xs text-text-muted">运动达标</div>
-            <div className="text-sm font-bold text-text-main">{report.metrics.exerciseDays}/7天</div>
+            <div className="text-sm font-bold text-text-main">{metrics.exerciseDays}/7天</div>
           </div>
         </div>
         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
@@ -545,7 +556,7 @@ const WeeklyReportCard = ({ report }) => (
           </div>
           <div>
             <div className="text-xs text-text-muted">饮食规律</div>
-            <div className="text-sm font-bold text-text-main">{report.metrics.dietScore}分</div>
+            <div className="text-sm font-bold text-text-main">{metrics.dietScore}分</div>
           </div>
         </div>
         <div className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3">
@@ -554,7 +565,7 @@ const WeeklyReportCard = ({ report }) => (
           </div>
           <div>
             <div className="text-xs text-text-muted">排便情况</div>
-            <div className="text-sm font-bold text-text-main">{report.metrics.poopStatus}</div>
+            <div className="text-sm font-bold text-text-main">{metrics.poopStatus}</div>
           </div>
         </div>
       </div>
@@ -563,32 +574,143 @@ const WeeklyReportCard = ({ report }) => (
       <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 space-y-2">
          <div className="flex items-center gap-2 text-orange-800">
             <TrendingUp className="w-4 h-4" />
-            <h4 className="text-sm font-bold">{report.correlationInsight.title}</h4>
+            <h4 className="text-sm font-bold">{correlationInsight.title}</h4>
          </div>
          <p className="text-xs text-orange-900/80 leading-relaxed">
-             <span dangerouslySetInnerHTML={{ __html: report.correlationInsight.content }}></span>
+             <span dangerouslySetInnerHTML={{ __html: correlationInsight.content }}></span>
          </p>
       </div>
   
       {/* 4. Action Cards (New) */}
-      <div className="space-y-3">
-         <h4 className="text-sm font-bold text-text-main pl-1">下周专属行动卡</h4>
-         <div className="grid grid-cols-1 gap-3">
-            {report.actionCards.map((card, idx) => (
-                <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 flex gap-3 shadow-sm hover:shadow-md transition-shadow">
-                    <div className={`${card.bg} p-2.5 rounded-lg h-fit shrink-0`}>
-                        <card.icon className={`w-5 h-5 ${card.color}`} />
-                    </div>
-                    <div>
-                        <h5 className={`text-xs font-bold mb-1 ${card.color}`}>{card.title}</h5>
-                        <p className="text-xs text-text-muted leading-relaxed">{card.content}</p>
-                    </div>
-                </div>
-            ))}
-         </div>
-      </div>
+      {actionCards.length > 0 && (
+          <div className="space-y-3">
+             <h4 className="text-sm font-bold text-text-main pl-1">下周专属行动卡</h4>
+             <div className="grid grid-cols-1 gap-3">
+                {actionCards.map((card, idx) => {
+                    const Icon = card.icon || Sparkles; // Fallback icon
+                    return (
+                        <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 flex gap-3 shadow-sm hover:shadow-md transition-shadow">
+                            <div className={`${card.bg || 'bg-gray-50'} p-2.5 rounded-lg h-fit shrink-0`}>
+                                <Icon className={`w-5 h-5 ${card.color || 'text-gray-500'}`} />
+                            </div>
+                            <div>
+                                <h5 className={`text-xs font-bold mb-1 ${card.color || 'text-gray-700'}`}>{card.title}</h5>
+                                <p className="text-xs text-text-muted leading-relaxed">{card.content}</p>
+                            </div>
+                        </div>
+                    );
+                })}
+             </div>
+          </div>
+      )}
+    </div>
+    );
+};
+
+const PeriodRecordCard = ({ onConfirm }) => {
+  const [flow, setFlow] = useState('medium'); // light, medium, heavy
+  const [pain, setPain] = useState('none'); // none, light, heavy
+  const [mood, setMood] = useState('normal'); // good, normal, bad
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  return (
+    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-4">
+       <div className="flex items-center gap-2 mb-1">
+          <span className="bg-rose-50 p-1.5 rounded-lg text-rose-500"><Calendar className="w-4 h-4" /></span>
+          <h3 className="font-bold text-text-main">经期记录</h3>
+       </div>
+
+       <div className="space-y-3">
+          {/* Date */}
+          <div className="bg-gray-50 p-3 rounded-xl flex justify-between items-center">
+             <span className="text-xs text-text-muted">日期</span>
+             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent text-sm font-bold text-text-main outline-none text-right" />
+          </div>
+
+          {/* Flow */}
+          <div>
+             <label className="text-xs text-text-muted mb-2 block">经量</label>
+             <div className="flex gap-2">
+                {[{id:'light', l:'少'}, {id:'medium', l:'中'}, {id:'heavy', l:'多'}].map(opt => (
+                   <button key={opt.id} onClick={() => setFlow(opt.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${flow === opt.id ? 'bg-rose-50 border-rose-200 text-rose-500' : 'border-gray-100 text-text-muted'}`}>
+                      {opt.l}
+                   </button>
+                ))}
+             </div>
+          </div>
+
+          {/* Pain */}
+          <div>
+             <label className="text-xs text-text-muted mb-2 block">痛感</label>
+             <div className="flex gap-2">
+                {[{id:'none', l:'无痛'}, {id:'light', l:'轻微'}, {id:'heavy', l:'剧烈'}].map(opt => (
+                   <button key={opt.id} onClick={() => setPain(opt.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${pain === opt.id ? 'bg-rose-50 border-rose-200 text-rose-500' : 'border-gray-100 text-text-muted'}`}>
+                      {opt.l}
+                   </button>
+                ))}
+             </div>
+          </div>
+
+          {/* Mood */}
+          <div>
+             <label className="text-xs text-text-muted mb-2 block">心情</label>
+             <div className="flex gap-2">
+                {[{id:'good', l:'开心😊'}, {id:'normal', l:'平静😐'}, {id:'bad', l:'烦躁😫'}].map(opt => (
+                   <button key={opt.id} onClick={() => setMood(opt.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${mood === opt.id ? 'bg-rose-50 border-rose-200 text-rose-500' : 'border-gray-100 text-text-muted'}`}>
+                      {opt.l}
+                   </button>
+                ))}
+             </div>
+          </div>
+       </div>
+
+       <button onClick={() => onConfirm({ date, flow, pain, mood })} className="w-full bg-rose-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-rose-600 transition-all shadow-md">
+         确认记录
+       </button>
     </div>
   );
+};
+
+const DailyStatusCard = ({ onConfirm }) => {
+  const [selected, setSelected] = useState([]);
+  
+  const options = [
+    { id: 'energetic', label: '精力充沛', icon: '💪' },
+    { id: 'tired', label: '疲劳乏力', icon: '😫' },
+    { id: 'bloated', label: '胃胀气', icon: '🐡' },
+    { id: 'headache', label: '头痛', icon: '🤕' },
+    { id: 'anxious', label: '焦虑', icon: '😰' },
+    { id: 'happy', label: '心情好', icon: '😄' },
+    { id: 'cold', label: '手脚冰凉', icon: '🧊' },
+    { id: 'hot', label: '燥热', icon: '🔥' },
+  ];
+
+  const toggle = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]);
+  };
+
+  return (
+    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-4">
+       <div className="flex items-center gap-2 mb-1">
+          <span className="bg-blue-50 p-1.5 rounded-lg text-blue-500"><Activity className="w-4 h-4" /></span>
+          <h3 className="font-bold text-text-main">今日状态记录</h3>
+       </div>
+
+       <div className="grid grid-cols-4 gap-2">
+          {options.map(opt => (
+             <button key={opt.id} onClick={() => toggle(opt.id)} className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${selected.includes(opt.id) ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-gray-100 bg-gray-50 text-text-muted'}`}>
+                <span className="text-xl">{opt.icon}</span>
+                <span className="text-[10px] font-bold">{opt.label}</span>
+             </button>
+          ))}
+       </div>
+
+       <button onClick={() => onConfirm(selected)} disabled={selected.length === 0} className="w-full bg-blue-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all shadow-md disabled:opacity-50">
+         记录
+       </button>
+    </div>
+  );
+};
 
 const PoopRecordCard = ({ onConfirm }) => {
   const [shape, setShape] = useState(null);
@@ -924,53 +1046,78 @@ const SleepRecordCard = ({ onConfirm, mode = 'full', initialData = {} }) => {
   );
 };
 
-const DietSummaryCard = ({ onConfirm, basicInfo, dailyFoodLog = [] }) => {
-  // Use dailyFoodLog from props to pre-fill
-  const [foodTypes, setFoodTypes] = useState([]);
-  const [satiety, setSatiety] = useState(7); // 1-10
+const DietSummaryCard = ({ onConfirm, basicInfo }) => {
+  const [data, setData] = useState(null);
 
-  // Auto-select based on log (Mock logic for now)
   useEffect(() => {
-      // In a real app, we would parse dailyFoodLog items against categories
-      // For now, we simulate "memory" if there are logs
-      if (dailyFoodLog.length > 0) {
-          const simulatedTypes = ['grain', 'meat']; // Mock extracted types
-          if (dailyFoodLog.some(f => f.includes('菜') || f.includes('叶'))) simulatedTypes.push('veg');
-          if (dailyFoodLog.some(f => f.includes('果') || f.includes('苹') || f.includes('梨'))) simulatedTypes.push('fruit');
-          setFoodTypes(prev => [...new Set([...prev, ...simulatedTypes])]);
-      }
-  }, [dailyFoodLog]);
+    const today = new Date().toISOString().split('T')[0];
+    const logs = storageService.getDailyLogs(today);
+    const dietList = logs.diet || [];
+    const nutrition = logs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
 
-  const foodCats = [
-    { id: 'grain', label: '谷薯类', icon: '🍚' },
-    { id: 'veg', label: '蔬菜', icon: '🥬' },
-    { id: 'fruit', label: '水果', icon: '🍎' },
-    { id: 'meat', label: '肉禽蛋', icon: '🥩' },
-    { id: 'dairy', label: '奶豆坚果', icon: '🥛' },
-    { id: 'oil', label: '油盐糖', icon: '🧂' },
-  ];
-
-  // Calculate BMR (Yang Yuexin 2005)
-  const calculateBMR = () => {
+    // 1. Calculate Target (TDEE)
     let bmr = 0;
     const w = parseFloat(basicInfo.weight || 60);
     const h = parseFloat(basicInfo.height || 165);
     const a = parseFloat(basicInfo.age || 30);
     
-    // Yang Yuexin (2005) Formula for Chinese Population
     if (basicInfo.gender === 'male') {
         bmr = (13.88 * w) + (4.16 * h) - (3.43 * a) - 112.4;
     } else {
         bmr = (9.24 * w) + (3.1 * h) - (4.33 * a) + 447.6;
     }
+    const activityFactors = { 'light': 1.2, 'medium': 1.55, 'heavy': 1.725 };
+    const targetCal = Math.round(bmr * (activityFactors[basicInfo.activity] || 1.2)) || 1800;
 
-    const activityMultipliers = { 'light': 1.2, 'medium': 1.55, 'heavy': 1.725 }; 
-    const act = activityMultipliers[basicInfo.activity === '轻度' ? 'light' : basicInfo.activity === '中度' ? 'medium' : 'heavy'] || 1.2;
+    // 2. Judgment Logic
+    const currentCal = parseFloat(nutrition.calories || 0);
+    const ratio = targetCal > 0 ? currentCal / targetCal : 0;
     
-    return Math.round(bmr * act);
-  };
+    let judgmentTitle = "";
+    let judgmentDesc = "";
+    const constitutionType = storageService.getUserProfile().constitution?.type || '平和质';
+    const goals = basicInfo.goal || [];
 
-  const targetCal = calculateBMR();
+    if (currentCal === 0) {
+        judgmentTitle = "暂无记录";
+        judgmentDesc = "今天还没有记录饮食哦，快去告诉 AI 你吃了什么吧。";
+    } else if (ratio < 0.85) {
+        judgmentTitle = "摄入不足";
+        judgmentDesc = "热量未达标。";
+        if (constitutionType.includes('虚')) judgmentDesc += " 气虚体质切忌过度节食，容易导致代谢降低，建议适当加餐。";
+        else if (goals.includes('精力充沛')) judgmentDesc += " 能量不足会影响精力，建议补充优质碳水。";
+        else judgmentDesc += " 长期低热量可能导致代谢损伤，建议适当加餐。";
+    } else if (ratio > 1.15) {
+        judgmentTitle = "摄入超标";
+        judgmentDesc = "热量略高于目标。";
+        if (constitutionType.includes('痰') || constitutionType.includes('湿')) judgmentDesc += " 痰湿体质代谢较慢，建议晚餐少吃，多吃绿叶菜。";
+        else if (goals.includes('身体轻盈')) judgmentDesc += " 想要身体轻盈，记得控制总量哦。";
+        else judgmentDesc += " 建议饭后散步消食。";
+    } else {
+        judgmentTitle = "摄入适宜";
+        judgmentDesc = "热量控制得很棒！";
+        if (constitutionType === '平和质') judgmentDesc += " 继续保持，均衡饮食最重要。";
+        else judgmentDesc += " 非常符合您当前的体质调理节奏。";
+    }
+
+    setData({
+        count: dietList.length,
+        nutrition,
+        targetCal,
+        judgmentTitle,
+        judgmentDesc
+    });
+  }, [basicInfo]);
+
+  if (!data) return <div className="p-4 text-center text-xs text-text-muted">正在分析数据...</div>;
+
+  // Helpers for progress bars
+  const getPercent = (cur, target) => Math.min((cur / target) * 100, 100);
+  
+  // Targets for Macros (Approximate: 55/15/30)
+  const targetCarb = Math.round(data.targetCal * 0.55 / 4);
+  const targetProtein = Math.round(data.targetCal * 0.15 / 4);
+  const targetFat = Math.round(data.targetCal * 0.30 / 9);
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg mx-4 mb-4 animate-fade-in-up space-y-5">
@@ -979,51 +1126,74 @@ const DietSummaryCard = ({ onConfirm, basicInfo, dailyFoodLog = [] }) => {
             <span className="bg-orange-50 p-1.5 rounded-lg text-orange-500"><Utensils className="w-4 h-4" /></span>
             <h3 className="font-bold text-text-main">今日饮食复盘</h3>
          </div>
-         <span className="text-[10px] bg-gray-100 px-2 py-1 rounded-full text-text-muted">目标: {targetCal} kcal</span>
+         <span className="text-[10px] bg-gray-100 px-2 py-1 rounded-full text-text-muted">{new Date().toLocaleDateString()}</span>
       </div>
 
-      {dailyFoodLog.length > 0 && (
-          <div className="bg-gray-50 p-3 rounded-xl text-xs text-text-muted space-y-1">
-              <div className="font-bold text-orange-600">📝 AI 已自动记录：</div>
-              <ul className="list-disc pl-4 space-y-0.5">
-                  {dailyFoodLog.map((log, i) => <li key={i}>{log}</li>)}
-              </ul>
+      {/* 1. Summary Stats */}
+      <div className="flex gap-4 items-end">
+          <div className="flex-1">
+              <div className="text-xs text-text-muted mb-1">总热量 / 目标</div>
+              <div className="flex items-baseline gap-1">
+                 <span className="text-2xl font-bold text-orange-600">{Math.round(data.nutrition.calories)}</span>
+                 <span className="text-xs text-text-muted">/ {data.targetCal} kcal</span>
+              </div>
           </div>
-      )}
-
-      <div className="space-y-2">
-        <label className="text-xs text-text-muted block">AI 识别到以下种类，请确认补充：</label>
-        <div className="grid grid-cols-3 gap-2">
-           {foodCats.map(cat => (
-             <button 
-               key={cat.id} 
-               onClick={() => setFoodTypes(prev => prev.includes(cat.id) ? prev.filter(i => i !== cat.id) : [...prev, cat.id])}
-               className={`py-2 px-1 rounded-xl border text-xs flex items-center justify-center gap-1 transition-all ${foodTypes.includes(cat.id) ? 'bg-orange-50 border-orange-200 text-orange-700' : 'border-gray-100 text-text-muted'}`}
-             >
-               <span>{cat.icon}</span>
-               <span>{cat.label}</span>
-             </button>
-           ))}
-        </div>
+          <div className="text-right">
+              <div className="text-xs text-text-muted mb-1">已记录食物</div>
+              <div className="font-bold text-text-main">{data.count} 种</div>
+          </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex justify-between">
-           <label className="text-xs text-text-muted">今日整体饱腹感</label>
-           <span className="text-xs font-bold text-orange-500">{satiety}分 ({satiety > 8 ? '撑' : satiety < 5 ? '饿' : '适中'})</span>
-        </div>
-        <input 
-          type="range" min="1" max="10" value={satiety} onChange={e => setSatiety(e.target.value)} 
-          className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-500"
-        />
-        <div className="flex justify-between text-[10px] text-text-muted px-1">
-           <span>很饿</span>
-           <span>七八分饱</span>
-           <span>很撑</span>
-        </div>
+      {/* 2. Judgment Box */}
+      <div className={`p-3 rounded-xl border ${data.judgmentTitle === '摄入适宜' ? 'bg-green-50 border-green-100 text-green-800' : 'bg-orange-50 border-orange-100 text-orange-800'}`}>
+          <div className="flex items-center gap-2 mb-1">
+             <Sparkles className="w-4 h-4" />
+             <span className="font-bold text-sm">{data.judgmentTitle}</span>
+          </div>
+          <p className="text-xs opacity-90 leading-relaxed">{data.judgmentDesc}</p>
       </div>
 
-      <button onClick={() => onConfirm({ foodTypes, satiety, targetCal })} className="w-full bg-orange-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 transition-all shadow-md">确认并生成总结</button>
+      {/* 3. Nutrient Progress */}
+      <div className="space-y-3 pt-2 border-t border-gray-50">
+          <h4 className="text-xs font-bold text-text-muted">三大营养素达标情况</h4>
+          
+          {/* Carbs */}
+          <div className="space-y-1">
+             <div className="flex justify-between text-[10px] text-text-muted">
+                <span>碳水化合物</span>
+                <span>{Math.round(data.nutrition.nutrients.carb)} / {targetCarb}g</span>
+             </div>
+             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-orange-400 rounded-full" style={{ width: `${getPercent(data.nutrition.nutrients.carb, targetCarb)}%` }}></div>
+             </div>
+          </div>
+
+          {/* Protein */}
+          <div className="space-y-1">
+             <div className="flex justify-between text-[10px] text-text-muted">
+                <span>蛋白质</span>
+                <span>{Math.round(data.nutrition.nutrients.protein)} / {targetProtein}g</span>
+             </div>
+             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full" style={{ width: `${getPercent(data.nutrition.nutrients.protein, targetProtein)}%` }}></div>
+             </div>
+          </div>
+
+          {/* Fat */}
+          <div className="space-y-1">
+             <div className="flex justify-between text-[10px] text-text-muted">
+                <span>脂肪</span>
+                <span>{Math.round(data.nutrition.nutrients.fat)} / {targetFat}g</span>
+             </div>
+             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${getPercent(data.nutrition.nutrients.fat, targetFat)}%` }}></div>
+             </div>
+          </div>
+      </div>
+
+      <button onClick={() => onConfirm(data.count === 0 ? 'record' : 'confirm')} className="w-full bg-gray-100 text-text-main py-3 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all">
+         {data.count > 0 ? '我已了解' : '去记录饮食'}
+      </button>
     </div>
   );
 };
@@ -1177,7 +1347,8 @@ const ChatInterface = ({ onOpenProfile }) => {
   const [showActionSheet, setShowActionSheet] = useState(false);
   
   // Top Panel State: 'profile', 'weekly', 'daily', or null
-  const [activeTab, setActiveTab] = useState('daily'); 
+  // Default to null (closed) to let user focus on Chat/Morning Check-in first
+  const [activeTab, setActiveTab] = useState(null); 
   
   const toggleTab = (tab) => {
     setActiveTab(prev => prev === tab ? null : tab);
@@ -1189,7 +1360,9 @@ const ChatInterface = ({ onOpenProfile }) => {
   
   // Data State
   const [basicInfo, setBasicInfo] = useState(() => {
-    return storageService.getUserProfile().basicInfo || { gender: 'female', age: '', height: '', weight: '', activity: 'light', goal: [] };
+    const saved = storageService.getUserProfile().basicInfo;
+    const defaults = { gender: 'female', age: '', height: '', weight: '', activity: 'light', goal: [] };
+    return { ...defaults, ...saved };
   });
 
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
@@ -1254,6 +1427,25 @@ const ChatInterface = ({ onOpenProfile }) => {
   ];
 
   // --- Persistence Effects ---
+  useEffect(() => {
+    // Safety check for invalid states on load
+    // Check for critical fields to determine if profile is "complete enough" to skip onboarding
+    const hasProfile = basicInfo.age && basicInfo.height && basicInfo.weight && basicInfo.activity;
+
+    // 1. Fix Zombie Questionnaire State
+    // User reported getting stuck in questionnaire_doing state.
+    // We aggressively reset this state on load to prevent "Zombie Questionnaire" state.
+    if (currentStep === 'questionnaire_doing' || currentStep === 'questionnaire_intro') {
+        setCurrentStep(hasProfile ? 'daily' : 'basic_info');
+    }
+
+    // 2. Fix Missing Profile in Daily Mode
+    // If user is in 'daily' mode (persisted) but profile is missing/cleared, force back to basic_info
+    if (currentStep === 'daily' && !hasProfile) {
+        setCurrentStep('basic_info');
+    }
+  }, []);
+
   useEffect(() => {
     storageService.saveMessages(messages);
   }, [messages]);
@@ -1363,20 +1555,66 @@ const ChatInterface = ({ onOpenProfile }) => {
       imageUrl: null, // Default
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    setMessages(prev => [...prev, newMsg]);
+    
+    const updatedMessages = [...messages, newMsg];
+    setMessages(updatedMessages);
     setInputValue('');
     setShowActionSheet(false);
 
     // AI Logic (Simulated Agent)
     // Removed setTimeout to improve responsiveness for user query
-    processAgentLogic(text);
+    processAgentLogic(text, updatedMessages);
   };
 
   const generateWeeklyReport = async () => {
     // Call the Service Layer instead of local mock
     try {
-      const report = await healthService.report_weekly('current_user');
-      return report;
+      const today = new Date().toISOString().split('T')[0];
+      const logs = storageService.getDailyLogs(today);
+      
+      // Mock data: Unhealthy (Insomnia + Yang Deficiency + Blood Stasis)
+      return {
+        dateRange: '本周健康数据',
+        score: 58,
+        summary: '本周健康状况需引起重视。频繁失眠与阳虚体质叠加，导致身体修复能力下降。',
+        tcmInsight: '本周有 <strong>3 天</strong> 出现失眠（入睡困难/易醒）。这与您的<strong>阳虚兼血瘀</strong>体质密切相关：“阳气不足则寒凝，寒凝则血瘀”，气血运行不畅，夜间阳气不能潜藏入阴，导致心神不宁。舌象显示舌质紫暗、苔白滑，也印证了这一点。',
+        correlationInsight: {
+            title: '恶性循环预警',
+            content: '连续失眠（<5h） -> 白天精神萎靡（阳气无法升发） -> 缺乏运动（加重血瘀） -> 再次失眠。需尽快打破此循环。'
+        },
+        metrics: {
+            sleepAvg: 5.2,
+            exerciseDays: 1,
+            dietScore: 65,
+            poopStatus: '干结难解'
+        },
+        actionCards: [
+            {
+                type: 'sleep',
+                title: '助眠调理',
+                icon: Moon,
+                color: 'text-indigo-500',
+                bg: 'bg-indigo-50',
+                content: '睡前 1 小时用艾叶/花椒泡脚（温经通络），并按揉涌泉穴。'
+            },
+            {
+                type: 'diet',
+                title: '饮食温通',
+                icon: Utensils,
+                color: 'text-orange-500',
+                bg: 'bg-orange-50',
+                content: '忌生冷寒凉。早餐建议吃姜枣粥或当归煮蛋，温补阳气，活血化瘀。'
+            },
+            {
+                type: 'exercise',
+                title: '适度运动',
+                icon: Activity,
+                color: 'text-emerald-500',
+                bg: 'bg-emerald-50',
+                content: '建议每日午后（阳气最盛时）快走 20 分钟，以微汗为度，鼓舞阳气。'
+            }
+        ]
+      };
     } catch (e) {
       console.error(e);
       return null;
@@ -1523,12 +1761,26 @@ const ChatInterface = ({ onOpenProfile }) => {
       }
   };
 
-  const processAgentLogic = async (text) => {
+  const processAgentLogic = async (text, currentMessages = messages) => {
     // Ignore system log messages triggered by UI actions
     if (text.startsWith('[') && text.includes(']')) return;
 
+    // GLOBAL INTERRUPT: Commands that should always switch context to 'daily'
+    // This allows switching from Sleep Card to Poop Card directly without "Exiting" first.
+    // AND it must clear any pending diet input state.
+    if (['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录'].some(k => text.includes(k))) {
+         setDietPending(null); // Fix: Clear diet pending state so "周报" isn't treated as food name
+         // stepToProcess will be set later, but we need to ensure we don't fall into dietPending logic below
+    }
+
     // --- Handle Pending Diet Inputs ---
-    if (dietPending) {
+    // Only proceed if NOT a global interrupt command (which we just checked, but dietPending state might still be true in this render cycle)
+    // We check text again to be safe, or rely on the setDietPending(null) above effectively invalidating it for NEXT render? 
+    // No, setDietPending(null) won't update 'dietPending' const in this function execution immediately.
+    // So we must check the text again here.
+    const isGlobalCommand = ['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录'].some(k => text.includes(k));
+
+    if (dietPending && !isGlobalCommand) {
         // If it's a boolean true, we are waiting for food name (from "I want to record diet")
         if (dietPending === true) {
              text = "我吃了 " + text;
@@ -1536,9 +1788,9 @@ const ChatInterface = ({ onOpenProfile }) => {
         } 
         // If it's a string, we are waiting for quantity (from "I ate Apple")
         else if (typeof dietPending === 'string') {
-             // Check if input looks like a quantity
-             const quantityMatch = text.match(/([0-9]+|[一二三四五六七八九十百千半]+)\s*(g|ml|l|kg|克|毫升|升|公斤|碗|杯|份|个|只|条|盘|勺|斤|两|瓶|盒|袋)/i);
-             if (quantityMatch) {
+             // Check if input looks like a quantity (relaxed regex to allow descriptors like "一大碗", "2小勺")
+             const quantityMatch = text.match(/([0-9]+|[一二三四五六七八九十百千半]+)\s*([\u4e00-\u9fa5]{0,5})\s*(g|ml|l|kg|克|毫升|升|公斤|碗|杯|份|个|只|条|盘|勺|斤|两|瓶|盒|袋)/i);
+             if (quantityMatch || text.match(/\d+(g|克|ml)/i)) {
                   // Avoid duplication: "我吃了" + "坚果" + "吃了25克" -> "我吃了 坚果 25克"
                   let cleanInput = text.replace(/^(我|我们|咱们)?(吃了?|喝了?|想要?|记|录|吃|喝)\s*/, '');
                   if (cleanInput.includes(dietPending)) {
@@ -1561,6 +1813,16 @@ const ChatInterface = ({ onOpenProfile }) => {
 
     // Logic to handle Global Interrupts (Escape the Questionnaire Trap)
     let stepToProcess = currentStep;
+    // Treat diet_summary as daily mode for text processing, allowing users to record new data while viewing summary
+    if (stepToProcess === 'diet_summary') stepToProcess = 'daily';
+
+    // GLOBAL INTERRUPT: Commands that should always switch context to 'daily'
+    // This allows switching from Sleep Card to Poop Card directly without "Exiting" first.
+    if (['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录'].some(k => text.includes(k))) {
+         stepToProcess = 'daily';
+         nextStep = 'daily'; // FORCE RESET: Clear any previous card state (like PoopRecordCard) immediately
+    }
+
     const isQuestionnaireFlow = ['questionnaire_doing', 'questionnaire_intro', 'ask_questionnaire', 'diagnosis_confirm'].includes(currentStep);
     
     if (isQuestionnaireFlow) {
@@ -1576,19 +1838,6 @@ const ChatInterface = ({ onOpenProfile }) => {
             }]);
             setCurrentStep('daily');
             return;
-        }
-
-        // 2. Global Shortcuts / Commands (Treat as Daily intent)
-        // If user clicks a shortcut button or types a command
-        if (['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录'].some(k => text.includes(k))) {
-             stepToProcess = 'daily'; 
-             // Also notify user we switched
-             setMessages(prev => [...prev, {
-                id: Date.now() - 1, // Before the actual response
-                sender: 'ai',
-                text: '已为您切换到日常模式。',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
         }
     }
 
@@ -1609,20 +1858,33 @@ const ChatInterface = ({ onOpenProfile }) => {
       }
     }
 
-    // --- 6. Reminder Setup (Moved Before Diagnosis) ---
+    // --- 2. Reminder Setup (Habits First) ---
     else if (stepToProcess === 'reminder_setup') {
-        responseText = '设置成功！\n\n为了精准辨识您的体质，请配合上传一张【舌诊照片】。';
-        nextStep = 'upload_tongue';
+        responseText = '设置成功！接下来，是否需要绑定您的智能设备？\n\n绑定后，我可以自动同步您的步数、心率和睡眠数据，分析更精准。';
+        nextStep = 'device_bind';
+    }
+
+    // --- 3. Device Bind (Habits First) ---
+    else if (stepToProcess === 'device_bind') {
+        if (text.includes('不') || text.includes('跳过')) {
+             responseText = '没问题，您随时可以在“个人中心”进行设备绑定。\n\n最后一步，为了精准辨识您的体质，请配合上传一张【舌诊照片】。';
+             nextStep = 'upload_tongue';
+        } else if (text.includes('完成') || text.includes('绑定')) {
+             responseText = '设备绑定成功！\n\n最后一步，为了精准辨识您的体质，请配合上传一张【舌诊照片】。';
+             nextStep = 'upload_tongue';
+        } else {
+             responseText = '请在下方卡片操作绑定，或者点击“暂不绑定”。';
+        }
     }
     
-    // --- 2. Tongue Diagnosis ---
+    // --- 4. Tongue Diagnosis ---
     else if (stepToProcess === 'upload_tongue') {
       // Logic moved to handleTongueAnalysis for actual uploads.
       // This block handles text input or "Skip".
       if (text.includes('暂不') || text.includes('跳过')) {
           const consti = await healthService.get_constitution('user'); // Get default/mock
-          responseText = `没关系，我们可以先跳过。\n\n根据您的基础信息，我初步推测您可能偏向【${consti.type}】。\n\n为了更准确，您可以随时在个人中心补充问卷。`;
-          nextStep = 'diagnosis_confirm';
+          responseText = `没关系，我们可以先跳过。\n\n根据您的基础信息，我初步推测您可能偏向【${consti.type}】。\n\n合拍 AI 正式为您服务。🎉\n您可以随时告诉我您的饮食、运动或身体感受。`;
+          nextStep = 'daily';
       } else if (text.includes('照片') || text.includes('上传')) {
           responseText = '请直接点击上方的“点击拍摄”按钮来上传照片哦。👆';
       } else {
@@ -1630,73 +1892,23 @@ const ChatInterface = ({ onOpenProfile }) => {
       }
     }
 
-
-    // --- 9. Sleep Record Flow ---
-    else if (stepToProcess === 'sleep_record') {
-        responseText = '请在下方卡片中填写睡眠信息。';
-    }
-
-    // --- 9.5 Sleep Verify Flow (New) ---
-    else if (stepToProcess === 'sleep_verify') {
-        if (text.includes('准确') || text.includes('对') || text.includes('是')) {
-            responseText = '好的，设备数据已同步。😴\n请您补充一下昨晚的梦境和整体感受吧。';
-            setSleepRecordMode('supplement');
-            nextStep = 'sleep_record';
-        } else {
-            responseText = '没关系，请您手动修改并记录真实的睡眠情况。📝';
-            setSleepRecordMode('full');
-            // Even if inaccurate, we can pre-fill with device data as a starting point, or clear it.
-            // Let's keep it as initial data for convenience.
-            nextStep = 'sleep_record';
-        }
-    }
-
-    // --- 10. Diet Summary Flow ---
-    else if (stepToProcess === 'diet_summary') {
-        responseText = '请在下方卡片中回顾今日饮食。';
-    }
-
-    // --- 3. Confirm Diagnosis ---
+    // --- 5. Confirm Diagnosis ---
     else if (stepToProcess === 'diagnosis_confirm') {
        if (text.includes('不准') || text.includes('不像') || text.includes('不对')) {
-          responseText = '抱歉，AI 舌诊可能受光线影响。为了更准确，建议您填写一份专业的【中医体质辨识问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 支持断点续填（随时暂停，进度自动保存）\n\n是否现在开始填写？（如果选“稍后”，您可以随时在个人档案中补充）';
-          nextStep = 'questionnaire_intro';
+          responseText = '抱歉，AI 舌诊可能受光线影响。没关系，我们先以您的主观感受为准。\n\n您可以稍后在“个人档案”中填写更详细的体质问卷来校准。\n\n合拍 AI 正式为您服务。🎉';
+          nextStep = 'daily';
        } else {
           // User says "Yes" / "Accurate"
           const consti = await healthService.get_constitution('user');
-          responseText = `太棒了！那我们就先以“${consti.type}”作为初始调理方向。💪\n\n不过，AI 视觉诊断可能存在局限。为了最科学地评估您的体质，我还为您准备了【国家标准中医体质问卷】。\n\n📋 问卷说明：\n- 国家标准中医体质分类\n- 共 72 道题（分为9个模块）\n- 预计耗时 3-5 分钟\n- 结果将生成多维雷达图\n\n您想现在进行更精准的测试，还是先跳过？（跳过并不影响您开始使用产品）`;
-          nextStep = 'ask_questionnaire';
+          responseText = `太棒了！那我们就先以“${consti.type}”作为初始调理方向。💪\n\n合拍 AI 正式为您服务。🎉\n您可以随时告诉我您的饮食、运动或身体感受。`;
+          nextStep = 'daily';
        }
     }
 
-    // --- 3.5 Ask Questionnaire (New Step) ---
-    else if (stepToProcess === 'ask_questionnaire') {
-        if (text.includes('填') || text.includes('做') || text.includes('是') || text.includes('好') || text.includes('准')) {
-             const firstQ = questionnaireData[0];
-             responseText = `好的，您的健康态度很棒！👍\n\n我们开始第一题（1/${questionnaireData.length}）：\n\n${firstQ.question}\n(${firstQ.options.join(' / ')})`;
-             nextStep = 'questionnaire_doing';
-             setQuestionnaireProgress(1);
-        } else {
-             responseText = '没问题，那我们先基于目前的判断开始调理。日后您随时可以在“个人档案”页面补充问卷。\n\n最后一步，是否需要绑定您的智能设备？';
-             nextStep = 'device_bind';
-        }
-    }
-
-    // --- 4. Questionnaire Intro ---
-    else if (stepToProcess === 'questionnaire_intro') {
-        if (text.includes('开始') || text.includes('好') || text.includes('填')) {
-            const firstQ = questionnaireData[0];
-            responseText = `好的，我们开始第一题（1/${questionnaireData.length}）：\n\n${firstQ.question}\n(${firstQ.options.join(' / ')})`;
-            nextStep = 'questionnaire_doing';
-            setQuestionnaireProgress(1);
-        } else {
-            responseText = '没关系，您可以随时告诉我“开始问卷”或去“个人档案”补充信息。那我们先进入日常模式。\n\n最后一步，是否需要绑定您的智能设备？';
-            nextStep = 'device_bind';
-        }
-    }
-
+    // --- REMOVED: Questionnaire Intro & Doing from Onboarding Flow ---
+    // They are now only accessible via "Personal Profile" or specific user intent later.
     
-    // --- 5. Questionnaire Doing ---
+    // --- 5. Questionnaire Doing (Standalone / Profile Mode) ---
     else if (stepToProcess === 'questionnaire_doing') {
         // Parse Answer
         const currentQ = questionnaireData[questionnaireProgress - 1];
@@ -1816,68 +2028,102 @@ const ChatInterface = ({ onOpenProfile }) => {
              const today = new Date().toISOString().split('T')[0];
              const dietLogs = storageService.getDailyLogs(today).diet || [];
              const sleepData = storageService.getLatestHealthRecord('sleep');
-             // const poopData = storageService.getLatestHealthRecord('poop');
              
              let summary = '晚安。🌙 忙碌了一天辛苦了。\n\n【今日复盘】\n';
-             summary += `🍱 饮食：记录了 ${dietLogs.length} 餐\n`;
              if (sleepData && sleepData.date === today) summary += `😴 昨夜睡眠：${sleepData.duration} (${sleepData.subjectiveEval === 'good' ? '不错' : '一般'})\n`;
              else summary += `😴 昨夜睡眠：暂无记录\n`;
              
-             // Check missing
              if (dietLogs.length === 0) summary += '\n⚠️ 还没有记录今天的饮食哦，要不要补记一下？';
              
              responseText = summary + '\n\n最后，让我们回顾一下今天的饱腹感和整体状态，为明天生成建议。';
              nextStep = 'diet_summary';
         }
-
-        // C. Diet Recording Intent
-        // Only trigger diet logic if keywords are present AND it's not a question/chat
-        // Improved logic: Require specific action verbs or quantity patterns to distinguish from chat
-        const dietAntiKeywords = [
-            '怎么', '什么', '推荐', '吗', '?', '？', // Questions
-            '上火', '便秘', '失眠', // Symptoms
-            '想吃', '能不能', '可以', '好不好', // Preferences/Permissions
-            '热量', '多少', '一般', '通常', '注意', // Inquiries
-            '喜欢', '爱吃', '讨厌', '不吃', // Preferences
-            '每天', '经常', '总是', '习惯', // Habits
-            '准备', '打算', '要去', '会' // Future intent
-        ];
-        const isDietQuestion = dietAntiKeywords.some(kw => text.includes(kw));
-        
-        // Pattern 0: Explicit Intent Only (e.g. "我要记饮食", "记饮食") - Ask for details
-        // This prevents sending "I want to record" to the AI analyzer
-        const isDietIntentOnly = /^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(text.trim()) || text.trim() === '我要记饮食';
-
-        if (isDietIntentOnly) {
-             responseText = '好的，请告诉我您具体吃了什么？（例如：吃了一碗牛肉面，或者 200g 鸡胸肉）';
-             setDietPending(true); // Update placeholder to prompt user
-             // Return early to skip analysis
-        }
         else {
-             // Pattern A: Explicit Intent with Content (e.g. "Record diet: apple")
-             const isExplicitDiet = /(记|录).*(吃|喝|饮食|餐)/.test(text) || text.includes('我要记饮食');
-             
-             // ... (Rest of logic)
-             
-             // Pattern B: Explicit Action
-             const hasDietAction = ['吃了', '喝了', '吃完', '喝完', '早饭', '午饭', '晚饭', '早餐', '午餐', '晚餐', '加餐', '夜宵', '下午茶'].some(kw => text.includes(kw));
-             
-             // Pattern C: Quantity + Food Keyword
-             const quantityRegex = /([0-9]+|[一二三四五六七八九十百千半]+)\s*(g|ml|l|kg|克|毫升|升|公斤|碗|杯|份|个|只|条|盘|勺|斤|两|瓶|盒|袋)/i;
-             const hasQuantity = quantityRegex.test(text);
-             
-             const foodKeywords = [
-                  '吃', '喝', '餐', '饭', '饮', '食', 
-                  '果', '肉', '菜', '蛋', '奶', '面', '米', '豆', 
-                  '水', '茶', '酒', '汤', '鱼', '虾', '鸡', '鸭', '牛', '羊', '猪',
-                  '饺', '饼', '包', '粥', '粉', '瓜', '薯', '蔬', '莓', '橙', '梨', '桃', '蕉', '葡', '提', '榴', '芒', '枣', '麦', '粮', '糖', '盐', '油', '酱', '醋',
-                  '咖啡', '拿铁', '美式', '三明治', '汉堡', '薯条', '披萨', '沙拉', '蛋糕', '甜点', '零食', '巧克力', '坚果', '酸奶', '牛奶', '燕麦', '玉米', '红薯', '紫薯'
-             ];
-             const hasFoodKeyword = foodKeywords.some(kw => text.includes(kw));
+            // C. Intent Recognition (Mutually Exclusive Chain)
+            
+            // 1. Diet Regexes
+            const dietAntiKeywords = [
+                '怎么', '什么', '推荐', '吗', '?', '？', 
+                '上火', '便秘', '失眠', 
+                '想吃', '能不能', '可以', '好不好', 
+                '热量', '多少', '一般', '通常', '注意', 
+                '喜欢', '爱吃', '讨厌', '不吃', 
+                '每天', '经常', '总是', '习惯', 
+                '准备', '打算', '要去', '会' 
+            ];
+            const isDietSummary = /(今天|今日).*(吃|饮食).*(咋样|怎么样|如何|好不好|评价|总结|复盘)/.test(text);
+            const isDietQuestion = dietAntiKeywords.some(kw => text.includes(kw));
+            
+            // Allow "Diet Record" and "Record Diet"
+            const isDietIntentOnly = /^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(text.trim()) || /(饮食|吃饭|早餐|午餐|晚餐)(记录|打卡)/.test(text) || text.trim() === '我要记饮食';
 
-             const isDietRecord = (isExplicitDiet || hasDietAction || (hasFoodKeyword && hasQuantity)) && !isDietQuestion;
+            const isExplicitDiet = /(记|录|记录).*(吃|喝|饮食|餐)/.test(text) || /(吃|喝|饮食|餐).*(记|录|记录)/.test(text);
+            const hasDietAction = ['吃了', '喝了', '吃完', '喝完', '早饭', '午饭', '晚饭', '早餐', '午餐', '晚餐', '加餐', '夜宵', '下午茶'].some(kw => text.includes(kw));
+            const quantityRegex = /([0-9]+|[一二三四五六七八九十百千半]+)\s*(g|ml|l|kg|克|毫升|升|公斤|碗|杯|份|个|只|条|盘|勺|斤|两|瓶|盒|袋)/i;
+            const hasQuantity = quantityRegex.test(text);
+            const foodKeywords = [
+                 '吃', '喝', '餐', '饭', '饮', '食', 
+                 '果', '肉', '菜', '蛋', '奶', '面', '米', '豆', 
+                 '水', '茶', '酒', '汤', '鱼', '虾', '鸡', '鸭', '牛', '羊', '猪',
+                 '饺', '饼', '包', '粥', '粉', '瓜', '薯', '蔬', '莓', '橙', '梨', '桃', '蕉', '葡', '提', '榴', '芒', '枣', '麦', '粮', '糖', '盐', '油', '酱', '醋',
+                 '咖啡', '拿铁', '美式', '三明治', '汉堡', '薯条', '披萨', '沙拉', '蛋糕', '甜点', '零食', '巧克力', '坚果', '酸奶', '牛奶', '燕麦', '玉米', '红薯', '紫薯'
+            ];
+            const hasFoodKeyword = foodKeywords.some(kw => text.includes(kw));
+            const isSleepRelated = /(睡眠|睡觉|睡得|补觉|失眠|早睡|熬夜)/.test(text);
 
-             if (isDietRecord) {
+            const isDietRecord = (isExplicitDiet || hasDietAction || (hasFoodKeyword && hasQuantity)) && !isDietQuestion && !isSleepRelated && !text.includes('排便') && !text.includes('睡眠');
+
+            // 2. Exercise Regexes
+            const exerciseKeywords = ['运动', '锻炼', '健身', '跑步', '游泳', '瑜伽', '普拉提', '力量', '无氧', '有氧', '站桩', '八段锦', '太极', '练了', '跳绳', '骑行'];
+            const isExerciseRecord = exerciseKeywords.some(kw => text.includes(kw)) && (text.includes('分钟') || text.includes('小时') || text.includes('min') || text.includes('km') || text.includes('公里'));
+
+            // 3. Sleep Regexes
+            const sleepAntiKeywords = [
+                '怎么', '什么', '影响', '好不好', '吗', '?', '？', 
+                '一般', '通常', '习惯', '建议', '应该', '想', 
+                '每天', '经常', '总是', '失眠', '多梦', '易醒' 
+            ];
+            const isSleepQuestion = sleepAntiKeywords.some(kw => text.includes(kw));
+            const sleepKeywordsRegex = /(睡眠|睡觉|入睡|起床|早起|晚起|熬夜|失眠|睡着|补觉)/;
+            const isExplicitSleep = (/(记|录)/.test(text) && sleepKeywordsRegex.test(text)) || text.includes('我要记睡眠') || text.trim() === '睡眠记录';
+            const hasTimePattern = /\d+[:：]\d+|\d+点|\d+h|\d+小时/.test(text);
+            const hasSleepAction = /(睡了|睡着|起床|醒来|刚醒|早起|晚起)/.test(text);
+            const hasContext = /(昨|今|了|刚|早上|晚上|夜里|凌晨)/.test(text);
+            
+            // STRICTER SLEEP LOGIC: Exclude Diet/Poop keywords explicitly
+            const isSleepRecord = (isExplicitSleep || (hasSleepAction && hasTimePattern && hasContext)) && !isSleepQuestion && !text.includes('排便') && !text.includes('饮食') && !text.includes('吃饭');
+
+            // 4. Poop Regexes
+            const isPoopRecord = (text.match(/(排便|大便|拉屎|便便|通便)/) && !text.includes('怎么') && !text.includes('便秘')) || text.includes('我要记排便');
+
+            // 5. Period Regexes
+            const isPeriodRecord = (text.match(/(经期|月经|大姨妈|生理期)/) && !text.includes('怎么') && !text.includes('什么')) || text.includes('我要记经期');
+
+            // 6. Status Regexes
+            const isStatusRecord = (text.match(/(状态|感受|不舒服|头痛|乏力|难受|开心|焦虑|心情)/) && !text.includes('怎么')) || text.includes('记录今日身体状态');
+
+            console.log(`[Intent Check] Text: "${text}"`);
+            console.log(`Diet: ${isDietRecord} (IntentOnly: ${isDietIntentOnly})`);
+            console.log(`Poop: ${isPoopRecord}`);
+            console.log(`Sleep: ${isSleepRecord}`);
+            console.log(`Period: ${isPeriodRecord}`);
+            console.log(`Status: ${isStatusRecord}`);
+
+            // --- Logic Chain ---
+
+            if (isDietSummary) {
+                 const today = new Date().toISOString().split('T')[0];
+                 const dietLogs = storageService.getDailyLogs(today).diet || [];
+                 let summary = '为您生成今日饮食复盘。📝';
+                 if (dietLogs.length === 0) summary += '\n⚠️ 还没有记录今天的饮食哦，要不要补记一下？';
+                 responseText = summary;
+                 nextStep = 'diet_summary';
+            }
+            else if (isDietIntentOnly) {
+                 responseText = '好的，请告诉我您具体吃了什么？（例如：吃了一碗牛肉面，或者 200g 鸡胸肉）';
+                 setDietPending(true); 
+            }
+            else if (isDietRecord) {
                   // Check if quantity is missing
                   if (!hasQuantity) {
                        const potentialFoods = text.split(/[,，\s]+/).filter(t => t.length > 0 && !['我', '了', '吃', '喝', '要', '想', '记', '录', '饮食', '餐', '饭', '今天', '中午', '晚上', '早上', '我吃了', '吃了', '喝了', '我喝了'].includes(t));
@@ -1901,177 +2147,158 @@ const ChatInterface = ({ onOpenProfile }) => {
 
                   const foods = text.split(/[,，\s]+/).filter(t => t.length > 0 && !['我', '了', '吃', '喝', '我吃了', '吃了', '喝了', '我喝了'].includes(t));
              
-             // Update Food Log
-             // dailyFoodLog state will trigger useEffect to save to storageService
-             
-             // ... But here we need to update state
-             const newItems = foods; // Array of strings
-             setDailyFoodLog(prev => {
-                 return [...prev, ...newItems];
-             });
+                 // Update Food Log
+                 const newItems = foods; 
+                 setDailyFoodLog(prev => {
+                     if (prev.length > 0 && prev[prev.length - 1] === newItems[0] && newItems.length === 1) {
+                         return prev;
+                     }
+                     return [...prev, ...newItems];
+                 });
 
-             // Real AI Analysis
-             setIsAiTyping(true); // Show typing indicator
-             try {
-                // Get Constitution Data if available
-                let constitution = { type: '未知', desc: '暂无数据' };
-                if (constitutionResult) constitution = constitutionResult;
+                 // Real AI Analysis
+                 setIsAiTyping(true); 
+                 try {
+                    let constitution = { type: '未知', desc: '暂无数据' };
+                    if (constitutionResult) constitution = constitutionResult;
 
-                const userProfile = {
-                    gender: basicInfo.gender,
-                    age: basicInfo.age,
-                    constitution: constitution
-                };
+                    const userProfile = {
+                        gender: basicInfo.gender,
+                        age: basicInfo.age,
+                        constitution: constitution
+                    };
 
-                const analysis = await healthService.analyze_diet(text, userProfile);
-                
-                // Save Nutrition Data for Dashboard
-                const today = new Date().toISOString().split('T')[0];
-                const dailyLogs = storageService.getDailyLogs(today);
-                const currentDayNutrition = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
-                
-                // Helper to safely parse numbers (handling legacy string/"%" data)
-                const safeParse = (val) => {
-                    if (typeof val === 'number') return val;
-                    if (typeof val === 'string') return parseFloat(val) || 0;
-                    return 0;
-                };
-
-                const newNutrition = {
-                    calories: safeParse(currentDayNutrition.calories) + safeParse(analysis.calories),
-                    nutrients: {
-                        carb: safeParse(currentDayNutrition.nutrients?.carb) + safeParse(analysis.nutrients?.carb),
-                        protein: safeParse(currentDayNutrition.nutrients?.protein) + safeParse(analysis.nutrients?.protein),
-                        fat: safeParse(currentDayNutrition.nutrients?.fat) + safeParse(analysis.nutrients?.fat)
+                    const analysis = await healthService.analyze_diet(text, userProfile);
+                    
+                    if (analysis.needClarification) {
+                         const clarificationMsg = {
+                             id: Date.now() + 1,
+                             text: analysis.clarificationQuestion || "请问您吃的这份大约是多少克？或者拍张照给我看看，这样估算更准确。",
+                             sender: 'ai',
+                             type: 'text'
+                         };
+                         setMessages(prev => [...prev, clarificationMsg]);
+                         const foodName = text.replace(/^(我|我们|咱们)?(吃了?|喝了?|想要?|记|录|吃|喝)\s*/, '');
+                         setDietPending(foodName);
+                         setIsAiTyping(false); 
+                         return; 
                     }
-                };
-                
-                storageService.saveDailyLog(today, 'nutrition', newNutrition);
-                
-                // Trigger storage event for DailyFeed to update
-                window.dispatchEvent(new Event('storage'));
 
-                // Construct feedback message
-                let feedback = `已为您记录：${foods.join('、')}。📝\n\n`;
-                feedback += `🔥 热量预估：${analysis.calories} kcal\n`;
-                feedback += `📊 营养分布：碳水${analysis.nutrients.carb} / 蛋白${analysis.nutrients.protein} / 脂肪${analysis.nutrients.fat}\n\n`;
-                feedback += `💡 合拍建议：${analysis.advice}`;
+                    if (analysis.nutrients) {
+                        const today = new Date().toISOString().split('T')[0];
+                        const dailyLogs = storageService.getDailyLogs(today);
+                        const currentDayNutrition = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
+                        
+                        const safeParse = (val) => {
+                            if (typeof val === 'number') return val;
+                            if (typeof val === 'string') return parseFloat(val) || 0;
+                            return 0;
+                        };
 
-                responseText = feedback;
+                        const newNutrition = {
+                            calories: safeParse(currentDayNutrition.calories) + safeParse(analysis.calories),
+                            nutrients: {
+                                carb: safeParse(currentDayNutrition.nutrients?.carb) + safeParse(analysis.nutrients?.carb),
+                                protein: safeParse(currentDayNutrition.nutrients?.protein) + safeParse(analysis.nutrients?.protein),
+                                fat: safeParse(currentDayNutrition.nutrients?.fat) + safeParse(analysis.nutrients?.fat)
+                            }
+                        };
+                        
+                        storageService.saveDailyLog(today, 'nutrition', newNutrition);
+                        window.dispatchEvent(new Event('storage'));
 
-             } catch (e) {
-                 // Fallback if AI fails
-                 const nutrition = await healthService.get_nutrition('user'); 
-                 responseText = `已为您记录：${foods.join('、')}。📝\n\n今日热量摄入评估：${nutrition.summary}`;
-             } finally {
-                 setIsAiTyping(false); // Hide typing indicator
-             }
-        }
-        
-        }
-        
-        if (!responseText) {
-        // D. Exercise Recording Intent
-        const exerciseKeywords = ['运动', '锻炼', '健身', '跑步', '游泳', '瑜伽', '普拉提', '力量', '无氧', '有氧', '站桩', '八段锦', '太极', '练了', '跳绳', '骑行'];
-        const isExerciseRecord = exerciseKeywords.some(kw => text.includes(kw)) && (text.includes('分钟') || text.includes('小时') || text.includes('min') || text.includes('km') || text.includes('公里'));
+                        let feedback = `已为您记录：${foods.join('、')}。📝\n\n`;
+                        feedback += `🔥 热量预估：${analysis.calories} kcal\n`;
+                        feedback += `📊 营养分布：碳水${analysis.nutrients.carb} / 蛋白${analysis.nutrients.protein} / 脂肪${analysis.nutrients.fat}\n\n`;
+                        
+                        if (analysis.suitability) {
+                            const iconMap = { '适宜': '🟢', '推荐': '🟢', '少吃': '🟠', '不宜': '🔴', '谨慎': '⚠️' };
+                            const icon = iconMap[analysis.suitability] || '💡';
+                            feedback += `${icon} 体质分析：${analysis.suitability}\n`;
+                            feedback += `> ${analysis.reason}\n\n`;
+                        }
 
-        if (isExerciseRecord) {
-             setIsAiTyping(true);
-             try {
-                 const result = await healthService.analyze_exercise(text, { constitution: constitutionResult });
-                 
-                 // Save to storage
-                 const today = new Date().toISOString().split('T')[0];
-                 storageService.saveDailyLog(today, 'exercise', result);
-                 window.dispatchEvent(new Event('storage')); // Trigger UI update
-                 
-                 responseText = `已记录您的运动：${result.type} ${result.duration}分钟。💪\n消耗约 ${result.calories} 千卡。\n\n${result.advice}`;
-             } catch (e) {
-                 console.error(e);
-                 responseText = '记录运动失败，请稍后再试。';
-             } finally {
-                 setIsAiTyping(false);
-             }
-        }
-        }
+                        feedback += `💡 合拍建议：${analysis.advice}`;
 
-        if (!responseText) {
-        // E. Sleep Recording Intent
-        // Improved logic: Require time pattern AND context (yesterday/today/past tense) to avoid general chat
-        const sleepAntiKeywords = [
-            '怎么', '什么', '影响', '好不好', '吗', '?', '？', // Questions
-            '一般', '通常', '习惯', '建议', '应该', '想', // Inquiries/Habits
-            '每天', '经常', '总是', '失眠', '多梦', '易醒' // Symptoms
-        ];
-        const isSleepQuestion = sleepAntiKeywords.some(kw => text.includes(kw));
-        
-        const isExplicitSleep = /(记|录).*(睡|醒|觉)/.test(text) || text.includes('我要记睡眠');
+                        responseText = feedback;
+                        nextStep = 'daily'; 
+                    }
 
-        const hasTimePattern = /\d+[:：]\d+|\d+点|\d+h|\d+小时/.test(text);
-        const hasSleepAction = /(睡|醒|起)/.test(text);
-        // Context MUST imply a specific recent event, not a general habit
-        const hasContext = /(昨|今|了|刚|早上|晚上|夜里|凌晨)/.test(text); // e.g. "昨晚", "睡了", "刚醒"
+                 } catch (e) {
+                     const nutrition = await healthService.get_nutrition('user'); 
+                     responseText = `已为您记录：${foods.join('、')}。📝\n\n今日热量摄入评估：${nutrition.summary}`;
+                     nextStep = 'daily';
+                 } finally {
+                     setIsAiTyping(false); 
+                 }
+            }
+            else if (isExerciseRecord) {
+                 setIsAiTyping(true);
+                 try {
+                     const result = await healthService.analyze_exercise(text, { constitution: constitutionResult });
+                     const today = new Date().toISOString().split('T')[0];
+                     storageService.saveDailyLog(today, 'exercise', result);
+                     window.dispatchEvent(new Event('storage')); 
+                     
+                     responseText = `已记录您的运动：${result.type} ${result.duration}分钟。💪\n消耗约 ${result.calories} 千卡。\n\n${result.advice}`;
+                     nextStep = 'daily';
+                 } catch (e) {
+                     console.error(e);
+                     responseText = '记录运动失败，请稍后再试。';
+                     nextStep = 'daily';
+                 } finally {
+                     setIsAiTyping(false);
+                 }
+            }
+            else if (isSleepRecord) {
+                 responseText = '好的，请在下方卡片记录您的睡眠情况。😴';
+                 nextStep = 'sleep_record';
+            }
+            else if (isPoopRecord) {
+                 responseText = '好的，记录排便情况有助于了解肠道健康。\n请对照下方的【布里斯托大便分类法】，选择最符合的一种：';
+                 nextStep = 'poop_record';
+            }
+            else if (isPeriodRecord) {
+                 responseText = '请在下方卡片记录您的经期情况。📅';
+                 nextStep = 'period_record';
+            }
+            else if (isStatusRecord) {
+                 responseText = '请选择您今天的身体状态感受：';
+                 nextStep = 'status_record';
+            }
+            else if (text.includes('周报')) {
+                 responseText = '为您生成本周健康周报，请查收：';
+                 cardType = 'weekly_report';
+                 cardData = await generateWeeklyReport();
+            }
+            else {
+                // General Chat
+                 try {
+                    setIsAiTyping(true);
+                    let constitution = { type: '未知', desc: '暂无数据' };
+                    if (constitutionResult) constitution = constitutionResult;
+                    else if (Object.keys(questionnaireAnswers).length > 5) constitution = calculateConstitution(questionnaireAnswers);
 
-        const isSleepRecord = (isExplicitSleep || (hasSleepAction && hasTimePattern && hasContext)) && !isSleepQuestion;
-
-        if (isSleepRecord) {
-             responseText = '好的，请在下方卡片记录您的睡眠情况。😴';
-             nextStep = 'sleep_record';
-        }
-
-        // E. Poop Recording Intent
-        else if (text.match(/(排便|大便|拉屎)/) && !text.includes('怎么') && !text.includes('便秘')) {
-             responseText = '好的，记录排便情况有助于了解肠道健康。\n请对照下方的【布里斯托大便分类法】，选择最符合的一种：';
-             nextStep = 'poop_record';
-        }
-
-        // F. Weekly Report Intent
-        else if (text.includes('周报')) {
-             responseText = '为您生成本周健康周报，请查收：';
-             cardType = 'weekly_report';
-             cardData = await generateWeeklyReport();
-        }
-
-        // G. General Chat (Default)
-        // If none of the above, treat as Health Consultation
-        else {
-            // Use Real LLM for Chat
-            try {
-                // Show "typing" state is handled by UI
-                setIsAiTyping(true);
-                
-                // Get Constitution Data if available
-                let constitution = { type: '未知', desc: '暂无数据' };
-                
-                // Prioritize explicit result (from Tongue or Completed Questionnaire)
-                if (constitutionResult) {
-                    constitution = constitutionResult;
+                    const userProfile = {
+                        gender: basicInfo.gender,
+                        age: basicInfo.age,
+                        height: basicInfo.height,
+                        weight: basicInfo.weight,
+                        activity: basicInfo.activity,
+                        sleepTime: basicInfo.sleepTime,
+                        constitution: constitution
+                    };
+                    responseText = await healthService.chat(currentMessages, userProfile);
+                    if (currentStep === 'diet_summary') nextStep = 'daily';
+                } catch (e) {
+                    console.error("Chat Error:", e);
+                    responseText = '抱歉，我刚刚走神了。您能再说一遍吗？';
+                } finally {
+                    setIsAiTyping(false);
                 }
-                // Fallback: Try to calculate from partial answers if meaningful
-                else if (Object.keys(questionnaireAnswers).length > 5) {
-                    constitution = calculateConstitution(questionnaireAnswers);
-                }
-
-                const userProfile = {
-                    gender: basicInfo.gender,
-                    age: basicInfo.age,
-                    height: basicInfo.height,
-                    weight: basicInfo.weight,
-                    activity: basicInfo.activity,
-                    sleepTime: basicInfo.sleepTime,
-                    constitution: constitution
-                };
-
-                responseText = await healthService.chat(messages, userProfile);
-            } catch (e) {
-                console.error("Chat Error:", e);
-                responseText = '抱歉，我刚刚走神了。您能再说一遍吗？';
-            } finally {
-                setIsAiTyping(false);
             }
         }
-    }
-    }
+    } // Close main try block
     
     // --- 8. Poop Record Flow ---
     else if (stepToProcess === 'poop_record') {
@@ -2172,31 +2399,25 @@ const ChatInterface = ({ onOpenProfile }) => {
     }, 1000);
   };
 
-  const handleDietSummarySubmit = (data) => {
-    let feedback = `今日饮食复盘完成。✅\n\n`;
-    
-    // Variety Feedback
-    const typeCount = data.foodTypes.length; // Approximate variety based on categories
-    if (typeCount >= 5) feedback += `🥕 食材丰富度不错！覆盖了 ${typeCount} 大类，继续保持。\n`;
-    else feedback += `🥕 食材种类略少（${typeCount}类），建议明天增加蔬菜和菌菇类。\n`;
+  const handleDietSummarySubmit = (action) => {
+    if (action === 'record') {
+        // Redirect to recording
+        handleSend('我要记饮食');
+        return;
+    }
 
-    // Calories/Satiety Feedback
-    feedback += `🔥 目标热量 ${data.targetCal} kcal。\n`;
-    if (data.satiety >= 8) feedback += `感觉“撑”意味着可能摄入过量，晚餐建议只吃七分饱，减轻肠胃负担。`;
-    else if (data.satiety <= 4) feedback += `感觉“饿”可能会降低代谢，建议加餐一杯牛奶或少量坚果。`;
-    else feedback += `饱腹感适中，热量控制得很好！`;
-
-    handleSend(`[饮食复盘] 饱腹感 ${data.satiety}分`);
+    // Just close the summary
+    handleSend('收到，我会继续保持。'); 
     
     setTimeout(() => {
         setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'ai',
-            text: feedback,
+            text: '好的，加油！💪',
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
         setCurrentStep('daily');
-    }, 1000);
+    }, 500);
   };
 
   const handlePoopSubmit = (data) => {
@@ -2233,10 +2454,61 @@ const ChatInterface = ({ onOpenProfile }) => {
     }, 1000);
   };
 
+  const handlePeriodSubmit = (data) => {
+    const today = new Date().toISOString().split('T')[0];
+    storageService.saveDailyLog(today, 'period', data);
+
+    let feedback = `已记录您的经期状况。🌸\n`;
+    if (data.pain === 'heavy') feedback += '检测到痛感强烈，建议喝点红糖姜茶，注意保暖。\n';
+    if (data.mood === 'bad') feedback += '心情烦躁是正常的激素波动，抱抱您，今晚早点休息吧。\n';
+    
+    handleSend(`[经期记录] 经量${data.flow === 'heavy' ? '多' : data.flow === 'medium' ? '中' : '少'} - ${data.pain === 'none' ? '无痛' : '痛'}`);
+
+    setTimeout(() => {
+        setMessages(prev => [...prev, {
+            id: Date.now(),
+            sender: 'ai',
+            text: feedback,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+        setCurrentStep('daily');
+    }, 1000);
+  };
+
+  const handleStatusSubmit = (selectedIds) => {
+    const today = new Date().toISOString().split('T')[0];
+    storageService.saveDailyLog(today, 'status', selectedIds);
+
+    const statusMap = {
+        'energetic': '精力充沛', 'tired': '疲劳乏力', 'bloated': '胃胀气',
+        'headache': '头痛', 'anxious': '焦虑', 'happy': '心情好',
+        'cold': '手脚冰凉', 'hot': '燥热'
+    };
+
+    const labels = selectedIds.map(id => statusMap[id]).join('、');
+    let feedback = `收到，已记录您今天的状态：${labels}。`;
+
+    if (selectedIds.includes('tired')) feedback += '\n\n感觉累了就休息一下，不要硬撑哦。';
+    if (selectedIds.includes('bloated')) feedback += '\n\n胃胀气建议饭后散步，或者喝点陈皮水。';
+    if (selectedIds.includes('cold')) feedback += '\n\n手脚冰凉是阳虚的表现，睡前可以泡个脚。';
+
+    handleSend(`[状态记录] ${labels}`);
+
+    setTimeout(() => {
+        setMessages(prev => [...prev, {
+            id: Date.now(),
+            sender: 'ai',
+            text: feedback,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+        setCurrentStep('daily');
+    }, 1000);
+  };
+
   return (
     <div className="flex flex-col h-full bg-bg relative">
       {/* Dashboard Area - Fixed at Top */}
-      <div className="px-4 pt-safe-top pb-2 shrink-0 z-10 space-y-2">
+      <div className="px-4 pt-safe-top pb-2 shrink-0 z-50 space-y-2 sticky top-0 bg-bg/95 backdrop-blur-sm">
         {/* Top Buttons */}
         <div className="flex gap-2">
             <button 
@@ -2353,6 +2625,18 @@ const ChatInterface = ({ onOpenProfile }) => {
            />
         )}
 
+        {currentStep === 'period_record' && (
+           <PeriodRecordCard 
+             onConfirm={handlePeriodSubmit}
+           />
+        )}
+
+        {currentStep === 'status_record' && (
+           <DailyStatusCard 
+             onConfirm={handleStatusSubmit}
+           />
+        )}
+
         {currentStep === 'sleep_verify' && tempSleepData && (
            <SleepDataVerifyCard 
              data={tempSleepData}
@@ -2394,7 +2678,7 @@ const ChatInterface = ({ onOpenProfile }) => {
         {currentStep === 'questionnaire_doing' && (
            <div className="flex gap-2 justify-center pb-4 overflow-x-auto px-4 no-scrollbar">
              {/* Dynamic Options based on current question */}
-             {(questionnaireData[questionnaireProgress - 1]?.options || ['没有', '很少', '有时', '经常', '总是']).map(opt => (
+             {(questionnaireData[questionnaireProgress - 1]?.options || []).map(opt => (
                 <button key={opt} onClick={() => handleSend(opt)} className="bg-white text-text-main px-4 py-2 rounded-full border border-gray-200 text-xs shadow-sm whitespace-nowrap">{opt}</button>
              ))}
            </div>

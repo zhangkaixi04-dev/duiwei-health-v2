@@ -23,7 +23,7 @@
 
 @supports not (padding-top: env(safe-area-inset-top)) {
   .pt-safe-top {
-    padding-top: 1rem; /* fallback to original pt-4 */
+    padding-top: 0.5rem; /* fallback to original pt-4, reduced to avoid pushing content too far down */
   }
 }
 
@@ -210,6 +210,75 @@ body {
 
 .animate-float {
   animation: float 4s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Geometric Clip Paths */
+/* -------------------------------------------------------------------------- */
+.clip-path-octagram {
+  clip-path: polygon(
+    50% 0%, 
+    61% 35%, 
+    98% 35%, 
+    68% 57%, 
+    79% 91%, 
+    50% 70%, 
+    21% 91%, 
+    32% 57%, 
+    2% 35%, 
+    39% 35%
+  );
+}
+
+.clip-path-star-8 {
+  clip-path: polygon(
+    50% 0%, 
+    63% 26%, 
+    95% 26%, 
+    73% 50%, 
+    85% 85%, 
+    50% 70%, 
+    15% 85%, 
+    27% 50%, 
+    5% 26%, 
+    37% 26%
+  );
+}
+
+/* 简化版八芒星 (两个正方形交错) */
+.clip-path-square-1 {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); /* Rhombus */
+}
+.clip-path-square-2 {
+  clip-path: inset(0 0 0 0); /* Normal Square */
+}
+/* 真正的八角星 (Star 8) */
+.clip-path-star-eight {
+  clip-path: polygon(
+    50% 0%, 
+    61.7% 35.4%, 
+    98% 35.4%, 
+    68.2% 57.1%, 
+    79.3% 90.5%, 
+    50% 70.7%, 
+    20.7% 90.5%, 
+    31.8% 57.1%, 
+    2% 35.4%, 
+    38.3% 35.4%
+  );
+}
+/* 细长八芒星 (更像星星) */
+.clip-path-sparkle-8 {
+  clip-path: polygon(
+    50% 0%, 
+    55% 40%, 
+    95% 50%, 
+    55% 60%, 
+    50% 100%, 
+    45% 60%, 
+    5% 50%, 
+    45% 40%
+  );
 }
 
 /* -------------------------------------------------------------------------- */

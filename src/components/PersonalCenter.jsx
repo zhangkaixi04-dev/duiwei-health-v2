@@ -18,9 +18,35 @@ const PersonalCenter = ({ onClose, isModal = true }) => {
     const userProfile = storageService.getUserProfile();
     if (userProfile.basicInfo) setUserInfo(userProfile.basicInfo);
 
+    // MOCK DATA for "Yang Deficiency + Blood Deficiency"
+    // Overriding the actual service call for visualization purposes as requested
+    const mockConstitution = {
+        type: '阳虚质 (兼血虚)',
+        desc: '阳气不足，失于温煦，兼有面色苍白、唇甲淡白等血虚表现。建议温补阳气，兼顾养血。',
+        radarData: [
+            { subject: '阳虚', A: 90, fullMark: 100 },
+            { subject: '血虚', A: 75, fullMark: 100 }, // Added specific dimension
+            { subject: '气虚', A: 65, fullMark: 100 },
+            { subject: '平和', A: 30, fullMark: 100 },
+            { subject: '湿热', A: 20, fullMark: 100 },
+            { subject: '阴虚', A: 25, fullMark: 100 },
+            { subject: '痰湿', A: 35, fullMark: 100 },
+            { subject: '气郁', A: 40, fullMark: 100 },
+            { subject: '血瘀', A: 15, fullMark: 100 },
+            { subject: '特禀', A: 10, fullMark: 100 },
+        ]
+    };
+    
+    // CRITICAL: Persist mock data to storage so HealthService can see it!
+    storageService.updateUserProfileSection('constitution', mockConstitution);
+    setConstitution(mockConstitution);
+
+    // Original Logic (Commented out for mock)
+    /*
     healthService.get_constitution('user').then(data => {
       setConstitution(data);
     });
+    */
   }, []);
 
   const [activeTab, setActiveTab] = useState('main'); // main, profile, report, questionnaire, manual_entry

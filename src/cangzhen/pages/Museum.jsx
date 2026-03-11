@@ -245,17 +245,17 @@ const Museum = () => {
           </p>
           
           {/* Search & Date Filter Area */}
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center h-10">
               
               {/* Keyword Search Input */}
-              <div className="flex-1 relative">
+              <div className="flex-1 h-full relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50" size={14} />
                   <input 
                       type="text" 
                       placeholder="搜索关键词..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-main placeholder:text-cangzhen-text-secondary/40 focus:outline-none focus:bg-white/60 focus:border-cangzhen-text-main/30 transition-all"
+                      className="w-full h-full pl-9 pr-3 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-main placeholder:text-cangzhen-text-secondary/40 focus:outline-none focus:bg-white/60 focus:border-cangzhen-text-main/30 transition-all"
                   />
                   {searchQuery && (
                       <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50 hover:text-cangzhen-text-main">
@@ -265,15 +265,15 @@ const Museum = () => {
               </div>
 
               {/* HTML5 Date Picker */}
-              <div className="relative">
-                  <div className="relative">
+              <div className="flex-1 h-full relative">
+                  <div className="relative h-full">
                       {/* Standard Date Input - Allows full calendar selection */}
                       <input 
                           type="date"
                           value={selectedDate}
                           onChange={(e) => setSelectedDate(e.target.value)}
-                          className="pl-8 pr-2 py-2 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-secondary hover:bg-white/60 focus:outline-none transition-all cursor-pointer min-w-[110px] appearance-none"
-                          style={{ colorScheme: 'light' }} // Ensure calendar icon is visible if supported
+                          className="w-full h-full pl-8 pr-2 bg-white/40 border border-white/60 rounded-xl text-xs text-cangzhen-text-secondary hover:bg-white/60 focus:outline-none transition-all cursor-pointer appearance-none"
+                          style={{ colorScheme: 'light' }} 
                       />
                       <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cangzhen-text-secondary/50 pointer-events-none" size={14} />
                       

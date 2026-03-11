@@ -1,4 +1,3 @@
-// src/cangzhen/components/FlowerIcons.jsx
 import React from 'react';
 
 /** 伯利恒之星 — 六瓣放射星形花，感知馆 (恢复茎叶，保持精致) */
@@ -127,8 +126,85 @@ export function BabysBreath({ size = 24, className }) {
   );
 }
 
+/** 雪滴花 — 下垂的白色钟形花 (希望/萌芽) */
+export function Snowdrop({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+      <g transform="translate(16, 16) scale(1.1)">
+         {/* 茎 (弯曲) */}
+         <path d="M0 14 Q0 0 6 -8" stroke="#7A8F5F" strokeWidth="1.5" fill="none" />
+         
+         {/* 叶子 */}
+         <path d="M0 14 Q-6 8 -4 0" stroke="#7A8F5F" strokeWidth="1.5" fill="none" />
+
+         {/* 花朵 (下垂) */}
+         <g transform="translate(6, -8) rotate(15)">
+            <path d="M0 0 Q-3 2 -2 5 Q0 7 2 5 Q3 2 0 0 Z" fill="#FFFFFF" />
+            <path d="M-1 5 L-0.5 6 L0 5 L0.5 6 L1 5" stroke="#A8D5BA" strokeWidth="0.5" fill="none" />
+         </g>
+      </g>
+    </svg>
+  );
+}
+
+/** 迷迭香 — 针状叶与小紫花 (回忆/坚持) */
+export function Rosemary({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+      <g transform="translate(16, 16) scale(1.1)">
+         {/* 主茎 */}
+         <path d="M0 14 L0 -10" stroke="#5F7A5F" strokeWidth="1.5" />
+         
+         {/* 针状叶 */}
+         <path d="M0 8 L-6 6" stroke="#5F7A5F" strokeWidth="1" />
+         <path d="M0 6 L6 4" stroke="#5F7A5F" strokeWidth="1" />
+         <path d="M0 2 L-5 0" stroke="#5F7A5F" strokeWidth="1" />
+         <path d="M0 -2 L5 -4" stroke="#5F7A5F" strokeWidth="1" />
+
+         {/* 小花 (淡紫/蓝) */}
+         <circle cx="-6" cy="6" r="1.5" fill="#A6B1E1" />
+         <circle cx="6" cy="4" r="1.5" fill="#A6B1E1" />
+         <circle cx="-5" cy="0" r="1.5" fill="#A6B1E1" />
+         <circle cx="5" cy="-4" r="1.5" fill="#A6B1E1" />
+         <circle cx="0" cy="-10" r="2" fill="#A6B1E1" />
+      </g>
+    </svg>
+  );
+}
+
+/** 睡莲 — 浮于水面的纯净 (绽放/悟性) */
+export function WaterLily({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+      <g transform="translate(16, 18) scale(1.1)">
+         {/* 荷叶 (底部) */}
+         <path d="M-10 8 Q-12 0 -4 -4 Q0 -6 4 -4 Q12 0 10 8 Q8 12 0 12 Q-8 12 -10 8 Z" fill="#7A9F7A" opacity="0.8" />
+         
+         {/* 花瓣 (多层) */}
+         <g transform="translate(0, -2)">
+            <path d="M0 0 Q-4 -6 0 -10 Q4 -6 0 0 Z" fill="#F8F8FF" /> {/* 中间主瓣 */}
+            <path d="M0 0 Q-6 -4 -4 -8" fill="#F0F0F5" opacity="0.9" /> {/* 左瓣 */}
+            <path d="M0 0 Q6 -4 4 -8" fill="#F0F0F5" opacity="0.9" /> {/* 右瓣 */}
+            <path d="M0 0 Q-8 -2 -6 -5" fill="#E6E6FA" opacity="0.8" /> {/* 侧左 */}
+            <path d="M0 0 Q8 -2 6 -5" fill="#E6E6FA" opacity="0.8" /> {/* 侧右 */}
+         </g>
+         
+         {/* 花蕊 */}
+         <circle cx="0" cy="-1" r="1" fill="#FFD700" />
+      </g>
+    </svg>
+  );
+}
+
 /** 统一入口 */
-export function FlowerIcon({ hallKey, size = 24, className }) {
+export function FlowerIcon({ hallKey, type, size = 24, className }) {
+  // Type 优先级最高 (用于特定徽章)
+  if (type === 'Snowdrop') return <Snowdrop size={size} className={className} />;
+  if (type === 'Rosemary') return <Rosemary size={size} className={className} />;
+  if (type === 'Lily') return <LilyOfTheValley size={size} className={className} />;
+  if (type === 'Lotus' || type === 'WaterLily') return <WaterLily size={size} className={className} />;
+  
+  // Hall Key 映射
   if (hallKey === "emotion") return <LilyOfTheValley size={size} className={className} />;
   if (hallKey === "inspiration") return <IrisFlower size={size} className={className} />;
   if (hallKey === "wanxiang" || hallKey === "custom") return <BabysBreath size={size} className={className} />;
