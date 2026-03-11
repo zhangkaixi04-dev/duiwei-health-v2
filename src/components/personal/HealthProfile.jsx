@@ -8,7 +8,8 @@ const HealthProfile = ({ onBack }) => {
     height: '',
     weight: '',
     allergies: '',
-    medicalHistory: ''
+    medicalHistory: '',
+    goals: []
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -18,13 +19,14 @@ const HealthProfile = ({ onBack }) => {
       height: profile.basicInfo?.height || '',
       weight: profile.basicInfo?.weight || '',
       tongueResult: profile.constitution?.type || '',
-      tongueDate: profile.constitution?.updatedAt || '', // Assuming we track this
+      tongueDate: profile.constitution?.updatedAt || '', 
       allergies: Array.isArray(profile.medicalHistory?.allergies) 
         ? profile.medicalHistory.allergies.join(', ') 
         : (profile.medicalHistory?.allergies || ''),
       medicalHistory: Array.isArray(profile.medicalHistory?.diseases) 
         ? profile.medicalHistory.diseases.join(', ') 
-        : (profile.medicalHistory?.diseases || '')
+        : (profile.medicalHistory?.diseases || ''),
+      goals: profile.goals || []
     });
   }, []);
 
@@ -35,13 +37,6 @@ const HealthProfile = ({ onBack }) => {
       weight: formData.weight
     });
 
-    // Update Medical History
-    // Convert comma-separated strings to arrays or keep as strings depending on storage requirement
-    // Based on storageService.js comments: medicalHistory: [] // allergies, diseases
-    // But typically these are better as arrays or distinct fields. 
-    // storageService.getUserProfile returns { medicalHistory: [] } by default, but let's structure it better.
-    // Let's store them as arrays in the object.
-    
     const allergiesList = formData.allergies.split(/[,，]/).map(s => s.trim()).filter(Boolean);
     const diseasesList = formData.medicalHistory.split(/[,，]/).map(s => s.trim()).filter(Boolean);
 
@@ -49,10 +44,23 @@ const HealthProfile = ({ onBack }) => {
       allergies: allergiesList,
       diseases: diseasesList
     });
+    
+    storageService.updateUserProfileSection('goals', formData.goals);
 
     setIsEditing(false);
     alert('保存成功');
   };
+
+  const toggleGoal = (goal) => {
+    const newGoals = formData.goals.includes(goal) 
+        ? formData.goals.filter(g => g !== goal)
+        : [...formData.goals, goal];
+    setFormData({ ...formData, goals: newGoals });
+  };
+
+  const goalOptions = [
+    '改善睡眠', '减肥减脂', '调理月经', '增强体质', '缓解焦虑', '改善肠胃', '备孕调理', '美容养颜'
+  ];
 
   if (!isEditing) {
     return (
@@ -64,7 +72,7 @@ const HealthProfile = ({ onBack }) => {
           <h3 className="font-bold text-lg text-gray-800">健康档案</h3>
         </div>
 
-        <div className="space-y-4 flex-1">
+        <div className="space-y-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
           <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
             <span className="text-xs text-gray-500 font-medium block mb-1">身高</span>
             <div className="font-bold text-lg text-gray-800">{formData.height ? `${formData.height} cm` : '未设置'}</div>
@@ -73,6 +81,21 @@ const HealthProfile = ({ onBack }) => {
           <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
             <span className="text-xs text-gray-500 font-medium block mb-1">体重</span>
             <div className="font-bold text-lg text-gray-800">{formData.weight ? `${formData.weight} kg` : '未设置'}</div>
+          </div>
+
+          <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <span className="text-xs text-gray-500 font-medium block mb-2">调理目标</span>
+            <div className="flex flex-wrap gap-2">
+                {formData.goals && formData.goals.length > 0 ? (
+                    formData.goals.map(goal => (
+                        <span key={goal} className="px-2.5 py-1 bg-brand/10 text-brand text-xs font-bold rounded-lg border border-brand/20">
+                            {goal}
+                        </span>
+                    ))
+                ) : (
+                    <span className="text-sm text-gray-400">暂未设置目标</span>
+                )}
+            </div>
           </div>
 
           <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -104,7 +127,7 @@ const HealthProfile = ({ onBack }) => {
 
         <button 
           onClick={() => setIsEditing(true)}
-          className="w-full py-3.5 bg-brand text-white rounded-xl font-bold mt-6 shadow-lg shadow-brand/20 active:scale-[0.98] transition-all"
+          className="w-full py-3.5 bg-brand text-white rounded-xl font-bold mt-4 shadow-lg shadow-brand/20 active:scale-[0.98] transition-all"
         >
           编辑档案
         </button>
@@ -121,7 +144,22 @@ const HealthProfile = ({ onBack }) => {
         <h3 className="font-bold text-lg text-gray-800">编辑健康档案</h3>
       </div>
 
-      <div className="space-y-5 flex-1 overflow-y-auto pr-1">
+      <div className="space-y-5 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+        <div>
+          <label className="text-sm font-bold text-gray-700 block mb-2">调理目标 (多选)</label>
+          <div className="grid grid-cols-2 gap-2">
+            {goalOptions.map(opt => (
+                <button 
+                    key={opt}
+                    onClick={() => toggleGoal(opt)}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all text-center ${formData.goals.includes(opt) ? 'bg-brand/10 border-brand text-brand' : 'bg-gray-50 border-gray-100 text-text-muted hover:bg-gray-100'}`}
+                >
+                    {opt}
+                </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="text-sm font-bold text-gray-700 block mb-2">身高 (cm)</label>
           <input 

@@ -17,7 +17,7 @@ const GlassGreenhouse = ({ stats, onOpen, isOpen }) => {
     <div 
         className="flex flex-col items-center gap-1 group cursor-pointer animate-float"
         style={{ animationDelay: delay }}
-        onClick={() => navigate('/cangzhen/museum')}
+        onClick={() => navigate('/museum')}
     >
         <div 
             className="w-12 h-12 flex items-center justify-center transition-transform duration-300 group-active:scale-95 glass-concave rounded-squircle shadow-inner border border-white/20"

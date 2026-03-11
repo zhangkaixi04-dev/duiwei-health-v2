@@ -611,6 +611,7 @@ const PeriodRecordCard = ({ onConfirm }) => {
   const [flow, setFlow] = useState('medium'); // light, medium, heavy
   const [pain, setPain] = useState('none'); // none, light, heavy
   const [mood, setMood] = useState('normal'); // good, normal, bad
+  const [color, setColor] = useState('bright_red'); // bright_red, dark_red, brown, pale
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   return (
@@ -629,10 +630,28 @@ const PeriodRecordCard = ({ onConfirm }) => {
 
           {/* Flow */}
           <div>
-             <label className="text-xs text-text-muted mb-2 block">经量</label>
+             <label className="text-xs text-text-muted mb-2 block">经血量</label>
              <div className="flex gap-2">
                 {[{id:'light', l:'少'}, {id:'medium', l:'中'}, {id:'heavy', l:'多'}].map(opt => (
                    <button key={opt.id} onClick={() => setFlow(opt.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${flow === opt.id ? 'bg-rose-50 border-rose-200 text-rose-500' : 'border-gray-100 text-text-muted'}`}>
+                      {opt.l}
+                   </button>
+                ))}
+             </div>
+          </div>
+
+          {/* Color (New) */}
+          <div>
+             <label className="text-xs text-text-muted mb-2 block">颜色</label>
+             <div className="flex gap-2">
+                {[
+                    {id:'bright_red', l:'鲜红', color: 'bg-red-500'}, 
+                    {id:'dark_red', l:'暗红', color: 'bg-red-800'}, 
+                    {id:'brown', l:'褐色', color: 'bg-[#8B4513]'}, // Changed '咖啡色' to '褐色' (Brown) for better UX
+                    {id:'pale', l:'淡红', color: 'bg-red-300'}
+                ].map(opt => (
+                   <button key={opt.id} onClick={() => setColor(opt.id)} className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all flex flex-col items-center gap-1 ${color === opt.id ? 'bg-rose-50 border-rose-200 text-rose-500' : 'border-gray-100 text-text-muted'}`}>
+                      <span className={`w-3 h-3 rounded-full ${opt.color}`}></span>
                       {opt.l}
                    </button>
                 ))}
@@ -664,7 +683,7 @@ const PeriodRecordCard = ({ onConfirm }) => {
           </div>
        </div>
 
-       <button onClick={() => onConfirm({ date, flow, pain, mood })} className="w-full bg-rose-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-rose-600 transition-all shadow-md">
+       <button onClick={() => onConfirm({ date, flow, pain, mood, color })} className="w-full bg-rose-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-rose-600 transition-all shadow-md">
          确认记录
        </button>
     </div>
@@ -1412,7 +1431,6 @@ const ChatInterface = ({ onOpenProfile }) => {
     { id: 'sleep', label: '记睡眠', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-50' },
     { id: 'poop', label: '记排便', icon: PlusCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' }, 
     { id: 'period', label: '记月经', icon: Calendar, color: 'text-rose-500', bg: 'bg-rose-50' },
-    { id: 'weekly', label: '周总结', icon: FileText, color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
 
   const shortcuts = basicInfo.gender === 'male' 
@@ -2348,7 +2366,7 @@ const ChatInterface = ({ onOpenProfile }) => {
       case 'sleep': handleSend('我要记睡眠'); break;
       case 'poop': handleSend('我要记排便'); break;
       case 'period': handleSend('我要记经期'); break;
-      case 'weekly': handleSend('生成周报'); break;
+      // case 'weekly': handleSend('生成周报'); break; // Removed Weekly Report from Action Sheet as per user request
       default: break;
     }
   };
@@ -2509,7 +2527,7 @@ const ChatInterface = ({ onOpenProfile }) => {
     <div className="flex flex-col h-full bg-bg relative">
       {/* Dashboard Area - Fixed at Top */}
       <div className="px-4 pt-safe-top pb-2 shrink-0 z-50 space-y-2 sticky top-0 bg-bg/95 backdrop-blur-sm">
-        {/* Top Buttons */}
+        {/* Top Buttons - Original 3 Tabs */}
         <div className="flex gap-2">
             <button 
                 onClick={() => toggleTab('daily')}
@@ -2709,13 +2727,14 @@ const ChatInterface = ({ onOpenProfile }) => {
                  <span className="text-xs text-text-muted font-medium">常用功能</span>
                  <button onClick={() => setShowActionSheet(false)} className="text-xs text-brand">收起</button>
                </div>
-               <div className="grid grid-cols-4 gap-4">
+               {/* 5-column grid for shortcuts */}
+               <div className="grid grid-cols-5 gap-2">
                  {shortcuts.map((s) => (
-                   <button key={s.id} onClick={() => handleShortcut(s)} className="flex flex-col items-center gap-2 group">
-                     <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center transition-transform group-active:scale-95`}>
-                       <s.icon className={`w-6 h-6 ${s.color}`} />
+                   <button key={s.id} onClick={() => handleShortcut(s)} className="flex flex-col items-center gap-1.5 group p-1 active:scale-95 transition-transform">
+                     <div className={`w-10 h-10 rounded-2xl ${s.bg} flex items-center justify-center shadow-sm`}>
+                       <s.icon className={`w-5 h-5 ${s.color}`} />
                      </div>
-                     <span className="text-[10px] text-text-muted font-medium">{s.label}</span>
+                     <span className="text-[10px] text-text-muted font-bold whitespace-nowrap">{s.label}</span>
                    </button>
                  ))}
                </div>

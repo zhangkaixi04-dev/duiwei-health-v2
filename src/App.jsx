@@ -1,6 +1,5 @@
 import React, { useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import ChatInterface from './components/ChatInterface';
 import CangzhenApp from './cangzhen/App';
 import { User, Cloud, CloudOff, AlertTriangle, RefreshCcw } from 'lucide-react'; 
 import { storageService } from './services/storageService';
@@ -55,9 +54,6 @@ class ErrorBoundary extends Component {
     return this.props.children; 
   }
 }
-
-// App Switcher Component
-import AppSwitcher from './components/AppSwitcher';
 
 // Auth Status Component (Temporary)
 const AuthStatus = () => {
@@ -132,44 +128,21 @@ const AuthStatus = () => {
     );
 };
 
-const HepaiApp = () => {
-  useEffect(() => {
-    // Migrate legacy data on startup
-    storageService.migrateFromLegacy();
-  }, []);
-
-  return (
-    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-bg text-text-main font-sans overflow-hidden relative">
-      {/* Main Content (Chat Interface) */}
-      <main className="flex-1 overflow-hidden relative z-0">
-        <ChatInterface />
-      </main>
-    </div>
-  );
-};
-
 function App() {
   return (
     <ErrorBoundary>
     <Router>
-      <AppSwitcher />
       {/* 
-         Temporary Auth UI for Demo 
-         In a real app, this should be a proper Login Page or Modal
+         Auth UI for Cloud Sync 
       */}
-      <div className="fixed top-4 right-20 z-50">
+      <div className="fixed top-4 right-4 z-50">
           <AuthStatus />
       </div>
 
       <Routes>
-        {/* Default route redirects to Hepai (AI Health Manager) for current testing */}
-        <Route path="/" element={<Navigate to="/hepai" replace />} />
-        
-        {/* 藏真 APP 路由 */}
-        <Route path="/cangzhen/*" element={<CangzhenApp />} />
-        
-        {/* 旧版合拍 APP 路由 */}
-        <Route path="/hepai/*" element={<HepaiApp />} />
+        {/* Redirect root to Cangzhen (or just mount Cangzhen directly if preferred, but routing keeps structure clean) */}
+        {/* Actually, let's mount Cangzhen at root for a standalone feel */}
+        <Route path="/*" element={<CangzhenApp />} />
       </Routes>
     </Router>
     </ErrorBoundary>

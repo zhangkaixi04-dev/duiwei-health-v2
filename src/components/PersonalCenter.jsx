@@ -49,7 +49,49 @@ const PersonalCenter = ({ onClose, isModal = true }) => {
     */
   }, []);
 
-  const [activeTab, setActiveTab] = useState('main'); // main, profile, report, questionnaire, manual_entry
+  const [activeTab, setActiveTab] = useState('main'); // main, profile, report, questionnaire, manual_entry, goals
+
+  // --- New Goal Component ---
+  const GoalsSection = () => {
+    const [goals, setGoals] = useState([]);
+    
+    useEffect(() => {
+        const profile = storageService.getUserProfile();
+        if (profile.goals) setGoals(profile.goals);
+    }, []);
+
+    const toggleGoal = (goal) => {
+        const newGoals = goals.includes(goal) 
+            ? goals.filter(g => g !== goal)
+            : [...goals, goal];
+        setGoals(newGoals);
+        storageService.updateUserProfileSection('goals', newGoals);
+    };
+
+    const options = [
+        '改善睡眠', '减肥减脂', '调理月经', '增强体质', '缓解焦虑', '改善肠胃', '备孕调理', '美容养颜'
+    ];
+
+    return (
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+            <h3 className="text-sm font-bold text-text-main mb-3 flex items-center gap-2">
+                <span className="w-1 h-4 bg-brand rounded-full"></span>
+                调理目标
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+                {options.map(opt => (
+                    <button 
+                        key={opt}
+                        onClick={() => toggleGoal(opt)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${goals.includes(opt) ? 'bg-brand/10 border-brand text-brand' : 'bg-gray-50 border-gray-100 text-text-muted hover:bg-gray-100'}`}
+                    >
+                        {opt}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+  };
 
   const renderContent = () => {
     switch(activeTab) {
@@ -160,6 +202,8 @@ const PersonalCenter = ({ onClose, isModal = true }) => {
              </div>
            )}
         </div>
+        
+        {/* Goals Section (Removed) - Moved to HealthProfile */}
 
         {/* Menu Grid - Parallel Layout */}
         <div className="grid grid-cols-2 gap-2">

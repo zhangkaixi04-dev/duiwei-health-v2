@@ -111,7 +111,7 @@ const Record = () => {
                       <div className="bg-[#F2F0E9] w-[90%] max-w-sm rounded-[2rem] p-8 shadow-2xl relative overflow-hidden flex flex-col items-center animate-slide-up border border-white/50">
                           {/* Close Button */}
                           <button 
-                              onClick={() => navigate('/cangzhen/review')} 
+                              onClick={() => navigate('/review')} 
                               className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-cangzhen-text-secondary"
                           >
                               <X size={20} />
@@ -151,7 +151,7 @@ const Record = () => {
 
                           {/* Action */}
                           <button 
-                              onClick={() => navigate('/cangzhen/review')}
+                              onClick={() => navigate('/review')}
                               className="w-full py-3.5 rounded-full bg-cangzhen-text-main text-white text-sm font-medium tracking-[0.2em] shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
                           >
                               <Award size={16} /> 收入徽章墙
@@ -209,7 +209,7 @@ const Record = () => {
                   {/* 4. Actions */}
                   <div className="flex flex-col gap-3 w-full animate-slide-up delay-300">
                       <button 
-                        onClick={() => navigate('/cangzhen/museum')}
+                        onClick={() => navigate('/museum')}
                         className="w-full py-3.5 rounded-full bg-cangzhen-text-main text-white text-sm font-medium tracking-[0.2em] shadow-lg hover:scale-[1.02] transition-transform"
                       >
                           去博物馆看看

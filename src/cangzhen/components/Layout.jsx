@@ -8,10 +8,10 @@ const BottomNav = () => {
   const navigate = useNavigate();
 
   const navItems = [
-    { path: "/cangzhen", icon: Home, label: "首页" },
-    { path: "/cangzhen/museum", icon: Landmark, label: "博物馆" },
-    { path: "/cangzhen/record", icon: PenLine, label: "拾笔", isCenter: true },
-    { path: "/cangzhen/review", icon: BarChart3, label: "回顾" },
+    { path: "/", icon: Home, label: "首页" },
+    { path: "/museum", icon: Landmark, label: "博物馆" },
+    { path: "/record", icon: PenLine, label: "拾笔", isCenter: true },
+    { path: "/review", icon: BarChart3, label: "回顾" },
   ];
 
   return (
