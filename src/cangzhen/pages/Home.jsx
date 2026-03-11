@@ -89,7 +89,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen relative p-6 pt-4 font-serif flex flex-col">
+    <div className="min-h-screen relative p-6 pt-safe-top font-serif flex flex-col">
       {/* 1. 顶部栏 (Top Bar) - Redesigned for Mobile Visibility */}
       <header className="mb-2 relative z-20 flex flex-col gap-3">
         <div className="flex justify-between items-center">
