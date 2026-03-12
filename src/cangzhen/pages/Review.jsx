@@ -102,7 +102,7 @@ const Review = () => {
     if (cachedSummary) {
         try {
             const parsed = JSON.parse(cachedSummary);
-            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword });
+            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: parsed.tags });
         } catch(e) {}
     } else {
         // Only generate if we have memories for this week
@@ -145,11 +145,11 @@ const Review = () => {
           try {
                healthService.report_weekly('user', weekOffset).then(res => {
                    if (res.success) {
-                       const result = { summary: res.summary, keyword: res.keyword };
+                       const result = { summary: res.summary, keyword: res.keyword, tags: res.tags };
                        localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
-                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword });
+                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: res.tags });
                    } else {
-                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword });
+                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: res.tags });
                    }
                }).catch(e => {
                    console.error("Weekly Report Error:", e);
@@ -191,34 +191,36 @@ const Review = () => {
       const dateRangeStr = `${format(startOfWeek)} - ${format(endOfWeek)}`;
 
       // Calculate Real Stats from localMemories
-          const weekMemories = localMemories.filter(m => {
-              const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-              // Handle potential invalid date
-              if (isNaN(mDate.getTime())) return false;
-              return mDate >= startOfWeek && mDate <= endOfWeek;
-          });
+      const weekMemories = localMemories.filter(m => {
+          if (!m) return false;
+          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+          // Handle potential invalid date
+          if (isNaN(mDate.getTime())) return false;
+          return mDate >= startOfWeek && mDate <= endOfWeek;
+      });
+      
+      const totalMemories = weekMemories.length;
+
+      // Calculate Daily Trend (Mon-Sun)
+      const trend = Array(7).fill(0);
+      weekMemories.forEach(m => {
+          if (!m) return;
+          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+          if (isNaN(mDate.getTime())) return;
           
-          const totalMemories = weekMemories.length;
-    
-          // Calculate Daily Trend (Mon-Sun)
-          const trend = Array(7).fill(0);
-          weekMemories.forEach(m => {
-              const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-              if (isNaN(mDate.getTime())) return;
-              
-              // getDay: 0=Sun, 1=Mon... we want 0=Mon, 6=Sun
-              let dayIndex = mDate.getDay() - 1;
-              if (dayIndex === -1) dayIndex = 6;
-              trend[dayIndex]++;
-          });
-    
-          // Calculate Top Keyword based on Hall Usage (Simple Heuristic for fallback)
-          const hallCountsMap = {
-             sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0
-          };
-          weekMemories.forEach(m => {
-              if (m.hall && hallCountsMap[m.hall] !== undefined) hallCountsMap[m.hall]++;
-          });
+          // getDay: 0=Sun, 1=Mon... we want 0=Mon, 6=Sun
+          let dayIndex = mDate.getDay() - 1;
+          if (dayIndex === -1) dayIndex = 6;
+          trend[dayIndex]++;
+      });
+
+      // Calculate Top Keyword based on Hall Usage (Simple Heuristic for fallback)
+      const hallCountsMap = {
+         sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0
+      };
+      weekMemories.forEach(m => {
+          if (m && m.hall && hallCountsMap[m.hall] !== undefined) hallCountsMap[m.hall]++;
+      });
           
           // Generate Tags based on Hall distribution if API tags are missing
           let fallbackTags = [];
@@ -289,7 +291,9 @@ const Review = () => {
           
           // Calculate Real Count
           const monthMemories = localMemories.filter(m => {
+             if (!m) return false;
              const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+             if (isNaN(mDate.getTime())) return false;
              return mDate.getMonth() + 1 === month && mDate.getFullYear() === new Date().getFullYear();
           });
           const count = monthMemories.length;
@@ -373,9 +377,12 @@ const Review = () => {
       // Memories in localStorage have 'id' as timestamp or 'date' string.
       // We'll check both for robustness.
       const memory = localMemories.find(m => {
+          if (!m) return false;
+          
           // Check by Timestamp (if id is number)
           if (typeof m.id === 'number') {
               const mDate = new Date(m.id);
+              if (isNaN(mDate.getTime())) return false;
               return mDate.getFullYear() === currentYear &&
                      mDate.getMonth() === date.getMonth() &&
                      mDate.getDate() === date.getDate();
