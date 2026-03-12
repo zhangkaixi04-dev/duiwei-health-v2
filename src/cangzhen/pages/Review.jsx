@@ -57,7 +57,8 @@ const Review = () => {
   const [weeklySummary, setWeeklySummary] = useState({
       loading: false,
       content: null,
-      keyword: null
+      keyword: null,
+      tags: []
   });
 
   useEffect(() => {
@@ -102,7 +103,7 @@ const Review = () => {
     if (cachedSummary) {
         try {
             const parsed = JSON.parse(cachedSummary);
-            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: parsed.tags });
+            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: parsed.tags || [] });
         } catch(e) {}
     } else {
         // Only generate if we have memories for this week
