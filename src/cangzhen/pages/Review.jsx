@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
-import { healthService } from '../../services/healthService';
+import { cangzhenService } from '../../services/cangzhenService';
 import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap, Award, Calendar } from 'lucide-react';
 
 const Review = () => {
@@ -181,7 +181,7 @@ const Review = () => {
       if (hasMemories && !cachedSummary && !weeklySummary.loading && !weeklySummary.content) {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
-          healthService.report_weekly('user', weekOffset).then(res => {
+          cangzhenService.report_weekly('user', weekOffset).then(res => {
                // Defensive result handling
                const safeTags = Array.isArray(res.tags) ? res.tags : [];
                const result = { summary: res.summary, keyword: res.keyword, tags: safeTags };
