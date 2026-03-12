@@ -105,13 +105,9 @@ const AuthStatus = () => {
                      if (signUpError) {
                          alert("注册失败: " + signUpError.message);
                      } else {
-                         // Attempt auto-login immediately after signup
-                         const { error: signInError } = await authService.signIn(email, password);
-                         if (signInError) {
-                             alert("注册成功，但自动登录失败: " + signInError.message);
-                         } else {
-                             // Success! No alert needed, UI will update
-                         }
+                         // Production Flow: Require Email Verification
+                         alert("✅ 注册申请已提交！\n\n请前往您的邮箱 [" + email + "] 查收验证邮件。\n点击邮件中的链接激活账号后，即可返回此处登录。");
+                         // Do NOT auto-login here. Wait for user to verify.
                      }
                  }
             } else if (error.message.includes('Email not confirmed')) {
