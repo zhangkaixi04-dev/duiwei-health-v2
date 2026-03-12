@@ -116,8 +116,39 @@ export const storageService = {
           localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(localProfile));
       }
       
-      // 2. Pull Memories, etc.
-      // ...
+      // 2. Pull Cangzhen Memories
+      const { data: memories } = await supabase
+          .from('cangzhen_memories')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+      if (memories && memories.length > 0) {
+          // Merge logic: Don't overwrite unsynced local data if possible, but here we prioritize cloud
+          // Or better: Merge by ID
+          const localMemories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
+          const memoryMap = new Map();
+          
+          // Add local memories first
+          localMemories.forEach(m => memoryMap.set(String(m.id || m.memory_id), m));
+          
+          // Merge cloud memories (overwrite if exists, as cloud is source of truth, or keep local if newer?)
+          // For now, let's assume Cloud is truth for recovery
+          memories.forEach(m => {
+              memoryMap.set(String(m.memory_id), {
+                  id: m.memory_id,
+                  content: m.content,
+                  hall: m.hall,
+                  image: m.image_url,
+                  tags: m.tags,
+                  date: new Date(m.created_at).toLocaleDateString(),
+                  sync_status: 'synced'
+              });
+          });
+          
+          const merged = Array.from(memoryMap.values()).sort((a, b) => b.id - a.id);
+          localStorage.setItem(STORAGE_KEYS.CANGZHEN_MEMORIES, JSON.stringify(merged));
+      }
       
       window.dispatchEvent(new Event('storage')); // Refresh UI
   },
@@ -441,7 +472,12 @@ export const storageService = {
             if (!error) {
                 // Mark as synced locally
                 newMemory.sync_status = 'synced';
-                setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, updated);
+                // Update local storage again with synced status
+                const currentMemories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
+                const syncedMemories = currentMemories.map(m => 
+                    m.id === newMemory.id ? { ...m, sync_status: 'synced' } : m
+                );
+                setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, syncedMemories);
             }
         } catch (e) {
             console.error("Cloud sync failed, will retry later", e);
