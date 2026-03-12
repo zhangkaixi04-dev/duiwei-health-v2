@@ -2016,8 +2016,29 @@ const ChatInterface = ({ onOpenProfile }) => {
         }
     }
 
+    // --- 8. Poop Record Flow (Moved Up) ---
+    else if (stepToProcess === 'poop_record') {
+        if (text.includes('Type')) {
+            const typeId = parseInt(text.match(/Type (\d)/)[1]);
+            const feedbacks = {
+                1: '这属于【严重便秘】。😰\n建议：多喝水（每天至少2L），多吃蔬菜水果，必要时补充益生菌。',
+                2: '这属于【轻度便秘】。😐\n建议：增加膳食纤维摄入，如燕麦、红薯，并保持适量运动。',
+                3: '这是【基本正常】的大便。👍\n建议：继续保持良好的饮食习惯。',
+                4: '太棒了！这是【完美】的大便形态。🎉\n说明您的肠道非常健康，请继续保持！',
+                5: '这表明【纤维摄入不足】。🍪\n建议：多吃绿叶蔬菜，减少精制碳水化合物。',
+                6: '这属于【轻度腹泻】。🥣\n注意：最近是否吃了不洁食物或受凉？建议清淡饮食。',
+                7: '这属于【严重腹泻】。💧\n警惕：注意补液防止脱水，如持续请及时就医。'
+            };
+            responseText = `已记录。${feedbacks[typeId] || '收到。'}`;
+            nextStep = 'daily';
+        } else {
+            responseText = '已记录您的反馈。';
+            nextStep = 'daily';
+        }
+    }
+
     // --- 7. Daily Flow ---
-    else if (stepToProcess === 'daily') {
+    else { // Fallback for Daily and Card Modes (Sleep/Diet/etc)
         // A. Explicit Commands
         if (text === '/reset') {
             return; 
@@ -2075,75 +2096,52 @@ const ChatInterface = ({ onOpenProfile }) => {
         else {
             // C. Intent Recognition (Mutually Exclusive Chain)
             
-            // 1. Diet Regexes
-            const dietAntiKeywords = [
-                '怎么', '什么', '推荐', '吗', '?', '？', 
-                '上火', '便秘', '失眠', 
-                '想吃', '能不能', '可以', '好不好', 
-                '热量', '多少', '一般', '通常', '注意', 
-                '喜欢', '爱吃', '讨厌', '不吃', 
-                '每天', '经常', '总是', '习惯', 
-                '准备', '打算', '要去', '会' 
-            ];
-            const isDietSummary = /(今天|今日).*(吃|饮食).*(咋样|怎么样|如何|好不好|评价|总结|复盘)/.test(text);
-            const isDietQuestion = dietAntiKeywords.some(kw => text.includes(kw));
+            // C. Intent Recognition (AI Powered - Hybrid Mode)
             
-            // Allow "Diet Record" and "Record Diet"
-            const isDietIntentOnly = /^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(text.trim()) || /(饮食|吃饭|早餐|午餐|晚餐)(记录|打卡)/.test(text) || text.trim() === '我要记饮食';
-
-            const isExplicitDiet = /(记|录|记录).*(吃|喝|饮食|餐)/.test(text) || /(吃|喝|饮食|餐).*(记|录|记录)/.test(text);
-            const hasDietAction = ['吃了', '喝了', '吃完', '喝完', '早饭', '午饭', '晚饭', '早餐', '午餐', '晚餐', '加餐', '夜宵', '下午茶'].some(kw => text.includes(kw));
+            // 1. Entity Extraction Regexes (Keep these for payload parsing)
             const quantityRegex = /([0-9]+|[一二三四五六七八九十百千半]+)\s*(g|ml|l|kg|克|毫升|升|公斤|碗|杯|份|个|只|条|盘|勺|斤|两|瓶|盒|袋)/i;
             const hasQuantity = quantityRegex.test(text);
             const foodKeywords = [
-                 '吃', '喝', '餐', '饭', '饮', '食', 
-                 '果', '肉', '菜', '蛋', '奶', '面', '米', '豆', 
-                 '水', '茶', '酒', '汤', '鱼', '虾', '鸡', '鸭', '牛', '羊', '猪',
+                 '肉', '菜', '蛋', '奶', '面', '米', '豆', 
+                 '汤', '鱼', '虾', '鸡', '鸭', '牛', '羊', '猪',
                  '饺', '饼', '包', '粥', '粉', '瓜', '薯', '蔬', '莓', '橙', '梨', '桃', '蕉', '葡', '提', '榴', '芒', '枣', '麦', '粮', '糖', '盐', '油', '酱', '醋',
                  '咖啡', '拿铁', '美式', '三明治', '汉堡', '薯条', '披萨', '沙拉', '蛋糕', '甜点', '零食', '巧克力', '坚果', '酸奶', '牛奶', '燕麦', '玉米', '红薯', '紫薯'
             ];
             const hasFoodKeyword = foodKeywords.some(kw => text.includes(kw));
-            const isSleepRelated = /(睡眠|睡觉|睡得|补觉|失眠|早睡|熬夜)/.test(text);
 
-            const isDietRecord = (isExplicitDiet || hasDietAction || (hasFoodKeyword && hasQuantity)) && !isDietQuestion && !isSleepRelated && !text.includes('排便') && !text.includes('睡眠');
+            // 2. Call AI Intent Classification
+            let intent = 'chat';
+            try {
+                // Use the new service
+                const classification = await healthService.classifyIntent(text);
+                intent = classification.intent;
+                console.log(`[AI Intent] ${intent} (conf: ${classification.confidence})`);
+            } catch (err) {
+                console.warn("Intent classification failed, falling back to chat", err);
+            }
 
-            // 2. Exercise Regexes
-            const exerciseKeywords = ['运动', '锻炼', '健身', '跑步', '游泳', '瑜伽', '普拉提', '力量', '无氧', '有氧', '站桩', '八段锦', '太极', '练了', '跳绳', '骑行'];
-            const isExerciseRecord = exerciseKeywords.some(kw => text.includes(kw)) && (text.includes('分钟') || text.includes('小时') || text.includes('min') || text.includes('km') || text.includes('公里'));
-
-            // 3. Sleep Regexes
-            const sleepAntiKeywords = [
-                '怎么', '什么', '影响', '好不好', '吗', '?', '？', 
-                '一般', '通常', '习惯', '建议', '应该', '想', 
-                '每天', '经常', '总是', '失眠', '多梦', '易醒' 
-            ];
-            const isSleepQuestion = sleepAntiKeywords.some(kw => text.includes(kw));
-            const sleepKeywordsRegex = /(睡眠|睡觉|入睡|起床|早起|晚起|熬夜|失眠|睡着|补觉)/;
-            const isExplicitSleep = (/(记|录)/.test(text) && sleepKeywordsRegex.test(text)) || text.includes('我要记睡眠') || text.trim() === '睡眠记录';
-            const hasTimePattern = /\d+[:：]\d+|\d+点|\d+h|\d+小时/.test(text);
-            const hasSleepAction = /(睡了|睡着|起床|醒来|刚醒|早起|晚起)/.test(text);
-            const hasContext = /(昨|今|了|刚|早上|晚上|夜里|凌晨)/.test(text);
+            // 3. Map AI Intent to Logical Flags
+            const isDietSummary = intent === 'diet_summary';
+            const isDietInquiry = intent === 'diet_inquiry';
             
-            // STRICTER SLEEP LOGIC: Exclude Diet/Poop keywords explicitly
-            const isSleepRecord = (isExplicitSleep || (hasSleepAction && hasTimePattern && hasContext)) && !isSleepQuestion && !text.includes('排便') && !text.includes('饮食') && !text.includes('吃饭');
+            // Diet Record Logic Refinement:
+            // AI might label "I want to record diet" as 'diet_record'.
+            // We need to distinguish "Trigger UI" (IntentOnly) vs "Process Data" (Record).
+            const isDietRecordRaw = intent === 'diet_record';
+            // Heuristic: If text is short (<10 chars) AND contains "record" words BUT no food keywords -> It's a trigger.
+            const isDietIntentOnly = isDietRecordRaw && (text.length < 10 && /(记|录)/.test(text) && !hasFoodKeyword);
+            const isDietRecord = isDietRecordRaw && !isDietIntentOnly;
 
-            // 4. Poop Regexes
-            const isPoopRecord = (text.match(/(排便|大便|拉屎|便便|通便)/) && !text.includes('怎么') && !text.includes('便秘')) || text.includes('我要记排便');
-
-            // 5. Period Regexes
-            const isPeriodRecord = (text.match(/(经期|月经|大姨妈|生理期)/) && !text.includes('怎么') && !text.includes('什么')) || text.includes('我要记经期');
-
-            // 6. Status Regexes
-            const isStatusRecord = (text.match(/(状态|感受|不舒服|头痛|乏力|难受|开心|焦虑|心情)/) && !text.includes('怎么')) || text.includes('记录今日身体状态');
-
-            console.log(`[Intent Check] Text: "${text}"`);
-            console.log(`Diet: ${isDietRecord} (IntentOnly: ${isDietIntentOnly})`);
-            console.log(`Poop: ${isPoopRecord}`);
-            console.log(`Sleep: ${isSleepRecord}`);
-            console.log(`Period: ${isPeriodRecord}`);
-            console.log(`Status: ${isStatusRecord}`);
-
-            // --- Logic Chain ---
+            const isSleepRecord = intent === 'sleep_record';
+            const isPoopRecord = intent === 'poop_record';
+            const isPeriodRecord = intent === 'period_record';
+            const isStatusRecord = intent === 'status_record';
+            const isExerciseRecord = intent === 'exercise_record';
+            
+            // 4. Fallback Logic for Chat
+            // If intent is 'chat', we check if it looks like a question to prioritize Chat
+            const isQuestion = text.includes('吗') || text.includes('?') || text.includes('？') || text.includes('怎么') || text.includes('什么');
+            const isStrongRecordIntent = isDietRecord || isSleepRecord || isPoopRecord || isDietIntentOnly;
 
             if (isDietSummary) {
                  const today = new Date().toISOString().split('T')[0];
@@ -2152,6 +2150,63 @@ const ChatInterface = ({ onOpenProfile }) => {
                  if (dietLogs.length === 0) summary += '\n⚠️ 还没有记录今天的饮食哦，要不要补记一下？';
                  responseText = summary;
                  nextStep = 'diet_summary';
+            }
+            // FIX: Route "Diet Inquiry" to analyze_diet instead of general chat to use Constitution Matrix Logic
+            else if (isDietInquiry) {
+                 setIsAiTyping(true);
+                 try {
+                     let constitution = { type: '未知', desc: '暂无数据' };
+                     if (constitutionResult) constitution = constitutionResult;
+                     else if (Object.keys(questionnaireAnswers).length > 5) constitution = calculateConstitution(questionnaireAnswers);
+                     
+                     // Use analyze_diet for inquiry (it handles "Inquiry Mode" internally)
+                     const analysis = await healthService.analyze_diet(text, { constitution });
+                     
+                     if (analysis.suitability && analysis.suitability !== '未知') {
+                        const iconMap = { '适宜': '🟢', '推荐': '🟢', '少吃': '🟠', '不宜': '🔴', '谨慎': '⚠️', '严禁食用': '🚫', '需补救': '🚑', '优选': '🌟' };
+                        const icon = iconMap[analysis.suitability] || '💡';
+                        responseText = `${icon} 体质分析：${analysis.suitability}\n> ${analysis.reason}\n\n💡 合拍建议：${analysis.advice}`;
+                     } else {
+                        // Fallback if analysis fails to give specific advice (e.g. unknown food + network fail)
+                        // If network failed and local fallback returned "未知", we should show the fallback advice.
+                        responseText = analysis.advice || "建议您根据自身感受适量食用。";
+                     }
+                     nextStep = 'daily';
+                 } catch (e) {
+                     console.error(e);
+                     responseText = '抱歉，暂时无法分析该食物。';
+                 } finally {
+                     setIsAiTyping(false);
+                 }
+            }
+            // FIX: If it's a question and NOT a strong record intent, go to Chat immediately.
+            else if (isQuestion && !isStrongRecordIntent) {
+                 // Skip to General Chat
+                 try {
+                    setIsAiTyping(true);
+                    let constitution = { type: '未知', desc: '暂无数据' };
+                    if (constitutionResult) constitution = constitutionResult;
+                    else if (Object.keys(questionnaireAnswers).length > 5) constitution = calculateConstitution(questionnaireAnswers);
+
+                    const userProfile = {
+                        gender: basicInfo.gender,
+                        age: basicInfo.age,
+                        height: basicInfo.height,
+                        weight: basicInfo.weight,
+                        activity: basicInfo.activity,
+                        sleepTime: basicInfo.sleepTime,
+                        constitution: constitution
+                    };
+                    // Use the current message text directly instead of pulling from state which might be stale
+                    const chatMessages = [...messages, { sender: 'user', text: text }];
+                    responseText = await healthService.chat(chatMessages, userProfile);
+                } catch (e) {
+                    console.error("Chat Error:", e);
+                    // Fallback handled in healthService.chat but just in case
+                    responseText = '抱歉，我刚刚走神了。您能再说一遍吗？';
+                } finally {
+                    setIsAiTyping(false);
+                }
             }
             else if (isDietIntentOnly) {
                  responseText = '好的，请告诉我您具体吃了什么？（例如：吃了一碗牛肉面，或者 200g 鸡胸肉）';
@@ -2218,7 +2273,7 @@ const ChatInterface = ({ onOpenProfile }) => {
                          return; 
                     }
 
-                    if (analysis.nutrients) {
+                    if (analysis && analysis.nutrients) {
                         const today = new Date().toISOString().split('T')[0];
                         const dailyLogs = storageService.getDailyLogs(today);
                         const currentDayNutrition = dailyLogs.nutrition || { calories: 0, nutrients: { carb: 0, protein: 0, fat: 0 } };
@@ -2229,6 +2284,25 @@ const ChatInterface = ({ onOpenProfile }) => {
                             return 0;
                         };
 
+                        // FIX: Save individual food items to diet log (was missing before)
+                        // PRD Requirement: Daily Logs must store detailed diet items
+                        const dietItems = foods.map(foodName => ({
+                            name: foodName,
+                            calories: Math.round(analysis.calories / (foods.length || 1)), // Distribute calories roughly
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        }));
+                        
+                        // We use updateDailyLog to append to array
+                        const currentDiet = dailyLogs.diet || [];
+                        storageService.saveDailyLog(today, 'diet', {
+                             name: foods.join('、'), // Store as single entry for chat log simplicity or multiple?
+                             // Let's store the full analysis object as one entry for better context
+                             items: dietItems,
+                             calories: analysis.calories,
+                             nutrients: analysis.nutrients,
+                             tags: analysis.tags
+                        });
+                        
                         const newNutrition = {
                             calories: safeParse(currentDayNutrition.calories) + safeParse(analysis.calories),
                             nutrients: {
@@ -2246,7 +2320,7 @@ const ChatInterface = ({ onOpenProfile }) => {
                         feedback += `📊 营养分布：碳水${analysis.nutrients.carb} / 蛋白${analysis.nutrients.protein} / 脂肪${analysis.nutrients.fat}\n\n`;
                         
                         if (analysis.suitability) {
-                            const iconMap = { '适宜': '🟢', '推荐': '🟢', '少吃': '🟠', '不宜': '🔴', '谨慎': '⚠️' };
+                            const iconMap = { '适宜': '🟢', '推荐': '🟢', '少吃': '🟠', '不宜': '🔴', '谨慎': '⚠️', '严禁食用': '🚫', '需补救': '🚑', '优选': '🌟' };
                             const icon = iconMap[analysis.suitability] || '💡';
                             feedback += `${icon} 体质分析：${analysis.suitability}\n`;
                             feedback += `> ${analysis.reason}\n\n`;
@@ -2259,8 +2333,9 @@ const ChatInterface = ({ onOpenProfile }) => {
                     }
 
                  } catch (e) {
-                     const nutrition = await healthService.get_nutrition('user'); 
-                     responseText = `已为您记录：${foods.join('、')}。📝\n\n今日热量摄入评估：${nutrition.summary}`;
+                     console.error("Diet Record Error:", e);
+                     // Fallback for record failure
+                     responseText = `已为您记录：${foods.join('、')}。\n由于网络原因，暂时无法进行详细分析，但记录已保存。`;
                      nextStep = 'daily';
                  } finally {
                      setIsAiTyping(false); 
@@ -2322,8 +2397,10 @@ const ChatInterface = ({ onOpenProfile }) => {
                         sleepTime: basicInfo.sleepTime,
                         constitution: constitution
                     };
-                    responseText = await healthService.chat(currentMessages, userProfile);
-                    if (currentStep === 'diet_summary') nextStep = 'daily';
+                    // FIX: Use current messages context instead of stale state
+                    const chatMessages = [...messages, { sender: 'user', text: text }];
+                    responseText = await healthService.chat(chatMessages, userProfile);
+                    nextStep = 'daily'; // Always reset to daily (close cards) after chat
                 } catch (e) {
                     console.error("Chat Error:", e);
                     responseText = '抱歉，我刚刚走神了。您能再说一遍吗？';
@@ -2334,26 +2411,7 @@ const ChatInterface = ({ onOpenProfile }) => {
         }
     } // Close main try block
     
-    // --- 8. Poop Record Flow ---
-    else if (stepToProcess === 'poop_record') {
-        if (text.includes('Type')) {
-            const typeId = parseInt(text.match(/Type (\d)/)[1]);
-            const feedbacks = {
-                1: '这属于【严重便秘】。😰\n建议：多喝水（每天至少2L），多吃蔬菜水果，必要时补充益生菌。',
-                2: '这属于【轻度便秘】。😐\n建议：增加膳食纤维摄入，如燕麦、红薯，并保持适量运动。',
-                3: '这是【基本正常】的大便。👍\n建议：继续保持良好的饮食习惯。',
-                4: '太棒了！这是【完美】的大便形态。🎉\n说明您的肠道非常健康，请继续保持！',
-                5: '这表明【纤维摄入不足】。🍪\n建议：多吃绿叶蔬菜，减少精制碳水化合物。',
-                6: '这属于【轻度腹泻】。🥣\n注意：最近是否吃了不洁食物或受凉？建议清淡饮食。',
-                7: '这属于【严重腹泻】。💧\n警惕：注意补液防止脱水，如持续请及时就医。'
-            };
-            responseText = `已记录。${feedbacks[typeId] || '收到。'}`;
-            nextStep = 'daily';
-        } else {
-            responseText = '已记录您的反馈。';
-            nextStep = 'daily';
-        }
-    }
+
 
     setMessages(prev => [...prev, {
       id: Date.now(),

@@ -1,6 +1,14 @@
 import { storageService } from './storageService.js';
 import { dietFallback } from '../data/dietFallback.js';
 import { findFood } from '../data/foodLibrary.js'; // Import local food library
+import { 
+    BASE_SCORES, 
+    SEASONAL_WEIGHTS, 
+    SCENARIO_RULES, 
+    getCurrentSeason, 
+    tagFood, 
+    parseStatus 
+} from '../data/constitutionMatrix.js';
 
 // Mock Health Data Service
 // Simulating backend APIs for vertical health capabilities
@@ -122,7 +130,9 @@ export const healthService = {
         const lastUserMsg = messages.filter(m => m.sender === 'user').pop()?.text || "";
         
         // Context-aware fallbacks
-        if (lastUserMsg.match(/(吃|喝|早饭|午饭|晚饭|饮食|餐|咋样|怎么样)/)) {
+        // FIX: Stricter matching. Only show summary if user asks for "Summary/Record/What did I eat".
+        // Removed '今天吃' to avoid matching "今天吃什么好" or "今天能吃吗"
+        if (lastUserMsg.match(/(复盘|总结|吃了啥|吃了什么|记录了什么|今日饮食复盘|今天饮食记录)/)) {
             // Try to get today's logs to give a meaningful summary
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -168,6 +178,12 @@ export const healthService = {
                 return "收到您的饮食记录。由于网络原因，AI 暂时无法进行详细营养分析，建议您稍后再试，或者直接使用“记饮食”卡片。";
             }
         }
+        
+        // FIX: Add a specific fallback for "Can I eat?" queries that fail API
+        if (lastUserMsg.match(/(能吃|可以吃|能不能吃|该不该吃|怎么吃|好不好)/)) {
+            return "抱歉，由于网络波动，我暂时无法连接到云端大脑为您详细分析这种食物。建议您稍后再试，或者直接告诉我“我要记饮食”来记录。";
+        }
+
         if (lastUserMsg.match(/(睡|醒|觉|梦)/)) {
             return "收到您的睡眠反馈。由于网络原因，建议您稍后再试，或者使用“记睡眠”功能来记录具体时间。";
         }
@@ -419,8 +435,61 @@ export const healthService = {
         // Base Calories from Library
         let baseCalories = Math.round((libraryMatch.weight * libraryMatch.calories) / 100);
         
+        // --- Special Case: Fried Chicken (Hardcoded fix for demo accuracy) ---
+        // Library "炸鸡块" is 290kcal/100g. 
+        // If input contains "炸鸡腿", user expects ~260-300kcal per leg (approx 120-150g edible).
+        // Current logic: "鸡腿" (185kcal/100g) * 1.5 (weight 150g) * 2.0 (Fried Coeff) = ~555 kcal per leg.
+        // User says 120g fried leg ~ 300-350kcal.
+        // 555 vs 350 is too high. The Cooking Coeff 2.0 is too aggressive for "Chicken Leg" which already has fat.
+        
+        // Dynamic Coefficient Adjustment based on Base Fat
+        if (libraryMatch.fat > 10 && cookingMethod === 'fried') {
+            cookingCoeff = 1.3; // Already fatty, frying adds less relative calories than frying a potato
+        }
+        
         // Apply Cooking Coefficient
         baseCalories = Math.round(baseCalories * cookingCoeff);
+        
+        // Recalculate based on USER INPUT WEIGHT if available
+        // If user said "120g", we should use that instead of library default weight.
+        if (input.match(/(\d+)g/i) || input.match(/(\d+)克/)) {
+             const userWeightMatch = input.match(/(\d+)g/i) || input.match(/(\d+)克/);
+             const userWeight = parseInt(userWeightMatch[1]);
+             // Re-calculate base calories for 1 unit of this weight
+             // Library calories is per 100g
+             baseCalories = Math.round((userWeight * libraryMatch.calories) / 100);
+             baseCalories = Math.round(baseCalories * cookingCoeff);
+             
+             // Since we used exact weight, set quantity multiplier to 1 effectively for this calculation context?
+             // No, the 'quantity' variable below handles "2个", "3碗".
+             // If input is "120g chicken", extractQuantity might return 1.2 (if it sees 120g as 1.2 units? No, my extractQuantity logic handles units).
+             
+             // Let's fix the logic flow.
+             // If specific weight is found, we shouldn't use the 'quantity' multiplier on top of it unless it's "2 servings of 120g".
+             // Current extractQuantity logic: "120g" -> returns 1.2 (because 100g = 1 unit).
+             // So: Base (per 100g) * 1.2 * Coeff.
+             
+             // Let's trace the error: "120g 炸鸡腿"
+             // Library: "鸡腿" -> 185kcal/100g.
+             // Coeff: 2.0 (Fried).
+             // Quantity: 1.2 (120g).
+             // Total = 185 * 2.0 * 1.2 = 444 kcal.
+             
+             // Why did user get 1334?
+             // Input: "吃了两个炸鸡腿、120克吧"
+             // extractQuantity might have picked up "两个" (2) AND "120" (1.2)? 
+             // My extractQuantity regex priorities might be wrong or it sums them?
+             // No, it returns the FIRST match.
+             // "两个" -> 2.
+             // "120克" -> 1.2.
+             // If it picked "2", then:
+             // Unit Weight (Chicken Leg) = 150g (from library).
+             // Base (1 unit) = 150g * 185/100 * 2.0 = 555 kcal.
+             // Total = 555 * 2 = 1110 kcal. Close to 1334.
+             
+             // ISSUE: The system took "2个" (Standard big legs) instead of "120g" (Small legs or total weight).
+             // Fix: If weight is explicitly mentioned, PRIORTIZE weight over "count".
+        }
         
         let tags = [];
         if (libraryMatch.carbs > 20) tags.push("高碳水");
@@ -442,10 +511,13 @@ export const healthService = {
      
      // 1.4 Try Regex Keywords (Fallback)
      if (!localResult) {
+        // Fallback for "Inquiry" about generic foods that are not in local library but match regex.
+        // E.g. "Ice cream" -> matches 'cold' or 'highSugar'
+        
         const keywords = {
             fruit: /(果|橙|梨|桃|瓜|莓|橘|柚|蕉|葡萄)/,
             highOil: /(炸|烤|煎|红烧|肥|奶油|酥|排|火锅|串)/,
-            highSugar: /(糖|甜|蛋糕|奶茶|巧克力|蜜|汁|冰淇淋|可乐)/,
+            highSugar: /(糖|甜|蛋糕|奶茶|巧克力|蜜|汁|冰淇淋|雪糕|可乐)/,
             veggie: /(菜|蔬|菇|海带|木耳|笋|豆芽)/,
             protein: /(鱼|虾|鸡|蛋|奶|豆|牛|肉|瘦|排骨)/,
             staple: /(面|饭|粉|粥|馒头|饼|包子|薯)/,
@@ -453,15 +525,16 @@ export const healthService = {
         };
 
         if (input.match(keywords.fruit)) localResult = { category: 'fruit', tags: ["维生素"], baseCalories: 50 };
-        else if (input.match(keywords.highOil)) localResult = { category: 'highOil', tags: ["高油"], baseCalories: 400 }; // Already handled by coeff but kept for safety
-        else if (input.match(keywords.highSugar)) localResult = { category: 'highSugar', tags: ["高糖"], baseCalories: 350 };
+        else if (input.match(keywords.highOil)) localResult = { category: 'highOil', tags: ["高油"], baseCalories: 400 }; 
+        else if (input.match(keywords.highSugar)) localResult = { category: 'highSugar', tags: ["高糖", "甜食"], baseCalories: 350 };
         else if (input.match(keywords.staple)) localResult = { category: 'staple', tags: ["碳水"], baseCalories: 250 };
         else if (input.match(keywords.protein)) localResult = { category: 'protein', tags: ["高蛋白"], baseCalories: 150 };
         else if (input.match(keywords.veggie)) localResult = { category: 'veggie', tags: ["膳食纤维"], baseCalories: 30 };
         else if (input.match(keywords.cold)) localResult = { category: 'cold', tags: ["生冷"], baseCalories: 100 };
         
-        // Apply Coeff to regex fallback too
+        // Ensure name is set for fallback
         if (localResult) {
+            localResult.name = input;
             localResult.baseCalories = Math.round(localResult.baseCalories * cookingCoeff);
             localResult.cookingMethod = cookingMethod;
         }
@@ -476,70 +549,126 @@ export const healthService = {
      if (localResult) {
          console.log("Local Diet Analysis Hit:", localResult);
          const { category, baseCalories, tags } = localResult;
-         const totalCalories = Math.round(baseCalories * quantity);
          
-         // --- Constitution Matrix Logic (PRD 2.1.2) ---
+         // Fix for Explicit Weight Conflict:
+         // If we ALREADY recalculated baseCalories based on explicit weight (e.g. "120g"),
+         // we should NOT apply the `quantity` multiplier again if it was derived from that same weight string.
+         // Current `extractQuantity` logic: "120g" -> returns 1.2.
+         // If baseCalories was set to (120 * cal/100), it represents 120g.
+         // Then `totalCalories = baseCalories * quantity` -> (120g cal) * 1.2 -> Double counting!
+         
+         let finalQuantity = quantity;
+         if (input.match(/(\d+)g/i) || input.match(/(\d+)克/)) {
+             // If weight was explicitly handled in the block above, reset quantity to 1 for this calculation
+             finalQuantity = 1; 
+         }
+         
+         const totalCalories = Math.round(baseCalories * finalQuantity);
+         
+         // --- Dynamic Constitution Matrix Logic (PRD 3.0: 2025-02-22 Update) ---
+         // Formula: Constitution (Base) + Season (Adj) + Scenario (Weight)
+         
+         const type = constitutionType;
+         const isQuery = /(能|可|该|要)不(能|可|该|要)|(吗|么|？|\?)|(怎么样|好不好)/.test(input);
+         
+         // 1. Parameter Extraction
+         const season = getCurrentSeason(); // 'sanfu', 'summer', etc.
+         const baseScoreRaw = BASE_SCORES[type] || 5; // 5-11
+         const seasonWeightRaw = SEASONAL_WEIGHTS[type]?.[season] || 0; // 0-3
+         const userStatus = parseStatus(input); // e.g., ['tired']
+         
+         const rules = SCENARIO_RULES[type] || SCENARIO_RULES['平和质'];
+         const foodTags = tagFood(input);
+         // Merge localResult tags
+         if (category) foodTags.push(category);
+         if (cookingMethod !== 'raw') foodTags.push(cookingMethod);
+         if (localResult.tags) foodTags.push(...localResult.tags);
+
+         // 2. Component Scoring (0-100 Scale)
+         
+         // A. Constitution Risk Score (Normalized 5-11 -> 45-100)
+         const constitutionScore = (baseScoreRaw / 11) * 100;
+         
+         // B. Season Risk Score (Normalized 0-3 -> 0-100)
+         const seasonScore = (seasonWeightRaw / 3) * 100;
+         
+         // C. Ingredient Risk Score
+         const tabooViolation = rules.taboo.filter(t => foodTags.includes(t));
+         const isTaboo = tabooViolation.length > 0;
+         const isSuitable = rules.suitable.some(s => foodTags.includes(s));
+         
+         let ingredientScore = 40; // Default Neutral
+         if (isTaboo) ingredientScore = 100;
+         else if (isSuitable) ingredientScore = 10;
+         // Adjust for high oil/sugar if not strictly taboo but generally unhealthy
+         else if (foodTags.includes('greasy') || foodTags.includes('highSugar')) ingredientScore = 60;
+         
+         // D. Status Risk Score
+         // If user has negative status (tired, pain, etc.), risk is high
+         let statusScore = 20; // Default Low
+         if (userStatus.length > 0) statusScore = 90;
+         
+         // E. Quantity Risk Score (For Record Mode)
+         let quantityScore = 20;
+         if (totalCalories > 800) quantityScore = 100;
+         else if (totalCalories > 500) quantityScore = 60;
+         
+         // 3. Scenario Weighted Formula
+         let finalRiskScore = 0;
+         let formulaDesc = "";
+         
+         if (isQuery) {
+             // Formula 1: Inquiry Mode
+             // Risk = Ingredient(35%) + Constitution(25%) + Season(25%) + Status(15%)
+             finalRiskScore = (ingredientScore * 0.35) + (constitutionScore * 0.25) + (seasonScore * 0.25) + (statusScore * 0.15);
+             formulaDesc = "咨询模式 (食材35%+体质25%+时令25%+状态15%)";
+         } else {
+             // Formula 2: Record Mode
+             // Risk = Status(40%) + Quantity(30%) + Constitution(20%) + Season(10%)
+             finalRiskScore = (statusScore * 0.40) + (quantityScore * 0.30) + (constitutionScore * 0.20) + (seasonScore * 0.10);
+             formulaDesc = "记录模式 (状态40%+食用量30%+体质20%+时令10%)";
+         }
+         
+         console.log(`[Matrix Calculation] ${formulaDesc}: Final Score = ${finalRiskScore.toFixed(1)}`);
+
+         // 4. Output Logic
          let suitability = "基本可以";
          let reason = "符合基础营养需求。";
          let advice = "营养尚可，注意细嚼慢咽。";
          
-         const type = constitutionType;
-         const isQuery = /(能|可|该|要)不(能|可|该|要)|(吗|么|？|\?)/.test(input);
-
-         // 1. Yang Deficiency (阳虚)
-         if (type.includes('阳虚')) {
-             if (category === 'cold' || category === 'fruit' || input.includes('冰')) {
-                 suitability = '不宜'; reason = '生冷寒凉损耗阳气。'; advice = '建议喝杯姜枣茶补救，下次改为热食。';
-             } else if (category === 'veggie' && cookingMethod === 'raw') { // Salad
-                 suitability = '少吃'; reason = '生吃蔬菜偏寒。'; advice = '建议烫熟再吃。';
-             } else if (cookingMethod === 'fried' || category === 'highOil') {
-                 suitability = '少吃'; reason = '阳虚者脾胃运化无力，油炸难消化。'; advice = '建议改为炖煮，更易吸收营养。';
+         if (isQuery) {
+             if (finalRiskScore >= 80) {
+                 suitability = "严禁食用";
+                 reason = `【高危预警】综合风险分 ${finalRiskScore.toFixed(0)} (极高)。${type}体质在此季节/状态下极度敏感。`;
+                 advice = rules.inquiry_advice;
+                 if (isTaboo) reason += ` 触犯核心禁忌：${tabooViolation.join('/')}。`;
+             } else if (finalRiskScore >= 60) {
+                 suitability = "不宜食用";
+                 reason = `风险分 ${finalRiskScore.toFixed(0)} (偏高)。${seasonWeightRaw > 0 ? '当前时令加重了身体负担。' : '体质匹配度较低。'}`;
+                 advice = "建议少吃或不吃，寻找温和的替代品。";
+             } else if (finalRiskScore <= 30) {
+                 suitability = "推荐";
+                 reason = `风险分 ${finalRiskScore.toFixed(0)} (极低)。非常适合您当前的${type}体质。`;
+                 advice = "放心享用，有益健康。";
+             } else {
+                 suitability = "适宜";
+                 reason = "风险可控，适量食用无妨。";
+                 advice = "可以吃，但不要过量哦。";
              }
-         }
-         // 2. Damp-Heat (湿热)
-         else if (type.includes('湿热')) {
-             if (cookingMethod === 'fried' || cookingMethod === 'braised' || category === 'highOil') {
-                 suitability = '不宜'; reason = '助湿生热，加重困倦与面垢。'; advice = '建议喝点金银花茶清热，下一餐务必清淡。';
-             } else if (input.match(/(芒果|榴莲|荔枝)/)) {
-                 suitability = '慎食'; reason = '热带水果助火。'; advice = '建议改吃苹果或梨。';
-             }
-         }
-         // 3. Phlegm-Dampness (痰湿)
-         else if (type.includes('痰湿')) {
-             if (category === 'highSugar' || category === 'highOil' || input.includes('奶茶')) {
-                 suitability = '少吃'; reason = '肥甘厚味是生痰之源。'; advice = '建议饭后快走30分钟帮助代谢。';
-             }
-         }
-         // 4. Qi Deficiency (气虚)
-         else if (type.includes('气虚')) {
-             if (input.match(/(萝卜|山楂)/)) {
-                 suitability = '少吃'; reason = '萝卜破气，山楂耗气。'; advice = '气虚者不宜多食，以免加重乏力。';
-             } else if (category === 'cold') {
-                 suitability = '少吃'; reason = '寒凉伤脾胃之气。'; advice = '建议多吃甘温补气的食物（如鸡肉、山药）。';
-             }
-         }
-         // 5. Yin Deficiency (阴虚)
-         else if (type.includes('阴虚')) {
-             if (input.match(/(辣|烤|炸|羊肉|姜|蒜)/) || cookingMethod === 'fried') {
-                 suitability = '不宜'; reason = '辛辣燥热伤阴助火。'; advice = '建议多吃梨、银耳润燥，多喝水。';
-             }
-         }
-         // 6. Blood Stasis (血瘀)
-         else if (type.includes('血瘀')) {
-             if (category === 'cold' || input.includes('冰')) {
-                 suitability = '不宜'; reason = '寒凝血瘀，加重气血不畅。'; advice = '建议温水泡脚，促进循环。';
-             }
-         }
-         // 7. Qi Stagnation (气郁)
-         else if (type.includes('气郁')) {
-             if (input.match(/(咖啡|浓茶|酒)/)) {
-                 suitability = '慎食'; reason = '刺激性食物可能加重焦虑。'; advice = '建议喝玫瑰花茶疏肝解郁。';
-             }
-         }
-         // 8. Special (特禀)
-         else if (type.includes('特禀')) {
-             if (input.match(/(虾|蟹|鹅|笋|酒)/)) {
-                 suitability = '慎食'; reason = '发物易诱发过敏。'; advice = '请密切观察皮肤反应。';
+         } else {
+             // Record Mode
+             if (finalRiskScore >= 80) {
+                 suitability = "需补救";
+                 reason = `【高风险】综合分 ${finalRiskScore.toFixed(0)}。${userStatus.length > 0 ? '身体状态不佳时' : '大量'}摄入此类食物负担过重。`;
+                 advice = `【补救方案】${rules.remedy}`;
+             } else if (finalRiskScore >= 60) {
+                 suitability = "少吃";
+                 reason = `风险分 ${finalRiskScore.toFixed(0)}。热量或性质稍有偏差。`;
+                 advice = "下顿建议吃得清淡些（如小米粥、烫青菜）。";
+             } else if (finalRiskScore <= 30) {
+                 suitability = "优选";
+                 reason = "这一餐吃得很对！";
+                 advice = "坚持这样的饮食习惯，体质会越来越好。";
              }
          }
 
@@ -553,7 +682,7 @@ export const healthService = {
              suitability,
              reason,
              advice,
-             tags
+             tags: [...new Set([...tags, ...foodTags])] // Deduplicate
          };
      }
 
@@ -573,17 +702,29 @@ export const healthService = {
      3. 火锅(蔬菜类)：热量系数 x 1.5 (吸油)
      4. 爆炒/油煎：热量系数 x 1.3
      
-     【体质判断矩阵】
+     【核心逻辑：体质矩阵】
      用户体质：${constitutionType}
-     - 阳虚质：忌生冷/寒凉/冰饮 -> 警告：伤阳气
-     - 湿热质：忌辛辣/酒/油炸/热带水果 -> 警告：助湿生热
-     - 痰湿质：忌肥甘厚味/甜食/奶茶 -> 警告：生痰之源
-     - 气虚质：忌耗气(萝卜/山楂)/生冷 -> 提示：破气
-     - 阴虚质：忌辛辣/烧烤/羊肉 -> 警告：伤阴助火
-     - 血瘀质：忌寒凉/冷饮 -> 警告：寒凝血瘀
-     - 气郁质：忌刺激(浓茶/咖啡) -> 提示：加重焦虑
-     - 特禀质：忌发物(海鲜/笋) -> 提示：易过敏
-
+     
+     请参考以下【九体质参数表】进行严格判断：
+     - 特禀质：(底分11) 忌发物(海鲜/笋/鹅)/添加剂。换季期高危。
+     - 阳虚质：(底分10) 忌生冷/冰饮/油炸/肥腻。三伏/三九天高危。
+     - 气虚质：(底分10) 忌耗气(萝卜/山楂)/生冷。春秋换季高危。
+     - 阴虚质：(底分9) 忌辛辣/烧烤/羊肉/桂圆。秋季高危。
+     - 湿热质：(底分8) 忌酒/甜食/油炸/热带水果。三伏/梅雨高危。
+     - 痰湿质：(底分8) 忌肥甘厚味/甜食/糯米。梅雨季高危。
+     - 血瘀质：(底分7) 忌寒凉/酸味/柿子/高脂。三九天高危。
+     - 气郁质：(底分7) 忌浓茶/咖啡/豆类/红薯。春季高危。
+     - 平和质：(底分5) 忌极端生冷/暴饮暴食。
+     
+     【输出要求】
+     1. 综合评估风险分（0-100）。
+     2. 如果是询问（如"能吃吗"）：
+        - 风险>=80：suitability="严禁食用"，reason="高危预警..."
+        - 风险>=60：suitability="不宜食用"
+        - 风险<=30：suitability="推荐"
+     3. 如果是记录（如"吃了"）：
+        - 风险>=80：advice="【补救方案】..." (参考参数表中的补救方案)
+     
      请返回JSON: { calories, nutrients: {carb, protein, fat}, suitability, reason, advice, tags }`;
 
      try {
@@ -600,16 +741,76 @@ export const healthService = {
             })
         });
         const data = await response.json();
+        
+        if (data.error) throw new Error(data.error.message);
+        
         const jsonStr = data.choices[0].message.content.replace(/```json|```/g, '').trim();
         return JSON.parse(jsonStr);
      } catch (e) {
         console.error("LLM Analysis Failed:", e);
+        
+        // --- Step 3: Local Fallback (Only if LLM Failed) ---
+        // If local regex found something (but maybe quantity wasn't perfect), reuse it.
+        if (localResult) {
+            
+            // Re-apply constitution logic LOCALLY because LLM failed
+            const type = constitutionType;
+            const season = getCurrentSeason();
+            const rules = SCENARIO_RULES[type] || SCENARIO_RULES['平和质'];
+            const baseScore = BASE_SCORES[type] || 5;
+            const seasonWeight = SEASONAL_WEIGHTS[type]?.[season] || 0;
+            const totalScore = baseScore + seasonWeight;
+            
+            const foodTags = localResult.tags || [];
+            // Merge method tags
+            if (cookingMethod !== 'raw') foodTags.push(cookingMethod);
+            if (localResult.category) foodTags.push(localResult.category);
+            
+            const tabooViolation = rules.taboo.filter(t => foodTags.includes(t));
+            const isTaboo = tabooViolation.length > 0;
+            
+            let suitability = "基本可以";
+            let reason = "网络不佳，仅提供基础分析。";
+            let advice = "建议您根据自身感受适量食用。";
+            
+            if (isTaboo) {
+                 if (totalScore >= 13) {
+                     suitability = "严禁食用";
+                     reason = `【高危预警】${type}体质在${season}极度敏感。`;
+                     advice = rules.inquiry_advice;
+                 } else if (totalScore >= 10) {
+                     suitability = "不宜食用";
+                     reason = `${type}体质不宜食用此类食物。`;
+                     advice = rules.inquiry_advice;
+                 } else {
+                     suitability = "少吃";
+                     reason = "建议控制摄入量。";
+                 }
+            } else if (rules.suitable.some(s => foodTags.includes(s))) {
+                 suitability = "推荐";
+                 reason = "符合您的体质需求。";
+            }
+
+            return {
+                 calories: totalCalories, // Use locally calculated values
+                 nutrients: { 
+                     carb: Math.round(totalCalories * 0.5 / 4), 
+                     protein: Math.round(totalCalories * 0.2 / 4), 
+                     fat: Math.round(totalCalories * 0.3 / 9) 
+                 },
+                 suitability: suitability, 
+                 reason: reason,
+                 advice: advice,
+                 tags: [...new Set([...tags, ...foodTags])]
+            };
+        }
+        
         return {
-            calories: 200,
-            nutrients: { carb: 25, protein: 10, fat: 8 },
+            calories: 0,
+            nutrients: { carb: 0, protein: 0, fat: 0 },
             suitability: "未知",
-            reason: "无法识别该食物。",
-            advice: "建议记录更常见的食物名称。",
+            reason: "无法识别该食物且网络连接失败。",
+            advice: "请检查网络或输入更常见的食物名称。",
             tags: ["未知"]
         };
      }
@@ -1215,6 +1416,17 @@ export const healthService = {
             });
         }
         
+        // Sleep (Cross-check HEALTH_RECORDS if not in daily logs)
+        // PRD 3.2 says sleep is in dailyLogs, but we save to HEALTH_RECORDS
+        // Let's check HEALTH_RECORDS for matching date
+        const allSleep = storageService.getHealthRecords().sleep || [];
+        const sleepForDay = allSleep.find(s => s.timestamp.startsWith(dateStr));
+        
+        if (sleepForDay) {
+            sleepDays++;
+            sleepTotal += (parseFloat(sleepForDay.duration) || 0);
+        }
+        
         // Exercise
         if (logs.exercise && logs.exercise.length > 0) {
             logs.exercise.forEach(ex => exerciseMins += (ex.duration || 0));
@@ -1229,6 +1441,7 @@ export const healthService = {
     }
 
     const avgCalories = daysRecorded > 0 ? Math.round(totalCalories / daysRecorded) : 0;
+    const avgSleep = sleepDays > 0 ? (sleepTotal / sleepDays).toFixed(1) : 0;
     
     // 3. Generate Summary with LLM
     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
@@ -1240,6 +1453,7 @@ export const healthService = {
     【本周数据】
     - 饮食记录天数：${daysRecorded}天
     - 平均日摄入热量：${avgCalories} kcal
+    - 睡眠记录天数：${sleepDays}天 (平均时长 ${avgSleep}小时)
     - 运动总时长：${exerciseMins} 分钟
     - 排便异常次数：${poopIssues} 次
     
@@ -1286,7 +1500,8 @@ export const healthService = {
             stats: {
                 avgCalories,
                 exerciseMins,
-                poopIssues
+                poopIssues,
+                avgSleep: parseFloat(avgSleep)
             }
         };
 
@@ -1297,8 +1512,65 @@ export const healthService = {
             summary: `本周您记录了 <b>${daysRecorded}</b> 天饮食，平均热量 <b>${avgCalories}</b> kcal。继续保持记录习惯，有助于更好地了解身体！`,
             keyword: "坚持",
             tags: [],
-            stats: { avgCalories, exerciseMins, poopIssues }
+            stats: { avgCalories, exerciseMins, poopIssues, avgSleep: parseFloat(avgSleep) }
         };
+    }
+  },
+
+  /**
+   * 14. AI 意图识别 (Intent Classification)
+   * 解决关键词匹配精度差的问题
+   */
+  classifyIntent: async (text) => {
+    // 1. Fast Path: Regex for Obvious Commands (Zero Latency)
+    if (/^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(text.trim()) || text.trim() === '我要记饮食') return { intent: 'diet_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(睡眠|睡觉)?$/.test(text.trim()) || text.trim() === '我要记睡眠') return { intent: 'sleep_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(排便|大便|拉屎)?$/.test(text.trim()) || text.trim() === '我要记排便') return { intent: 'poop_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(经期|月经|大姨妈)?$/.test(text.trim()) || text.trim() === '我要记经期') return { intent: 'period_record', confidence: 1.0 };
+    
+    // 2. LLM Path (High Precision)
+    const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
+    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
+    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+
+    const systemPrompt = `你是一个意图分类器。请分析用户输入的文本，返回 JSON 格式的意图分类。
+    
+    【分类标签】
+    - diet_record: 记录饮食 (如: "吃了两个苹果", "早饭一碗粥", "喝了杯奶茶")
+    - diet_inquiry: 饮食咨询 (如: "阳虚能吃西瓜吗", "这个热量多少", "吃什么好")
+    - diet_summary: 饮食复盘 (如: "今天吃了什么", "总结一下饮食", "复盘")
+    - sleep_record: 记录睡眠 (如: "昨晚11点睡的", "刚醒", "睡了8小时")
+    - poop_record: 记录排便 (如: "拉肚子了", "便秘", "羊屎蛋")
+    - period_record: 记录经期 (如: "大姨妈来了", "痛经", "例假结束")
+    - status_record: 记录身体状态 (如: "头痛", "很累", "开心", "胃胀")
+    - exercise_record: 记录运动 (如: "跑了5公里", "站桩20分钟")
+    - chat: 闲聊/其他 (如: "你好", "天气不错", "谢谢", "在吗")
+
+    【输出要求】
+    1. 返回纯 JSON: { "intent": "...", "confidence": 0.0-1.0 }
+    2. 不要 Markdown。
+    3. 只有当用户明确表达“吃了/喝了/睡了”等发生过的动作时，才算 record。如果是“想吃/能吃吗”，算 inquiry。
+    `;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+            body: JSON.stringify({
+                model: ENDPOINT_ID,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text }
+                ],
+                stream: false
+            })
+        });
+        const data = await response.json();
+        const jsonStr = data.choices[0].message.content.replace(/```json|```/g, '').trim();
+        return JSON.parse(jsonStr);
+    } catch (e) {
+        console.error("Intent Classification Failed:", e);
+        return { intent: 'chat', confidence: 0 }; // Fallback
     }
   }
 };

@@ -203,6 +203,8 @@ export function FlowerIcon({ hallKey, type, size = 24, className }) {
   if (type === 'Rosemary') return <Rosemary size={size} className={className} />;
   if (type === 'Lily') return <LilyOfTheValley size={size} className={className} />;
   if (type === 'Lotus' || type === 'WaterLily') return <WaterLily size={size} className={className} />;
+  if (type === 'Iris') return <IrisFlower size={size} className={className} />;
+  if (type === 'custom') return <BabysBreath size={size} className={className} />;
   
   // Hall Key 映射
   if (hallKey === "emotion") return <LilyOfTheValley size={size} className={className} />;

@@ -26,12 +26,11 @@ This file will be the "Brain" of the logic, containing the exact rules provided 
 - **Output**: Current phase (e.g., 'sanfu') + Coefficient (0-3).
 
 ### 2.2 Food Property Engine (`tagFood`)
-- Enhance `analyze_diet` to tag input foods with properties:
-  - **Cold**: Watermelon, Ice, Sashimi, Crab.
-  - **Hot/Yang**: Lamb, Ginger, Durian, Fried, Spicy.
-  - **Damp/Greasy**: Fried, Cream, Sweets, Pork Belly.
-  - **Gas-Producing**: Beans, Sweet Potato.
-- **Logic**: Use Regex + Local Library to assign tags.
+- **Challenge**: The matrix relies on knowing if a food is "Cold", "Fa Wu", "Greasy", etc.
+- **Solution**: Hybrid Approach.
+  1.  **Local Regex**: Fast path for common items (e.g., Watermelon -> Cold, Seafood -> Fa Wu).
+  2.  **LLM Fallback**: If local check fails, ask LLM: "Is this food Cold/Hot/Damp/Fa Wu?"
+  3.  **Tags**: Return a set of tags `['cold', 'sweet']` to match against the `taboo` list.
 
 ### 2.3 Status Engine (`parseStatus`)
 - Extract user status from input (e.g., "tired", "period", "headache") to adjust the final score.

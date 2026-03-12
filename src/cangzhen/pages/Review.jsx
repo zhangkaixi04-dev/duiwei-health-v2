@@ -3,7 +3,43 @@ import { FlowerIcon } from '../components/FlowerIcons';
 import { cangzhenService } from '../../services/cangzhenService';
 import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap, Award, Calendar } from 'lucide-react';
 
-const Review = () => {
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Review Page Error:", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 bg-red-50 text-red-900 h-screen overflow-auto">
+          <h2 className="text-2xl font-bold mb-4">Review Page Error</h2>
+          <div className="bg-white p-4 rounded shadow border border-red-200 font-mono text-sm whitespace-pre-wrap">
+            {this.state.error && this.state.error.toString()}
+            <br />
+            <br />
+            {this.state.errorInfo && this.state.errorInfo.componentStack}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const ReviewContent = () => {
+  // Rename localMemories to rawMemories to avoid any scope shadowing issues
+  const [rawMemories, setRawMemories] = useState([]);
+  
   const [activeTab, setActiveTab] = useState('weekly'); // weekly, monthly, yearly
   const [mounted, setMounted] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false); // New State for Glass Box Animation
@@ -11,7 +47,7 @@ const Review = () => {
   const [expandedMonth, setExpandedMonth] = useState(null); // Expanded Month View
   const [selectedBadge, setSelectedBadge] = useState(null); // Badge Detail Modal
 
-  // --- 1. Defensive Data Processing (P8 Level Robustness) ---
+  // --- 1. Defensive Data Processing (Robustness) ---
   
   // Safe Date Parsing Utility
   const safeParseDate = (input) => {
@@ -44,8 +80,8 @@ const Review = () => {
 
   // Sanitized Memories: Filter out invalid entries once
   const sanitizedMemories = useMemo(() => {
-      if (!Array.isArray(localMemories)) return [];
-      return localMemories.filter(m => {
+      if (!Array.isArray(rawMemories)) return [];
+      return rawMemories.filter(m => {
           if (!m) return false;
           // Ensure at least some content or image or date exists
           // And ensure we can parse a valid date
@@ -53,11 +89,12 @@ const Review = () => {
           if (!validDate) return false;
           
           // Attach the parsed date object to the memory for easier access downstream
-          // Note: We avoid mutating original object, return a shallow copy with _parsedDate
-          m._parsedDate = validDate; 
           return true;
-      });
-  }, [localMemories]);
+      }).map(m => ({
+          ...m,
+          _parsedDate: safeParseDate(m.id) || safeParseDate(m.date)
+      }));
+  }, [rawMemories]);
 
   // Badges Data (Dynamic based on real DAYS count)
   const badges = useMemo(() => {
@@ -73,8 +110,8 @@ const Review = () => {
       
       // Define Milestones & Metadata (New Data)
       const definitions = [
-          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '伯利恒之星', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。恭喜你开启第一段真实记录，愿每一次落笔，都被时光温柔珍藏。', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
-          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '雪割草', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。谢谢你坚持记录，每一次认真生活的瞬间，都值得被看见。', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
+          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'StarOfBethlehem', plantNameCN: '伯利恒之星', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。恭喜你开启第一段真实记录，愿每一次落笔，都被时光温柔珍藏。', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
+          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Snowdrop', plantNameCN: '雪割草', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。谢谢你坚持记录，每一次认真生活的瞬间，都值得被看见。', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
           { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '绿绒蒿', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。坚持一周的你超棒，生活的微光，正被你一一拾起。', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
           { id: 4, threshold: 10, name: '光亮·前行', icon: 'flower', plant: 'Iris', plantNameCN: '鸢尾', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始，愿你在文字里，始终遇见内心的光亮。', color: 'bg-[#9D84B7]', mainColor: '#9D84B7' },
           { id: 5, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '蓍草', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。21 次坚持，习惯已成自然，恭喜你，与更笃定的自己相遇。', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
@@ -141,13 +178,13 @@ const Review = () => {
         try {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed)) {
-                setLocalMemories(parsed);
+                setRawMemories(parsed);
             } else {
-                setLocalMemories([]);
+                setRawMemories([]);
             }
         } catch (e) {
             console.error("Failed to parse memories", e);
-            setLocalMemories([]);
+            setRawMemories([]);
         }
     }
 
@@ -158,16 +195,17 @@ const Review = () => {
     if (cachedSummary) {
         try {
             const parsed = JSON.parse(cachedSummary);
-            // Ensure tags is an array
             const safeTags = Array.isArray(parsed.tags) ? parsed.tags : [];
             setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: safeTags });
         } catch(e) {
             setWeeklySummary({ loading: false, content: null, keyword: null, tags: [] });
         }
+    } else {
+        setWeeklySummary({ loading: false, content: null, keyword: null, tags: [] });
     }
   }, [weekOffset]); // Re-run when switching weeks
 
-  // Separate Effect for AI Generation to ensure localMemories is ready
+  // Separate Effect for AI Generation to ensure rawMemories is ready
   useEffect(() => {
       if (sanitizedMemories.length === 0) return;
 
@@ -194,7 +232,6 @@ const Review = () => {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
           cangzhenService.report_weekly('user', weekOffset).then(res => {
-               // Defensive result handling
                const safeTags = Array.isArray(res.tags) ? res.tags : [];
                const result = { summary: res.summary, keyword: res.keyword, tags: safeTags };
                
@@ -210,7 +247,7 @@ const Review = () => {
                setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。", tags: [] });
            });
       }
-  }, [weekOffset, sanitizedMemories]); // Depend on sanitizedMemories
+  }, [weekOffset, sanitizedMemories]); 
 
 
   // Handle Box Open
@@ -247,16 +284,7 @@ const Review = () => {
       
       const totalMemories = weekMemories.length;
 
-      // Monthly Logic for "Review Status" (New requirement: Last day + >10 records)
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      
-      // Determine if this week falls in a "Reviewable Month" context
-      // Actually, "Review Status" applies to the MONTH tab mostly, but here we update the title logic
-      // Title: "X月珍藏" instead of "X月回顾"
-      const titleMonth = startOfWeek.getMonth() + 1;
-      
-      // ... (Trend calculation unchanged)
+      // Calculate Daily Trend (Mon-Sun)
       const trend = Array(7).fill(0);
       weekMemories.forEach(m => {
           const mDate = m._parsedDate;
@@ -371,8 +399,6 @@ const Review = () => {
           const count = monthMemories.length;
           
           // Logic: Open ONLY if it's the last day of THAT month (or month has passed) AND count > 10
-          // 1. Month has passed completely: Always open if count > 10? Or stick to rule?
-          // Requirement: "每月的最后1天且当月记录数超过10条开启"
           
           const isCurrentMonth = month === currentMonth;
           const isPastMonth = month < currentMonth;
@@ -384,11 +410,8 @@ const Review = () => {
           let isOpen = false;
           
           if (isPastMonth) {
-              // Past months: Assume already opened if they met criteria? Or strictly enforce rule?
-              // Let's assume past months are open if they had enough records.
               isOpen = count > 10;
           } else if (isCurrentMonth) {
-              // Current month: Must be last day AND count > 10
               isOpen = isLastDay && count > 10;
           }
           
@@ -1205,4 +1228,10 @@ const Review = () => {
   );
 };
 
-export default Review;
+export default function ReviewWrapper() {
+  return (
+    <ErrorBoundary>
+      <ReviewContent />
+    </ErrorBoundary>
+  );
+};

@@ -1,14 +1,21 @@
-# Debug Session: Review Page White Screen
-
-## Problem Description
-User reports "White screen" after recent edits to `Review.jsx` (Monthly Review refactor and syntax fix).
+# Debug Session: Review Page Error
 
 ## Hypotheses
-1. **Runtime Error in `monthlyData`**: The mock data generation might still be malformed (e.g., `tags` or `trend` missing or invalid), causing a crash during rendering.
-2. **Duplicate Code Residue**: The previous `SearchReplace` might have left some invalid syntax or duplicate object keys that Vite didn't catch but causes runtime failure.
-3. **Weekly Data Dependency**: `weeklyData` might be in a state (Locked) that causes `monthlyData` generation to fail if it depends on it (though I tried to fix this).
+1. [x] **Import Error**: Incorrect imports in `Review.jsx` causing runtime crash. (Checked imports, seem fine, but error persists)
+2. [x] **Data Parsing Error**: `localMemories` format causing `safeParseDate` or `useMemo` calculation failure. (Added defensive checks, verified logic)
+3. [ ] **Infinite Render Loop**: `useEffect` dependencies causing infinite re-renders. (Dependencies look safe)
+4. [ ] **Missing Dependency**: A component like `FlowerIcon` is missing a required prop or sub-component. (Checked FlowerIcon implementation)
+5. [ ] **Environment/Build Issue**: Logs not sending implies component not mounting or network blocked.
 
-## Plan
-1. **Instrument**: Add a global `ErrorBoundary` to `Review.jsx` to catch the crash and display the error message on screen.
-2. **Analyze**: Ask user to report the error message displayed.
-3. **Fix**: Resolve the specific runtime error.
+## Actions
+- Instrumented code with `logToDebugServer`. (Failed to collect logs)
+- Analyzed code for syntax/logic errors. (Found potential minor issues, verified imports)
+- **Fix Applied**: Removed debug code, enhanced ErrorBoundary to display full stack trace on screen.
+
+## Status
+[OPEN] -> Waiting for user to report error details from new ErrorBoundary.
+
+## Timeline
+- **2025-03-12**: Session started.
+- **2025-03-12**: Instrumentation added (failed).
+- **2025-03-12**: Instrumentation removed, ErrorBoundary improved.
