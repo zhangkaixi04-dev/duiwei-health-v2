@@ -9,9 +9,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const authService = {
   // Sign Up
   signUp: async (email, password) => {
+    // Check if user already exists first? No, Supabase handles it.
+    // However, for better UX in dev/test, we might want to disable email confirmation requirement in Supabase dashboard
+    // or handle the 'User already registered' error gracefully.
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      // By default, Supabase requires email confirmation.
+      // If you haven't set up SMTP, this will fail or not send email.
+      // For development, you can disable "Confirm email" in Supabase Auth Settings.
     });
     return { data, error };
   },
