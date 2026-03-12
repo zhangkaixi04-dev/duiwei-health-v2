@@ -438,6 +438,11 @@ const Review = () => {
     ]
   };
 
+  const getShapePos = (shape, index) => {
+     const layout = shapeLayouts[shape] || shapeLayouts.heart;
+     return layout[index] || { left: '50%', top: '50%' };
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#F9F7F2] font-serif overflow-hidden">
       
@@ -693,7 +698,7 @@ const Review = () => {
                                           </svg>
                                      </div>
                                      {weeklyData.tags.map((tag, i) => {
-                                         const pos = shapeLayouts[weeklyData.shape][i] || { left: '50%', top: '50%' };
+                                         const pos = getShapePos(weeklyData.shape, i);
                                          const fontSize = tag.weight >= 4 ? 'text-lg font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
                                          const zIndex = tag.weight;
                                          return (
@@ -859,7 +864,7 @@ const Review = () => {
                                       </svg>
                                  </div>
                                  {expandedMonth.tags.map((tag, i) => {
-                                     const pos = shapeLayouts['heart'][i] || { left: '50%', top: '50%' };
+                                     const pos = getShapePos('heart', i);
                                      const fontSize = tag.weight >= 4 ? 'text-xl font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
                                      return (
                                          <span 
