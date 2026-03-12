@@ -408,7 +408,49 @@ export const storageService = {
     // Clean up legacy keys? Maybe later.
   },
   
-  // Clear all app data
+  /**
+   * Add a new Cangzhen memory with Cloud Sync
+   */
+  addCangzhenMemory: async (memory) => {
+    const memories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
+    const newMemory = {
+        ...memory,
+        sync_status: 'pending'
+    };
+    const updated = [newMemory, ...memories];
+    
+    // 1. Save locally first (Immediate UI feedback)
+    setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, updated);
+
+    // 2. Sync to Cloud if logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+        try {
+            const { error } = await supabase
+                .from('cangzhen_memories')
+                .upsert({
+                    user_id: session.user.id,
+                    memory_id: newMemory.id,
+                    content: newMemory.content,
+                    hall: newMemory.hall,
+                    image_url: newMemory.image,
+                    tags: newMemory.tags,
+                    created_at: new Date(newMemory.id).toISOString()
+                });
+            
+            if (!error) {
+                // Mark as synced locally
+                newMemory.sync_status = 'synced';
+                setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, updated);
+            }
+        } catch (e) {
+            console.error("Cloud sync failed, will retry later", e);
+        }
+    }
+    return updated;
+  },
+
+  // Clear all app data (Careful!)
   clearAll: () => {
     Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
     // Also clear legacy keys if we want to be thorough

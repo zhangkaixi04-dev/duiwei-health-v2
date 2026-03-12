@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, Mic, X, Check, Share2, Award } from 'lucide-react';
 import { FlowerIcon } from '../components/FlowerIcons';
 
+import { storageService } from '../../services/storageService';
+
 const Record = () => {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
@@ -44,13 +46,13 @@ const Record = () => {
       setImage(null);
   };
 
-  const handleSeal = () => {
+  const handleSeal = async () => {
     if (!content.trim() && !image) return; // Allow image-only or text-only
     if (!selectedHall) return;
 
     setIsSealing(true);
 
-    // Save to LocalStorage
+    // Save using storageService (Cloud Sync enabled)
     const newEntry = {
         id: Date.now(),
         date: new Date().toLocaleDateString(),
@@ -60,12 +62,8 @@ const Record = () => {
         tags: [] 
     };
 
-    // ... (RESET logic unchanged)
-
-    const existingEntries = JSON.parse(localStorage.getItem('cangzhen_memories') || '[]');
-    const updatedEntries = [newEntry, ...existingEntries];
-    localStorage.setItem('cangzhen_memories', JSON.stringify(updatedEntries));
-
+    const updatedEntries = await storageService.addCangzhenMemory(newEntry);
+    
     const count = updatedEntries.length;
 
     // Delay badge reveal: Always show success screen first, then reveal badge if applicable
