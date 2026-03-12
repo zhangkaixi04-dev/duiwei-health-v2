@@ -191,76 +191,93 @@ const Review = () => {
       const dateRangeStr = `${format(startOfWeek)} - ${format(endOfWeek)}`;
 
       // Calculate Real Stats from localMemories
-      const weekMemories = localMemories.filter(m => {
-          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-          return mDate >= startOfWeek && mDate <= endOfWeek;
-      });
-      
-      const totalMemories = weekMemories.length;
-
-      // Calculate Daily Trend (Mon-Sun)
-      const trend = Array(7).fill(0);
-      weekMemories.forEach(m => {
-          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-          // getDay: 0=Sun, 1=Mon... we want 0=Mon, 6=Sun
-          let dayIndex = mDate.getDay() - 1;
-          if (dayIndex === -1) dayIndex = 6;
-          trend[dayIndex]++;
-      });
-
-      // Status: Locked if offset is 0 (Current Week) AND not opened yet
-      // BUT we handle the visual "Lock" via isPaletteOpen state in render.
-      // Here we just provide data.
-      
-      // If it's current week, we might still be "accumulating" (布展中)
-      // The user requirement says: "Triangle animation only appears if Mon 0:00+ and user hasn't opened."
-      // So if it IS opened, we show the content.
-      
-      const hallCounts = [
-          { id: 'sensation', name: '感知', count: weekMemories.filter(m=>m.hall==='sensation').length, icon: 'flower' },
-          { id: 'emotion', name: '情绪', count: weekMemories.filter(m=>m.hall==='emotion').length, icon: 'heart' },
-          { id: 'inspiration', name: '创意', count: weekMemories.filter(m=>m.hall==='inspiration').length, icon: 'zap' },
-          { id: 'wanxiang', name: '决策', count: weekMemories.filter(m=>m.hall==='wanxiang').length, icon: 'compass' },
-      ];
-
-      // Return Data Object
-      const isEven = Math.abs(weekOffset) % 2 === 0;
-      return {
-          status: weekOffset === 0 ? 'locked' : 'unlocked', // logic for "locked" vs "unlocked" mainly affects the "Mystery Box" UI wrapper
-          dateRange: dateRangeStr,
-          keyword: isEven ? 'Courage' : 'Healing',
-          keywordCN: weeklySummary.keyword || (isEven ? '勇气' : '治愈'),
-          keywordMeaning: isEven ? 'Facing the unknown with a smile.' : 'The art of stitching the soul with time.',
-          bgGradient: isEven ? 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]' : 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]',
-          bgImage: isEven 
-            ? 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop' 
-            : 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop',
-          moodShadow: isEven ? 'shadow-orange-100' : 'shadow-green-100',
-          count: totalMemories,
-          aiSummary: weeklySummary.loading ? (
-             <div className="animate-pulse space-y-2">
-                 <div className="h-4 bg-black/5 rounded w-3/4"></div>
-                 <div className="h-4 bg-black/5 rounded w-full"></div>
-                 <div className="h-4 bg-black/5 rounded w-5/6"></div>
-             </div>
-          ) : (weeklySummary.content ? (
-             <div dangerouslySetInnerHTML={{ __html: weeklySummary.content }} />
-          ) : (
-            <>
-                <strong>{startOfWeek.getMonth() + 1}月·周复盘</strong><br/><br/>
-                {weekOffset === 0 
-                    ? "本周还在进行中，记录还在生长..." 
-                    : "暂无足够数据生成详细报告，请多记录一些日常吧。"}
-            </>
-          )),
-          trend: trend, // REAL DATA
-          tags: [], // Cleared Mock Data
-          shape: isEven ? 'heart' : 'drop',
-          progress: trend, // Use same real trend for progress dots
-          daysLeft: 7 - (new Date().getDay() || 7),
-          hallCounts: hallCounts
-      };
-  }, [weekOffset, localMemories]);
+          const weekMemories = localMemories.filter(m => {
+              const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+              // Handle potential invalid date
+              if (isNaN(mDate.getTime())) return false;
+              return mDate >= startOfWeek && mDate <= endOfWeek;
+          });
+          
+          const totalMemories = weekMemories.length;
+    
+          // Calculate Daily Trend (Mon-Sun)
+          const trend = Array(7).fill(0);
+          weekMemories.forEach(m => {
+              const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+              if (isNaN(mDate.getTime())) return;
+              
+              // getDay: 0=Sun, 1=Mon... we want 0=Mon, 6=Sun
+              let dayIndex = mDate.getDay() - 1;
+              if (dayIndex === -1) dayIndex = 6;
+              trend[dayIndex]++;
+          });
+    
+          // Calculate Top Keyword based on Hall Usage (Simple Heuristic for fallback)
+          const hallCountsMap = {
+             sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0
+          };
+          weekMemories.forEach(m => {
+              if (m.hall && hallCountsMap[m.hall] !== undefined) hallCountsMap[m.hall]++;
+          });
+          
+          // Generate Tags based on Hall distribution if API tags are missing
+          let fallbackTags = [];
+          if (hallCountsMap.sensation > 0) fallbackTags.push({ text: '感知', weight: Math.min(5, hallCountsMap.sensation) });
+          if (hallCountsMap.emotion > 0) fallbackTags.push({ text: '情绪', weight: Math.min(5, hallCountsMap.emotion) });
+          if (hallCountsMap.inspiration > 0) fallbackTags.push({ text: '灵感', weight: Math.min(5, hallCountsMap.inspiration) });
+          if (hallCountsMap.wanxiang > 0) fallbackTags.push({ text: '决策', weight: Math.min(5, hallCountsMap.wanxiang) });
+          
+          // Add some generic tags if empty
+          if (totalMemories > 0 && fallbackTags.length < 3) {
+             fallbackTags.push({ text: '记录', weight: 3 });
+             fallbackTags.push({ text: '生活', weight: 2 });
+          }
+    
+          const hallCounts = [
+              { id: 'sensation', name: '感知', count: hallCountsMap.sensation, icon: 'flower' },
+              { id: 'emotion', name: '情绪', count: hallCountsMap.emotion, icon: 'heart' },
+              { id: 'inspiration', name: '创意', count: hallCountsMap.inspiration, icon: 'zap' },
+              { id: 'wanxiang', name: '决策', count: hallCountsMap.wanxiang, icon: 'compass' },
+          ];
+    
+          // Return Data Object
+          const isEven = Math.abs(weekOffset) % 2 === 0;
+          return {
+              status: weekOffset === 0 ? 'locked' : 'unlocked', // logic for "locked" vs "unlocked" mainly affects the "Mystery Box" UI wrapper
+              dateRange: dateRangeStr,
+              keyword: isEven ? 'Courage' : 'Healing',
+              keywordCN: weeklySummary.keyword || (totalMemories > 0 ? (isEven ? '勇气' : '治愈') : '空白'),
+              keywordMeaning: isEven ? 'Facing the unknown with a smile.' : 'The art of stitching the soul with time.',
+              bgGradient: isEven ? 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]' : 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]',
+              bgImage: isEven 
+                ? 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop' 
+                : 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop',
+              moodShadow: isEven ? 'shadow-orange-100' : 'shadow-green-100',
+              count: totalMemories,
+              aiSummary: weeklySummary.loading ? (
+                 <div className="animate-pulse space-y-2">
+                     <div className="h-4 bg-black/5 rounded w-3/4"></div>
+                     <div className="h-4 bg-black/5 rounded w-full"></div>
+                     <div className="h-4 bg-black/5 rounded w-5/6"></div>
+                 </div>
+              ) : (weeklySummary.content ? (
+                 <div dangerouslySetInnerHTML={{ __html: weeklySummary.content }} />
+              ) : (
+                <>
+                    <strong>{startOfWeek.getMonth() + 1}月·周复盘</strong><br/><br/>
+                    {weekOffset === 0 
+                        ? "本周还在进行中，记录还在生长..." 
+                        : "暂无足够数据生成详细报告，请多记录一些日常吧。"}
+                </>
+              )),
+              trend: trend, // REAL DATA
+              tags: weeklySummary.tags && weeklySummary.tags.length > 0 ? weeklySummary.tags : fallbackTags, // Use AI tags or Fallback
+              shape: isEven ? 'heart' : 'drop',
+              progress: trend, // Use same real trend for progress dots
+              daysLeft: 7 - (new Date().getDay() || 7),
+              hallCounts: hallCounts
+          };
+      }, [weekOffset, localMemories, weeklySummary]); // Depend on weeklySummary too to update tags/keywords
 
   // Real Data for Monthly Review
   const currentMonth = new Date().getMonth() + 1; // 1-12

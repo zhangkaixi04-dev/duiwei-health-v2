@@ -1147,7 +1147,9 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
     1. 语气亲切、专业。
     2. 针对数据给出1-2条具体改进建议。
     3. 如果数据很少（如0天），鼓励用户多记录。
-    4. 返回HTML格式（无Markdown），使用 <b> 加粗关键指标。`;
+    4. 返回HTML格式（无Markdown），使用 <b> 加粗关键指标。
+    5. 同时返回一个"关键词"（2-4字，如"自律"、"治愈"）和一组"词云标签"（3-5个词，如"高蛋白"、"坚持运动"）。
+    6. 最终输出JSON格式：{ "summary": "...", "keyword": "...", "tags": [{ "text": "...", "weight": 5 }, ...] }`;
 
     try {
         const response = await fetch(API_URL, {
@@ -1161,11 +1163,26 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         });
 
         const data = await response.json();
-        const aiText = data.choices[0].message.content;
+        const content = data.choices[0].message.content;
+        // Parse JSON from LLM
+        let result = {};
+        try {
+             result = JSON.parse(content.replace(/```json|```/g, '').trim());
+        } catch (parseError) {
+             console.error("Failed to parse LLM JSON:", parseError);
+             // Fallback if LLM returns text instead of JSON
+             result = {
+                 summary: content,
+                 keyword: "健康",
+                 tags: []
+             };
+        }
 
         return {
             success: true,
-            summary: aiText,
+            summary: result.summary,
+            keyword: result.keyword, // Return keyword
+            tags: result.tags, // Return tags
             stats: {
                 avgCalories,
                 exerciseMins,
@@ -1178,6 +1195,8 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         return {
             success: false,
             summary: `本周您记录了 <b>${daysRecorded}</b> 天饮食，平均热量 <b>${avgCalories}</b> kcal。继续保持记录习惯，有助于更好地了解身体！`,
+            keyword: "坚持",
+            tags: [],
             stats: { avgCalories, exerciseMins, poopIssues }
         };
     }
