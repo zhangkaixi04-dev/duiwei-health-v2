@@ -1017,62 +1017,28 @@ const ReviewContent = () => {
                          </button>
                      </div>
                      
-                     <div className={`grid grid-cols-4 gap-4 transition-all duration-500 overflow-hidden ${isBadgeWallExpanded ? 'max-h-[1000px]' : 'max-h-[160px]'} justify-items-center relative z-10`}>
+                     <div className={`grid grid-cols-4 gap-4 transition-all duration-500 overflow-hidden ${isBadgeWallExpanded ? 'max-h-[1000px]' : 'max-h-[160px]'} justify-items-center relative z-10 px-2`}>
                          {badges.map(badge => (
                              <div 
                                 key={badge.id}
                                 onClick={() => badge.unlocked && setSelectedBadge(badge)}
                                 className="flex flex-col items-center gap-2 group relative cursor-pointer"
                              >
-                                 {/* Glass Sphere Container (Frosted & Convex) */}
+                                 {/* Glass Sphere Container (Lighter & More Transparent) */}
                                  <div className={`
-                                     relative w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden transition-all duration-500
+                                     relative w-14 h-14 rounded-full flex items-center justify-center overflow-hidden transition-all duration-500
                                      ${badge.unlocked 
-                                         ? 'shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),inset_0_-4px_8px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.15)] bg-gradient-to-b from-white/40 to-white/10 backdrop-blur-md border border-white/40 hover:scale-110 hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)]' 
+                                         ? 'shadow-sm bg-white/20 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-md hover:bg-white/30' 
                                          : 'opacity-40 bg-white/5 border border-white/10 shadow-inner grayscale'}
                                  `}>
-                                     {/* 1. Deep Glow (Core) - Smaller & Concentrated */}
-                                    {badge.unlocked && (
-                                        <div 
-                                            className="absolute inset-0 opacity-80"
-                                            style={{ background: `radial-gradient(circle at center, ${badge.mainColor}cc 0%, ${badge.mainColor}33 50%, transparent 80%)` }}
-                                        />
-                                    )}
-
-                                    {/* 1.5 Ambient Glow (Fill the sphere slightly with flower color) */}
-                                    {badge.unlocked && (
-                                        <div 
-                                            className="absolute inset-0 opacity-40 mix-blend-overlay"
-                                            style={{ background: `radial-gradient(circle at 50% 120%, ${badge.mainColor}, transparent 70%)` }}
-                                        />
-                                    )}
-
-                                    {/* 1.8 Warm Yellow Inner Glow (Subtle highlight) */}
-                                    {badge.unlocked && (
-                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,253,208,0.5),transparent_60%)] mix-blend-screen" />
-                                    )}
-                                     
-                                     {/* 3. Strong Specular Highlight (Top Left) - Realistic Dot */}
+                                     {/* Light Reflection (Top Left) */}
                                      {badge.unlocked && (
-                                         <div className="absolute top-[18%] left-[20%] w-[12%] h-[8%] bg-white rounded-full opacity-90 blur-[1px] transform -rotate-45 box-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
+                                         <div className="absolute top-[15%] left-[15%] w-[30%] h-[30%] bg-gradient-to-br from-white/40 to-transparent rounded-full opacity-60 blur-[2px]" />
                                      )}
                                      
-                                     {/* 3.1 Secondary Soft Highlight (Top Left - Larger but faint) */}
-                                     {badge.unlocked && (
-                                         <div className="absolute top-[15%] left-[15%] w-[30%] h-[20%] bg-gradient-to-br from-white/60 to-transparent rounded-full opacity-70 blur-[4px] transform -rotate-45" />
-                                     )}
-                                     
-                                     {/* 4. Secondary Reflection (Bottom Right) - Subtle */}
-                                     {badge.unlocked && (
-                                         <div className="absolute bottom-3 right-3 w-8 h-4 bg-gradient-to-tl from-white/50 to-transparent rounded-full opacity-60 blur-[3px] transform -rotate-45" />
-                                     )}
-
-                                     {/* 5. Rim Light - Enhances 3D effect */}
-                                     <div className="absolute inset-0 rounded-full border border-white/30 shadow-[inset_0_0_12px_rgba(255,255,255,0.2)] pointer-events-none" />
-
                                      {/* Plant Icon */}
-                                     <div className={`relative z-10 transform transition-transform duration-500 group-hover:scale-110 drop-shadow-md ${!badge.unlocked && 'opacity-30 blur-[1px]'}`}>
-                                         <FlowerIcon type={badge.plant} size={36} />
+                                     <div className={`relative z-10 transform transition-transform duration-500 group-hover:scale-110 drop-shadow-sm ${!badge.unlocked && 'opacity-30 blur-[1px]'}`}>
+                                         <FlowerIcon type={badge.plant} size={28} />
                                      </div>
                                  </div>
 
