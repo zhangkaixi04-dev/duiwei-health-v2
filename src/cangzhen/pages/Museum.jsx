@@ -15,38 +15,43 @@ const Museum = () => {
           try {
               const parsed = JSON.parse(stored);
               // Normalize data structure
-              const normalized = parsed.map(item => {
-                  const timestamp = typeof item.id === 'number' ? item.id : Date.now();
-                  // Create a Date object for easier parsing
-                  const dateObj = new Date(timestamp);
-                  // Format for comparison (YYYY-MM-DD)
-                  const isoDate = dateObj.toISOString().split('T')[0];
-                  // Display format (e.g., "3月8日")
-                  // If item.date is already a string like "3月8日", keep it for display but try to map to ISO
-                  // For real data from Record.jsx, item.id is Date.now(), so we can rely on timestamp
-                  
-                  return {
-                      ...item,
-                      timestamp: timestamp,
-                      isoDate: isoDate, // For filtering
-                      displayDate: item.date.includes('月') ? item.date : dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
-                      tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录',
-                      image: item.image || null
-                  };
-              });
-              // Sort by timestamp descending (newest first)
-              normalized.sort((a, b) => b.timestamp - a.timestamp);
-              setLocalMemories(normalized);
+              if (Array.isArray(parsed)) {
+                  const normalized = parsed.map(item => {
+                      const timestamp = typeof item.id === 'number' ? item.id : Date.now();
+                      // Create a Date object for easier parsing
+                      const dateObj = new Date(timestamp);
+                      // Format for comparison (YYYY-MM-DD)
+                      const isoDate = dateObj.toISOString().split('T')[0];
+                      // Display format (e.g., "3月8日")
+                      // If item.date is already a string like "3月8日", keep it for display but try to map to ISO
+                      // For real data from Record.jsx, item.id is Date.now(), so we can rely on timestamp
+                      
+                      return {
+                          ...item,
+                          timestamp: timestamp,
+                          isoDate: isoDate, // For filtering
+                          displayDate: item.date.includes('月') ? item.date : dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
+                          tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录',
+                          image: item.image || null
+                      };
+                  });
+                  // Sort by timestamp descending (newest first)
+                  normalized.sort((a, b) => b.timestamp - a.timestamp);
+                  setLocalMemories(normalized);
+              } else {
+                  setLocalMemories([]);
+              }
           } catch (e) {
               console.error("Failed to parse memories", e);
+              setLocalMemories([]);
           }
       }
   }, []);
 
-  // Halls Configuration
+  // Halls Configuration (Ordered: Sensation, Emotion, Creative, Decision)
   const halls = [
-    { id: 'emotion', name: '情绪馆', desc: '真诚连接，真挚表达' },
     { id: 'sensation', name: '感知馆', desc: '专注当下，亲身体验' },
+    { id: 'emotion', name: '情绪馆', desc: '真诚连接，真挚表达' },
     { id: 'inspiration', name: '创意馆', desc: '一念灵动，万般可能' },
     { id: 'wanxiang', name: '决策馆', desc: '主动选择，勇敢决策' }
   ];

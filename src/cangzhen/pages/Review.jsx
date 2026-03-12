@@ -82,9 +82,14 @@ const Review = () => {
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
-            setLocalMemories(parsed);
+            if (Array.isArray(parsed)) {
+                setLocalMemories(parsed);
+            } else {
+                setLocalMemories([]);
+            }
         } catch (e) {
             console.error("Failed to parse memories", e);
+            setLocalMemories([]);
         }
     }
 
@@ -294,7 +299,20 @@ const Review = () => {
           const daysInMonth = new Date(new Date().getFullYear(), month, 0).getDate();
           const trend = Array(daysInMonth).fill(0);
           monthMemories.forEach(m => {
-              const d = (typeof m.id === 'number' ? new Date(m.id) : new Date(m.date)).getDate();
+              // Ensure we parse dates correctly, fallback to Date.now() if invalid to prevent NaN crash
+              let d = 0;
+              try {
+                  const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+                  // Check if valid date
+                  if (!isNaN(mDate.getTime())) {
+                      d = mDate.getDate();
+                  } else {
+                      // Attempt to parse "X月X日" format manually if needed, or skip
+                      const match = m.date && typeof m.date === 'string' ? m.date.match(/(\d+)月(\d+)日/) : null;
+                      if (match) d = parseInt(match[2]);
+                  }
+              } catch (e) {}
+
               if (d >= 1 && d <= daysInMonth) trend[d-1]++;
           });
 
