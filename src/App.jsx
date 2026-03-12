@@ -97,7 +97,7 @@ const AuthStatus = () => {
         let { error } = await authService.signIn(email, password);
         
         if (error) {
-            // If user not found, try to sign up
+            // Check for both "Invalid login credentials" AND "Email not confirmed"
             if (error.message.includes('Invalid login credentials')) {
                  const confirmSignUp = confirm("账号不存在，是否创建新账号？");
                  if (confirmSignUp) {
@@ -105,11 +105,17 @@ const AuthStatus = () => {
                      if (signUpError) {
                          alert("注册失败: " + signUpError.message);
                      } else {
-                         alert("注册成功！请检查邮箱进行验证，或者直接登录（视Supabase设置而定）。");
-                         // Auto sign in after sign up if email confirmation is off
-                         await authService.signIn(email, password);
+                         // Attempt auto-login immediately after signup
+                         const { error: signInError } = await authService.signIn(email, password);
+                         if (signInError) {
+                             alert("注册成功，但自动登录失败: " + signInError.message);
+                         } else {
+                             // Success! No alert needed, UI will update
+                         }
                      }
                  }
+            } else if (error.message.includes('Email not confirmed')) {
+                alert("请先验证您的邮箱（或者联系管理员关闭验证功能）。");
             } else {
                 alert("登录失败: " + error.message);
             }
