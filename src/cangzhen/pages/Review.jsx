@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
+import { healthService } from '../../services/healthService';
 import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap, Award, Calendar } from 'lucide-react';
 
 const Review = () => {
@@ -141,7 +142,7 @@ const Review = () => {
       if (hasMemories && !cachedSummary && !weeklySummary.loading && !weeklySummary.content) {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
-          import('../../services/healthService').then(({ healthService }) => {
+          try {
                healthService.report_weekly('user', weekOffset).then(res => {
                    if (res.success) {
                        const result = { summary: res.summary, keyword: res.keyword };
@@ -150,8 +151,14 @@ const Review = () => {
                    } else {
                        setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword });
                    }
+               }).catch(e => {
+                   console.error("Weekly Report Error:", e);
+                   setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。" });
                });
-          });
+          } catch (e) {
+               console.error("Weekly Report Sync Error:", e);
+               setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。" });
+          }
       }
   }, [weekOffset, localMemories]); // Depend on memories too
 
