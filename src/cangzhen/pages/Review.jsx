@@ -274,7 +274,7 @@ const Review = () => {
                 </>
               )),
               trend: trend, // REAL DATA
-              tags: weeklySummary.tags && weeklySummary.tags.length > 0 ? weeklySummary.tags : fallbackTags, // Use AI tags or Fallback
+              tags: (weeklySummary.tags && weeklySummary.tags.length > 0) ? weeklySummary.tags : fallbackTags, // Use AI tags or Fallback
               shape: isEven ? 'heart' : 'drop',
               progress: trend, // Use same real trend for progress dots
               daysLeft: 7 - (new Date().getDay() || 7),
