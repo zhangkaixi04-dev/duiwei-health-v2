@@ -9,7 +9,7 @@ const Review = () => {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false); // New State for Glass Box Animation
   const [isBadgeWallExpanded, setIsBadgeWallExpanded] = useState(false); // Badge Wall State
   const [expandedMonth, setExpandedMonth] = useState(null); // Expanded Month View
-  const [localMemories, setLocalMemories] = useState([]);
+  const [selectedBadge, setSelectedBadge] = useState(null); // Badge Detail Modal
 
   // --- 1. Defensive Data Processing (P8 Level Robustness) ---
   
@@ -59,24 +59,36 @@ const Review = () => {
       });
   }, [localMemories]);
 
-  // Badges Data (Dynamic based on real count)
+  // Badges Data (Dynamic based on real DAYS count)
   const badges = useMemo(() => {
-      const totalCount = sanitizedMemories.length;
+      // 1. Calculate Unique Days Count
+      const uniqueDays = new Set();
+      sanitizedMemories.forEach(m => {
+          if (m._parsedDate) {
+              const dateStr = m._parsedDate.toISOString().split('T')[0];
+              uniqueDays.add(dateStr);
+          }
+      });
+      const totalDays = uniqueDays.size;
       
-      // Define Milestones & Metadata
+      // Define Milestones & Metadata (New Data)
       const definitions = [
-          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '雪滴花', meaning: '希望', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
-          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '迷迭香', meaning: '回忆', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
-          { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '铃兰', meaning: '幸福归来', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
-          { id: 4, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '睡莲', meaning: '悟性', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
-          { id: 5, threshold: 50, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '满天星', meaning: '思念', color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
-          { id: 6, threshold: 100, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '橡树', meaning: '永恒', color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
+          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'Snowdrop', plantNameCN: '伯利恒之星', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。恭喜你开启第一段真实记录，愿每一次落笔，都被时光温柔珍藏。', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
+          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Rosemary', plantNameCN: '雪割草', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。谢谢你坚持记录，每一次认真生活的瞬间，都值得被看见。', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
+          { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '绿绒蒿', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。坚持一周的你超棒，生活的微光，正被你一一拾起。', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
+          { id: 4, threshold: 10, name: '光亮·前行', icon: 'flower', plant: 'Iris', plantNameCN: '鸢尾', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始，愿你在文字里，始终遇见内心的光亮。', color: 'bg-[#9D84B7]', mainColor: '#9D84B7' },
+          { id: 5, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '蓍草', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。21 次坚持，习惯已成自然，恭喜你，与更笃定的自己相遇。', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
+          { id: 6, threshold: 30, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '夕雾草', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录生活，每一段日常都因你变得柔软珍贵。', color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
+          { id: 7, threshold: 88, name: '顺遂·如意', icon: 'wind', plant: 'custom', plantNameCN: '风铃草', meaning: '顺遂', desc: '花似风铃，清脆美好。八十八次坚持，愿日子如铃音轻快，平安喜乐，万事顺遂。', color: 'bg-[#89CFF0]', mainColor: '#89CFF0' },
+          { id: 8, threshold: 108, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '文殊兰', meaning: '静心', desc: '禅意清雅的圣洁之花。沉淀百次，你已学会与内心相处，愿你在记录中，始终从容自在。', color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
+          { id: 9, threshold: 188, name: '盛放·热烈', icon: 'sun', plant: 'custom', plantNameCN: '鹤望兰', meaning: '盛放', desc: '花姿如鹤，舒展大气。一路坚持的你，早已自成风景，愿生活热烈绽放，自在如风。', color: 'bg-[#FFD700]', mainColor: '#FFD700' },
+          { id: 10, threshold: 365, name: '圆满·永恒', icon: 'star', plant: 'custom', plantNameCN: '十二卷', meaning: '圆满', desc: '四季常青，岁岁安然。一整年的坚守，是时光最好的礼物，恭喜你收获圆满，热爱永不落幕。', color: 'bg-[#2E8B57]', mainColor: '#2E8B57' },
       ];
 
       return definitions.map(def => ({
           ...def,
-          count: totalCount, // Current total
-          unlocked: totalCount >= def.threshold,
+          count: totalDays, // Using DAYS count now
+          unlocked: totalDays >= def.threshold,
           date: null 
       }));
   }, [sanitizedMemories]);
@@ -235,7 +247,16 @@ const Review = () => {
       
       const totalMemories = weekMemories.length;
 
-      // Calculate Daily Trend (Mon-Sun)
+      // Monthly Logic for "Review Status" (New requirement: Last day + >10 records)
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      // Determine if this week falls in a "Reviewable Month" context
+      // Actually, "Review Status" applies to the MONTH tab mostly, but here we update the title logic
+      // Title: "X月珍藏" instead of "X月回顾"
+      const titleMonth = startOfWeek.getMonth() + 1;
+      
+      // ... (Trend calculation unchanged)
       const trend = Array(7).fill(0);
       weekMemories.forEach(m => {
           const mDate = m._parsedDate;
@@ -335,6 +356,7 @@ const Review = () => {
 
   // Real Data for Monthly Review
   const currentMonth = new Date().getMonth() + 1; // 1-12
+  const today = new Date();
   
   const monthlyData = useMemo(() => {
       return Array.from({ length: 12 }, (_, i) => {
@@ -344,10 +366,33 @@ const Review = () => {
           // Calculate Real Count
           const monthMemories = sanitizedMemories.filter(m => {
              const mDate = m._parsedDate;
-             return mDate.getMonth() + 1 === month && mDate.getFullYear() === new Date().getFullYear();
+             return mDate.getMonth() + 1 === month && mDate.getFullYear() === today.getFullYear();
           });
           const count = monthMemories.length;
-          const hasContent = isActive && count > 0;
+          
+          // Logic: Open ONLY if it's the last day of THAT month (or month has passed) AND count > 10
+          // 1. Month has passed completely: Always open if count > 10? Or stick to rule?
+          // Requirement: "每月的最后1天且当月记录数超过10条开启"
+          
+          const isCurrentMonth = month === currentMonth;
+          const isPastMonth = month < currentMonth;
+          
+          // Check if today is the last day of the current month
+          const lastDayOfCurrentMonth = new Date(today.getFullYear(), month, 0).getDate();
+          const isLastDay = today.getDate() === lastDayOfCurrentMonth;
+          
+          let isOpen = false;
+          
+          if (isPastMonth) {
+              // Past months: Assume already opened if they met criteria? Or strictly enforce rule?
+              // Let's assume past months are open if they had enough records.
+              isOpen = count > 10;
+          } else if (isCurrentMonth) {
+              // Current month: Must be last day AND count > 10
+              isOpen = isLastDay && count > 10;
+          }
+          
+          const hasContent = isActive && isOpen;
           
           let keyword = '';
           if (month === 1) keyword = '萌芽';
@@ -374,7 +419,7 @@ const Review = () => {
           const gradient = gradients[i % gradients.length];
 
           // Calculate Trend
-          const daysInMonth = new Date(new Date().getFullYear(), month, 0).getDate();
+          const daysInMonth = new Date(today.getFullYear(), month, 0).getDate();
           const trend = Array(daysInMonth).fill(0);
           monthMemories.forEach(m => {
               const mDate = m._parsedDate;
@@ -385,19 +430,22 @@ const Review = () => {
           return {
               month,
               isActive,
-              hasContent,
+              hasContent, // Controls clickable state
               keyword,
               gradient,
               color: hasContent ? `bg-gradient-to-br from-[#FF9A9E]/20 to-[#FECFEF]/20` : 'bg-white/5',
               count: count,
               aiSummary: (
                 <>
-                    <strong>{month}月·状态复盘</strong><br/><br/>
-                    {count > 0 ? "暂无详细分析报告，请继续保持记录习惯。" : "本月暂无记录。"}
+                    {/* Updated Copy: No "状态复盘", simpler message */}
+                    {hasContent 
+                        ? (count > 0 ? "暂无详细分析报告，请继续保持记录习惯。" : "本月暂无记录。")
+                        : "月度特展布置中，请尽情增加收藏"
+                    }
                 </>
               ),
               trend: trend,
-              tags: [] // Monthly tags could be aggregated if needed
+              tags: [] 
           };
       });
   }, [sanitizedMemories, currentMonth]);
@@ -864,13 +912,13 @@ const Review = () => {
                              <button onClick={() => setExpandedMonth(null)} className="p-2 rounded-full bg-white/50 hover:bg-white transition-all shadow-sm">
                                  <ChevronLeft size={20} className="text-cangzhen-text-main" />
                              </button>
-                             <h2 className="text-lg font-serif font-bold text-cangzhen-text-main">{expandedMonth.month}月回顾</h2>
+                             <h2 className="text-lg font-serif font-bold text-cangzhen-text-main">{expandedMonth.month}月珍藏</h2>
                              <div className="w-10" /> {/* Spacer */}
                          </div>
 
                          {/* AI Summary */}
                          <div className="mb-6">
-                             <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest mb-3 px-2">月度总结</h3>
+                             {/* <h3 className="text-xs font-bold text-cangzhen-text-secondary uppercase tracking-widest mb-3 px-2">月度总结</h3> REMOVED TITLE */}
                              <div className="glass rounded-2xl p-6 relative">
                                  <Quote className="absolute top-4 left-4 text-cangzhen-text-main/10 w-6 h-6 fill-current transform -scale-x-100" />
                                  <p className="text-sm text-cangzhen-text-main/80 leading-loose font-serif text-justify indent-0 relative z-10">
@@ -950,80 +998,80 @@ const Review = () => {
                          {badges.map(badge => (
                              <div 
                                 key={badge.id}
-                                className="flex flex-col items-center gap-2 group relative"
+                                onClick={() => badge.unlocked && setSelectedBadge(badge)}
+                                className="flex flex-col items-center gap-2 group relative cursor-pointer"
                              >
                                  {/* Glass Sphere Container (Frosted & Convex) */}
                                  <div className={`
-                                     relative w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105
+                                     relative w-[72px] h-[72px] rounded-full flex items-center justify-center overflow-hidden transition-all duration-500
                                      ${badge.unlocked 
-                                         ? 'shadow-[inset_0_2px_6px_rgba(255,255,255,0.4),inset_0_-3px_6px_rgba(255,255,255,0.5),0_8px_20px_rgba(0,0,0,0.05)] bg-gradient-to-b from-white/20 to-white/5 backdrop-blur-sm border border-white/20' 
-                                         : 'opacity-40 bg-white/5 border border-white/10 shadow-inner'}
+                                         ? 'shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),inset_0_-4px_8px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.15)] bg-gradient-to-b from-white/40 to-white/10 backdrop-blur-md border border-white/40 hover:scale-110 hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)]' 
+                                         : 'opacity-40 bg-white/5 border border-white/10 shadow-inner grayscale'}
                                  `}>
                                      {/* 1. Deep Glow (Core) - Smaller & Concentrated */}
                                     {badge.unlocked && (
                                         <div 
-                                            className="absolute inset-0 opacity-60"
-                                            style={{ background: `radial-gradient(circle at center, ${badge.mainColor}cc 0%, ${badge.mainColor}33 40%, transparent 70%)` }}
+                                            className="absolute inset-0 opacity-80"
+                                            style={{ background: `radial-gradient(circle at center, ${badge.mainColor}cc 0%, ${badge.mainColor}33 50%, transparent 80%)` }}
                                         />
                                     )}
 
                                     {/* 1.5 Ambient Glow (Fill the sphere slightly with flower color) */}
                                     {badge.unlocked && (
                                         <div 
-                                            className="absolute inset-0 opacity-30 mix-blend-overlay"
+                                            className="absolute inset-0 opacity-40 mix-blend-overlay"
                                             style={{ background: `radial-gradient(circle at 50% 120%, ${badge.mainColor}, transparent 70%)` }}
                                         />
                                     )}
 
                                     {/* 1.8 Warm Yellow Inner Glow (Subtle highlight) */}
                                     {badge.unlocked && (
-                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,253,208,0.4),transparent_60%)] mix-blend-screen" />
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,253,208,0.5),transparent_60%)] mix-blend-screen" />
                                     )}
-                                     
-                                     {/* 2. Frosted Texture Noise Overlay (Optional - Simulated with grain if needed, but simple blur is cleaner) */}
                                      
                                      {/* 3. Strong Specular Highlight (Top Left) - Realistic Dot */}
                                      {badge.unlocked && (
-                                         <div className="absolute top-[18%] left-[20%] w-[12%] h-[8%] bg-white rounded-full opacity-90 blur-[1px] transform -rotate-45 box-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
+                                         <div className="absolute top-[18%] left-[20%] w-[12%] h-[8%] bg-white rounded-full opacity-90 blur-[1px] transform -rotate-45 box-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
                                      )}
                                      
                                      {/* 3.1 Secondary Soft Highlight (Top Left - Larger but faint) */}
                                      {badge.unlocked && (
-                                         <div className="absolute top-[15%] left-[15%] w-[25%] h-[15%] bg-gradient-to-br from-white/40 to-transparent rounded-full opacity-60 blur-[3px] transform -rotate-45" />
+                                         <div className="absolute top-[15%] left-[15%] w-[30%] h-[20%] bg-gradient-to-br from-white/60 to-transparent rounded-full opacity-70 blur-[4px] transform -rotate-45" />
                                      )}
                                      
                                      {/* 4. Secondary Reflection (Bottom Right) - Subtle */}
                                      {badge.unlocked && (
-                                         <div className="absolute bottom-3 right-3 w-6 h-3 bg-gradient-to-tl from-white/40 to-transparent rounded-full opacity-50 blur-[2px] transform -rotate-45" />
+                                         <div className="absolute bottom-3 right-3 w-8 h-4 bg-gradient-to-tl from-white/50 to-transparent rounded-full opacity-60 blur-[3px] transform -rotate-45" />
                                      )}
 
                                      {/* 5. Rim Light - Enhances 3D effect */}
-                                     <div className="absolute inset-0 rounded-full border border-white/20 shadow-[inset_0_0_8px_rgba(255,255,255,0.1)] pointer-events-none" />
+                                     <div className="absolute inset-0 rounded-full border border-white/30 shadow-[inset_0_0_12px_rgba(255,255,255,0.2)] pointer-events-none" />
 
                                      {/* Plant Icon */}
-                                     <div className={`relative z-10 transform transition-transform duration-500 group-hover:scale-110 drop-shadow-sm ${!badge.unlocked && 'opacity-50 grayscale blur-[0.5px]'}`}>
+                                     <div className={`relative z-10 transform transition-transform duration-500 group-hover:scale-110 drop-shadow-md ${!badge.unlocked && 'opacity-30 blur-[1px]'}`}>
                                          <FlowerIcon type={badge.plant} size={36} />
                                      </div>
                                  </div>
 
                                  {/* Label Info (Outside Sphere) */}
-                                 <div className="text-center">
+                                 <div className="text-center transition-all duration-300">
                                      {badge.unlocked ? (
                                          <>
-                                            <h4 className="text-[10px] font-serif font-bold text-cangzhen-text-main tracking-widest mb-0.5">
+                                            <h4 className="text-[10px] font-serif font-bold text-cangzhen-text-main tracking-widest mb-0.5 group-hover:text-black transition-colors">
                                                 {badge.plantNameCN}
                                             </h4>
-                                            <span className="text-[8px] text-cangzhen-text-secondary/60 block tracking-wide">
+                                            <span className="text-[8px] text-cangzhen-text-secondary/80 block tracking-wide">
                                                 {badge.meaning}
                                             </span>
                                          </>
                                      ) : (
                                          <>
-                                            <h4 className="text-[10px] font-serif font-bold text-cangzhen-text-secondary tracking-widest mb-0.5 opacity-50">
-                                                {badge.name.split('·')[1]}
+                                            {/* Locked State: Only show meaning (2 chars) */}
+                                            <h4 className="text-[10px] font-serif font-bold text-transparent tracking-widest mb-0.5 select-none" aria-hidden="true">
+                                                ???
                                             </h4>
-                                            <span className="text-[8px] text-cangzhen-text-secondary/40 block tracking-wide uppercase">
-                                                LOCKED
+                                            <span className="text-[8px] text-cangzhen-text-secondary/40 block tracking-wide font-medium">
+                                                {badge.meaning}
                                             </span>
                                          </>
                                      )}
@@ -1036,6 +1084,56 @@ const Review = () => {
                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#F9F7F2] to-transparent pointer-events-none" />
                      )}
                  </div>
+
+                 {/* Badge Detail Modal */}
+                 {selectedBadge && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedBadge(null)}>
+                        <div 
+                            className="w-full max-w-xs bg-[#F9F7F2] rounded-[2rem] shadow-2xl overflow-hidden animate-scale-in relative border border-white/60 p-8 flex flex-col items-center text-center"
+                            onClick={e => e.stopPropagation()}
+                        >
+                             {/* Close Button */}
+                             <button 
+                                onClick={() => setSelectedBadge(null)}
+                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-cangzhen-text-secondary transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+
+                            {/* Large Icon */}
+                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white to-[#F0F0F0] shadow-[inset_0_2px_10px_rgba(0,0,0,0.05),0_10px_30px_rgba(0,0,0,0.1)] flex items-center justify-center mb-6 relative overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-transparent opacity-50" />
+                                <div className="relative z-10 transform scale-150">
+                                    <FlowerIcon type={selectedBadge.plant} size={48} />
+                                </div>
+                            </div>
+
+                            {/* Title */}
+                            <h2 className="text-xl font-serif font-bold text-cangzhen-text-main mb-1 tracking-widest">
+                                {selectedBadge.plantNameCN}
+                            </h2>
+                            <span className="text-xs text-cangzhen-text-secondary/60 uppercase tracking-[0.2em] mb-6 block">
+                                {selectedBadge.meaning}
+                            </span>
+
+                            {/* Description */}
+                            <div className="relative">
+                                <Quote className="absolute -top-3 -left-2 text-cangzhen-text-main/10 w-6 h-6 fill-current transform -scale-x-100" />
+                                <p className="text-sm text-cangzhen-text-main/80 leading-relaxed font-serif px-2">
+                                    {selectedBadge.desc}
+                                </p>
+                                <Quote className="absolute -bottom-3 -right-2 text-cangzhen-text-main/10 w-6 h-6 fill-current" />
+                            </div>
+
+                            {/* Footer */}
+                            <div className="mt-8 pt-4 border-t border-black/5 w-full">
+                                <span className="text-[10px] text-cangzhen-text-secondary/40 uppercase tracking-widest">
+                                    Cangzhen Collection
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                 )}
 
                  {/* 2. Yearly Grid (365 Days) */}
                  <div className="px-6 flex-1 flex flex-col items-center">

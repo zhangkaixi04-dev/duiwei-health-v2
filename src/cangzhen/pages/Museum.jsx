@@ -7,6 +7,7 @@ const Museum = () => {
   const [localMemories, setLocalMemories] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(''); // YYYY-MM-DD format
+  const [selectedMemory, setSelectedMemory] = useState(null); // Detail Modal State
 
   // Load memories from localStorage on mount
   useEffect(() => {
@@ -101,8 +102,10 @@ const Museum = () => {
 
   // Memory Card Component
   const MemoryCard = ({ item }) => (
-    <div className={`group relative w-full aspect-square rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-xl mb-3 glass-convex border border-white/40`}>
-       
+    <div 
+        onClick={() => setSelectedMemory(item)}
+        className={`group relative w-full aspect-square rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-xl mb-3 glass-convex border border-white/40`}
+    >
        {/* Background: Image or Gradient */}
        <div className="absolute inset-0">
            {item.image ? (
@@ -259,6 +262,83 @@ const Museum = () => {
               </div>
           )}
       </div>
+
+      {/* Detail Modal */}
+      {selectedMemory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedMemory(null)}>
+            <div 
+                className="w-full max-w-md bg-[#F9F7F2] rounded-3xl shadow-2xl overflow-hidden animate-scale-in relative border border-white/50"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Close Button */}
+                <button 
+                    onClick={() => setSelectedMemory(null)}
+                    className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-cangzhen-text-secondary hover:bg-white/40 transition-colors"
+                >
+                    <X size={16} />
+                </button>
+
+                {/* Header Image (if exists) */}
+                {selectedMemory.image ? (
+                    <div className="w-full relative">
+                         <img 
+                            src={selectedMemory.image} 
+                            alt={selectedMemory.tag} 
+                            className="w-full object-cover max-h-[50vh]"
+                         />
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                         <div className="absolute bottom-4 left-4 text-white">
+                             <div className="flex items-center gap-2 mb-1">
+                                 <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] border border-white/20">
+                                     #{selectedMemory.tag}
+                                 </span>
+                                 <span className="text-xs opacity-80 font-light tracking-wide">
+                                     {selectedMemory.displayDate}
+                                 </span>
+                             </div>
+                         </div>
+                    </div>
+                ) : (
+                    <div className={`w-full h-32 relative bg-gradient-to-br ${
+                       activeTab === 'sensation' ? 'from-[#EBE6D0] to-[#E0E6D0]' :
+                       activeTab === 'emotion' ? 'from-[#E0E6D0] to-[#CDE0CD]' :
+                       activeTab === 'inspiration' ? 'from-[#E2DCE8] to-[#D4D0E0]' :
+                       'from-[#F0ECE4] to-[#E6E0D6]'
+                    }`}>
+                        <div className="absolute bottom-4 left-6 text-cangzhen-text-main">
+                             <div className="flex items-center gap-2">
+                                 <span className="px-2 py-0.5 rounded-full bg-white/40 backdrop-blur-md text-[10px] border border-white/30 font-medium">
+                                     #{selectedMemory.tag}
+                                 </span>
+                                 <span className="text-xs text-cangzhen-text-secondary font-light tracking-wide">
+                                     {selectedMemory.displayDate}
+                                 </span>
+                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content Body */}
+                <div className="p-6 pb-8">
+                    <div className="flex items-start gap-4 mb-4">
+                        <div className="mt-1">
+                            <FlowerIcon hallKey={selectedMemory.hall} size={24} className="opacity-80" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-cangzhen-text-main font-serif text-base leading-relaxed whitespace-pre-wrap">
+                                {selectedMemory.content}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="mt-6 pt-4 border-t border-cangzhen-text-secondary/10 flex justify-between items-center text-[10px] text-cangzhen-text-secondary/60">
+                        <span>记录于 {new Date(selectedMemory.timestamp).toLocaleString('zh-CN', { hour12: false })}</span>
+                        <span>{halls.find(h => h.id === selectedMemory.hall)?.name}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
