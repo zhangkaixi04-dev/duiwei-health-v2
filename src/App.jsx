@@ -2,7 +2,7 @@ import React, { useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CangzhenApp from './cangzhen/App';
 import ChatInterface from './components/ChatInterface';
-import { User, Cloud, CloudOff, AlertTriangle, RefreshCcw } from 'lucide-react'; 
+import { User, Cloud, CloudOff, AlertTriangle, RefreshCcw, X } from 'lucide-react'; 
 import { storageService } from './services/storageService';
 import { authService } from './services/authService';
 
@@ -71,6 +71,7 @@ class ErrorBoundary extends Component {
 const AuthStatus = () => {
     const [user, setUser] = React.useState(null);
     const [syncing, setSyncing] = React.useState(false);
+    const [isExpanded, setIsExpanded] = React.useState(false);
 
     useEffect(() => {
         authService.getCurrentUser().then(setUser);
@@ -122,11 +123,23 @@ const AuthStatus = () => {
     return (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
             {user ? (
-                <div className="flex items-center gap-2 bg-black/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 shadow-sm">
-                    <div className={`w-2 h-2 rounded-full ${syncing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`} />
-                    <span className="text-[10px] text-gray-600 font-medium">{user.email}</span>
-                    <button onClick={handleLogout} className="text-[10px] text-red-500 hover:underline ml-2">退出</button>
-                </div>
+                isExpanded ? (
+                    <div className="flex items-center gap-2 bg-black/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 shadow-sm animate-fade-in">
+                        <div className={`w-2 h-2 rounded-full ${syncing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`} />
+                        <span className="text-[10px] text-gray-600 font-medium">{user.email}</span>
+                        <button onClick={handleLogout} className="text-[10px] text-red-500 hover:underline ml-2">退出</button>
+                        <button onClick={() => setIsExpanded(false)} className="ml-1 text-gray-400 hover:text-gray-600">
+                            <X size={12} />
+                        </button>
+                    </div>
+                ) : (
+                    <button 
+                        onClick={() => setIsExpanded(true)}
+                        className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md border border-black/5 shadow-sm flex items-center justify-center hover:bg-white transition-colors"
+                    >
+                         <div className={`w-2 h-2 rounded-full ${syncing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`} />
+                    </button>
+                )
             ) : (
                 <button 
                     onClick={handleLogin}
