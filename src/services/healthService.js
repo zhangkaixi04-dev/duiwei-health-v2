@@ -1,6 +1,5 @@
 import { storageService } from './storageService.js';
 import { dietFallback } from '../data/dietFallback.js';
-import { taskLibrary } from '../data/taskLibrary.js'; // Import the new task library
 import { findFood } from '../data/foodLibrary.js'; // Import local food library
 
 // Mock Health Data Service
@@ -1300,102 +1299,6 @@ export const healthService = {
             tags: [],
             stats: { avgCalories, exerciseMins, poopIssues }
         };
-    }
-  },
-
-  /**
-   * 13. 获取每日推荐 (Cangzhen - AI Learning & Iteration)
-   * This implementation achieves AI iteration by:
-   * 1. Using the 80 curated tasks as "Few-Shot" learning examples for the LLM.
-   * 2. Dynamically generating 4 personalized tasks (one per hall) based on user profile.
-   * 3. Ensuring the style and depth match the high-quality human-curated library.
-   */
-  get_daily_recommendation: async () => {
-    // 1. Check Cache first
-    const today = new Date().toISOString().split('T')[0];
-    const cacheKey = `cangzhen_daily_rec_v4_${today}`; // New version (Decoupled from constitution)
-    const cached = localStorage.getItem(cacheKey);
-    
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            if (parsed && parsed.sensation) return parsed;
-        } catch (e) {
-            console.warn("Cache parse failed.");
-        }
-    }
-
-    // 2. AI Iteration Logic: Use Doubao API to generate based on Library
-    const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-
-    // Provide samples from the library to "teach" the AI the style
-    const sensationSamples = taskLibrary.sensation.slice(0, 3).join('；');
-    const emotionSamples = taskLibrary.emotion.slice(1, 4).join('；');
-    const inspirationSamples = taskLibrary.inspiration.slice(0, 3).join('；');
-    const wanxiangSamples = taskLibrary.wanxiang.slice(1, 4).join('；');
-
-    const systemPrompt = `你是一位治愈系的数字博物馆导览员。你的任务是基于参考库，为用户迭代生成 4 条“今日推荐”微行动。
-    
-【学习参考库（风格示例）】
-- 感知馆：${sensationSamples}
-- 情绪馆：${emotionSamples}
-- 创意馆：${inspirationSamples}
-- 决策馆：${wanxiangSamples}
-
-【当前日期】
-- ${today}
-
-【输出指令】
-1. **感知馆 (sensation)**：引导五感发现美好。
-2. **情绪馆 (emotion)**：引导温柔表达与自我关怀。
-3. **创意馆 (inspiration)**：引导微小灵感与奇思妙想。
-4. **决策馆 (wanxiang)**：引导主动选择与立场承诺。
-
-【要求】
-1. 必须返回纯JSON格式，包含 sensation, emotion, inspiration, wanxiang 四个字段。
-2. 每条指令必须是原创的，但必须严格继承参考库的“温柔、细腻、有力量”的文风。
-3. 字数控制在 15-25 字之间，不要口号，要具体的、可执行的小事。
-4. 严禁使用 Markdown 代码块。`;
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
-            body: JSON.stringify({
-                model: ENDPOINT_ID,
-                messages: [{ role: "system", content: systemPrompt }],
-                stream: false
-            })
-        });
-
-        if (!response.ok) throw new Error("API Request Failed");
-
-        const data = await response.json();
-        const content = data.choices[0].message.content;
-        const result = JSON.parse(content.replace(/```json|```/g, '').trim());
-
-        // Save to Cache
-        localStorage.setItem(cacheKey, JSON.stringify(result));
-        return result;
-
-    } catch (e) {
-        console.error("AI Iteration Failed, falling back to random library selection:", e);
-        
-        // Fallback: Random selection from the high-quality library (Learning from the best)
-        const getRandom = (cat) => taskLibrary[cat][Math.floor(Math.random() * taskLibrary[cat].length)];
-        const fallback = {
-            sensation: getRandom('sensation'),
-            emotion: getRandom('emotion'),
-            inspiration: getRandom('inspiration'),
-            wanxiang: getRandom('wanxiang')
-        };
-        localStorage.setItem(cacheKey, JSON.stringify(fallback));
-        return fallback;
     }
   }
 };

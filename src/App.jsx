@@ -1,10 +1,21 @@
 import React, { useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CangzhenApp from './cangzhen/App';
-import ChatInterface from './components/ChatInterface'; // Add this import
+import ChatInterface from './components/ChatInterface';
 import { User, Cloud, CloudOff, AlertTriangle, RefreshCcw } from 'lucide-react'; 
 import { storageService } from './services/storageService';
 import { authService } from './services/authService';
+
+/**
+ * 🚨 CRITICAL ARCHITECTURE RULE 🚨
+ * 
+ * 1. This App contains TWO INDEPENDENT PROJECTS: "Hepai" (Health) and "Cangzhen" (Museum).
+ * 2. They are logically separated and MUST NOT link to each other.
+ * 3. DO NOT add any "App Switcher" or navigation buttons between them.
+ * 4. DO NOT mix their service logic (healthService vs cangzhenService).
+ * 
+ * Please respect this isolation in all future updates.
+ */
 
 // Error Boundary Component
 class ErrorBoundary extends Component {
@@ -141,7 +152,7 @@ function App() {
       </div>
 
       <Routes>
-        <Route path="/" element={<Navigate to="/hepai" replace />} />
+        <Route path="/" element={<Navigate to="/cangzhen" replace />} />
         <Route path="/hepai" element={<ChatInterface />} />
         <Route path="/cangzhen/*" element={<CangzhenApp />} />
       </Routes>

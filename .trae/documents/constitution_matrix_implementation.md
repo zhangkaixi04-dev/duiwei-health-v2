@@ -1,48 +1,75 @@
-# Plan: Implement Standardized TCM Constitution Matrix & Logic
+# Plan: Implement "Dynamic Constitution Matrix" for Personalized Advice
 
-This plan aims to implement a robust, quantifiable, and dynamic TCM constitution analysis system based on the user's "Constitution Matrix" specifications.
+This plan implements the "Constitution x Season x Scenario" matrix as specified, ensuring advice is personalized, quantifiable, and context-aware.
 
-## 1. Create Constitution Matrix Data Source
-Create a new file `src/data/constitutionMatrix.js` to centralize all static definitions and rules.
-- **Base Scores**: Define the sensitivity score (5-11) for each constitution.
-- **Seasonal Weights**: Define the +0/+1/+2/+3 coefficients for each constitution across 5 seasonal phases (Spring, Summer/Sanfu, Long Summer/Meiyu, Autumn, Winter/Sanjiu).
-- **Diet Rules**: Define `suitable`, `taboo` (Before Eating), and `remedy` (After Eating) for each constitution.
-- **Season Helper**: Implement `getCurrentSeason()` logic to map the current date to TCM seasons (Spring, Sanfu, Meiyu, Autumn, Sanjiu).
+## 1. Data Foundation: `src/data/constitutionMatrix.js`
+This file will be the "Brain" of the logic, containing the exact rules provided by the user.
+- **Structure**:
+  - `BASE_SCORES`: { yang_xu: 10, ping_he: 5, ... }
+  - `SEASON_WEIGHTS`: { yang_xu: { sanfu: 3, sanjiu: 3, ... }, ... }
+  - `SCENARIO_RULES`:
+    - **Before Eating (Inquiry)**:
+      - `taboo`: List of food properties/types (e.g., "Cold", "Raw", "Greasy").
+      - `advice`: Template for warnings (e.g., "Strictly forbidden in Sanfu").
+    - **After Eating (Remedy)**:
+      - `remedy`: Specific actions (e.g., "Ginger Date Tea", "Moxa").
+  - `FOOD_PROPERTIES`: A mapping of common foods to their properties (e.g., Watermelon -> Cold, Lamb -> Hot, Fried -> Greasy). **Crucial for linking food to taboos.**
 
-## 2. Refactor `healthService.js` -> `analyze_diet`
-Update the diet analysis logic to strictly follow the "Two Core Scenarios" (Inquiry vs. Record) and the new weighting system.
+## 2. Context Engines (The "Dynamic" Part)
 
-### Step 2.1: Intent Detection
-- Distinguish between **Inquiry** (Before Eating) and **Record** (After Eating) based on user input (e.g., "Can I eat..." vs "I ate...").
+### 2.1 Seasonal Engine (`getSeasonalPhase`)
+- Implement logic to determine the specific phase:
+  - **Sanfu (Dog Days)**: Approx. mid-July to mid-Aug.
+  - **Sanjiu (Coldest Days)**: Approx. Jan.
+  - **Meiyu (Plum Rain)**: Approx. June/July.
+  - **Spring/Autumn/Winter**: Standard ranges.
+- **Output**: Current phase (e.g., 'sanfu') + Coefficient (0-3).
 
-### Step 2.2: Context Calculation
-- **Get Current Season**: Use the helper from `constitutionMatrix.js`.
-- **Get Constitution Data**: Retrieve the user's constitution type and its corresponding Base Score and Seasonal Weight.
-- **Calculate Risk Score**: `Total Risk = Base Score + Seasonal Weight`.
+### 2.2 Food Property Engine (`tagFood`)
+- Enhance `analyze_diet` to tag input foods with properties:
+  - **Cold**: Watermelon, Ice, Sashimi, Crab.
+  - **Hot/Yang**: Lamb, Ginger, Durian, Fried, Spicy.
+  - **Damp/Greasy**: Fried, Cream, Sweets, Pork Belly.
+  - **Gas-Producing**: Beans, Sweet Potato.
+- **Logic**: Use Regex + Local Library to assign tags.
 
-### Step 2.3: "Before Eating" Logic (Inquiry)
-- **Goal**: Advice on feasibility and quantity.
-- **Logic**:
-  - Check if food is in `taboo` list.
-  - If taboo + High Risk Score -> Strong Warning ("Strictly Forbidden").
-  - If taboo + Low Risk Score -> Moderate Warning ("Eat Less").
-  - If suitable -> Encourage.
-- **Output**: Suitability rating, Reason (based on constitution + season), Advice.
+### 2.3 Status Engine (`parseStatus`)
+- Extract user status from input (e.g., "tired", "period", "headache") to adjust the final score.
+- **Weight**: 15% (Inquiry) / 40% (Remedy).
+- *Implementation*: Simple keyword matching for now (e.g., "tired" -> +2 risk for Qi Xu).
 
-### Step 2.4: "After Eating" Logic (Record)
-- **Goal**: Remedial actions and damage control.
-- **Logic**:
-  - Check if the consumed food violates `taboo`.
-  - If violation detected -> Provide specific `remedy` from the matrix (e.g., "Drink Ginger Date Tea" for Yang Xu eating cold).
-  - If no violation -> Positive reinforcement.
-- **Output**: Nutritional stats (existing) + Specific Remedy/Feedback.
+## 3. The Core Logic: `healthService.js` -> `analyze_diet`
 
-## 3. Verify & Test
-- **Test Case 1 (Yang Xu + Summer/Sanfu + Ice Cream)**:
-  - **Inquiry**: Should return "Strictly Forbidden" (Base 10 + Season 3 = High Risk).
-  - **Record**: Should return Remedy "Drink warm ginger water, apply heat to abdomen".
-- **Test Case 2 (Ping He + Any Season)**:
-  - Should return balanced advice with low sensitivity.
+### Refactored Flow:
+1.  **Parse Input**: Identify Food + Quantity + Intent (Inquiry vs. Record).
+2.  **Get Context**:
+    - **User**: Constitution (Type + Base Score).
+    - **Time**: Season (Phase + Weight).
+    - **Food**: Properties (Cold/Hot/etc.).
+    - **Status**: Current physical state (optional).
+3.  **Calculate Risk Score**:
+    - `Score = Base Score + Season Weight`.
+    - Adjust based on Status (if any).
+4.  **Scenario Branching**:
+    - **Scenario A: Inquiry ("Can I eat?")**:
+      - Check if `Food Property` intersects with `Constitution Taboo`.
+      - If **Yes**:
+        - High Score (>=13): "Strictly Forbidden" + Reason (Season/Constitution).
+        - Med Score (10-12): "Eat Less/Caution".
+        - Low Score (<10): "Moderate amount OK".
+      - If **No**: "Suitable" + Benefit.
+    - **Scenario B: Record ("I ate...")**:
+      - Check violation.
+      - If **Violation**:
+        - Return `Remedy` from Matrix (e.g., "Drink Ginger Tea").
+        - "Damage Control" advice.
+      - If **Safe**: Positive feedback.
 
-## 4. Documentation
-- Ensure code comments reflect the "Golden Rules" and weighting logic for future maintenance.
+## 4. Verification & Testing
+- **User Case**: "Yang Xu" asks about "Watermelon" in "Sanfu".
+  - **Expect**: Risk Score 10+3=13 -> "Strictly Forbidden". Reason: "Sanfu + Yang Xu = Double Risk".
+- **User Case**: "Yang Xu" *ate* "Watermelon" in "Sanfu".
+  - **Expect**: Remedy "Drink Ginger Date Tea immediately".
+
+## 5. Documentation
+- Embed the "Golden Rules" table into comments for clarity.

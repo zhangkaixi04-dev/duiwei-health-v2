@@ -1,8 +1,7 @@
 // src/cangzhen/components/DailyRecommend.jsx
 import React, { useEffect, useState } from 'react';
 import { FlowerIcon } from './FlowerIcons';
-import { healthService } from '../../services/healthService';
-import { storageService } from '../../services/storageService';
+import { cangzhenService } from '../../services/cangzhenService';
 import { Sparkles } from 'lucide-react';
 
 const DailyRecommend = () => {
@@ -21,13 +20,12 @@ const DailyRecommend = () => {
   useEffect(() => {
     const fetchRecommendation = async () => {
       try {
-        const userProfile = storageService.getUserProfile();
         let result = null;
         
         try {
-            result = await healthService.get_daily_recommendation(userProfile);
+            result = await cangzhenService.get_daily_recommendation();
         } catch (apiError) {
-            console.warn("HealthService failed", apiError);
+            console.warn("CangzhenService failed", apiError);
         }
 
         if (result && result.sensation) {
