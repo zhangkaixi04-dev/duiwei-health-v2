@@ -9,10 +9,59 @@ const Review = () => {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false); // New State for Glass Box Animation
   const [isBadgeWallExpanded, setIsBadgeWallExpanded] = useState(false); // Badge Wall State
   const [expandedMonth, setExpandedMonth] = useState(null); // Expanded Month View
+  const [localMemories, setLocalMemories] = useState([]);
+
+  // --- 1. Defensive Data Processing (P8 Level Robustness) ---
+  
+  // Safe Date Parsing Utility
+  const safeParseDate = (input) => {
+      if (!input) return null;
+      // If it's a number (timestamp)
+      if (typeof input === 'number') {
+          const d = new Date(input);
+          return isNaN(d.getTime()) ? null : d;
+      }
+      // If it's a date object
+      if (input instanceof Date) {
+          return isNaN(input.getTime()) ? null : input;
+      }
+      // If it's a string
+      if (typeof input === 'string') {
+          // Try standard parse first
+          let d = new Date(input);
+          if (!isNaN(d.getTime())) return d;
+          
+          // Try "MM月DD日" format (Assume current year)
+          const match = input.match(/(\d+)月(\d+)日/);
+          if (match) {
+              const now = new Date();
+              d = new Date(now.getFullYear(), parseInt(match[1]) - 1, parseInt(match[2]));
+              if (!isNaN(d.getTime())) return d;
+          }
+      }
+      return null;
+  };
+
+  // Sanitized Memories: Filter out invalid entries once
+  const sanitizedMemories = useMemo(() => {
+      if (!Array.isArray(localMemories)) return [];
+      return localMemories.filter(m => {
+          if (!m) return false;
+          // Ensure at least some content or image or date exists
+          // And ensure we can parse a valid date
+          const validDate = safeParseDate(m.id) || safeParseDate(m.date);
+          if (!validDate) return false;
+          
+          // Attach the parsed date object to the memory for easier access downstream
+          // Note: We avoid mutating original object, return a shallow copy with _parsedDate
+          m._parsedDate = validDate; 
+          return true;
+      });
+  }, [localMemories]);
 
   // Badges Data (Dynamic based on real count)
   const badges = useMemo(() => {
-      const totalCount = localMemories.length;
+      const totalCount = sanitizedMemories.length;
       
       // Define Milestones & Metadata
       const definitions = [
@@ -28,16 +77,13 @@ const Review = () => {
           ...def,
           count: totalCount, // Current total
           unlocked: totalCount >= def.threshold,
-          date: null // Ideally we would store unlock date in localStorage too, but for now derive from count
+          date: null 
       }));
-  }, [localMemories]);
-
-  const [localMemories, setLocalMemories] = useState([]);
+  }, [sanitizedMemories]);
   
   // Weekly Review State
   const [weekOffset, setWeekOffset] = useState(0); // 0 = Current Week, -1 = Last Week
-  const [isWeekLocked, setIsWeekLocked] = useState(true);
-
+  
   // Helper to get week ID for persistence (e.g. "2026-W10")
   const getWeekId = (offset) => {
       const now = new Date();
@@ -68,12 +114,10 @@ const Review = () => {
     if (weekOffset === 0) {
         const weekId = getWeekId(0);
         const isOpened = localStorage.getItem(`weekly_opened_${weekId}`);
-        // If it's Monday 00:00+ (implied by weekOffset=0 logic) and NOT opened, it's locked.
-        // If already opened, unlock it.
         if (isOpened === 'true') {
-            setIsPaletteOpen(true); // "Open" state means the box is gone/revealed
+            setIsPaletteOpen(true); 
         } else {
-            setIsPaletteOpen(false); // Box is visible (Locked)
+            setIsPaletteOpen(false); 
         }
     } else {
         setIsPaletteOpen(true); // Past weeks always open
@@ -95,31 +139,25 @@ const Review = () => {
         }
     }
 
-    // Trigger AI Generation if this is a PAST week or opened current week
-    // We cache it by weekId to avoid re-generating every time
+    // Load Cached Summary
     const weekId = getWeekId(weekOffset);
     const cachedSummary = localStorage.getItem(`weekly_summary_${weekId}`);
     
     if (cachedSummary) {
         try {
             const parsed = JSON.parse(cachedSummary);
-            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: parsed.tags || [] });
-        } catch(e) {}
-    } else {
-        // Only generate if we have memories for this week
-        // AND (it's a past week OR (current week and opened))
-        // For simplicity, let's just generate if there are memories.
-        
-        // Wait for memories to be loaded first? localMemories might be empty on first render.
-        // But we re-run this effect when weekOffset changes.
-        // We need a separate effect or check inside data calculation.
+            // Ensure tags is an array
+            const safeTags = Array.isArray(parsed.tags) ? parsed.tags : [];
+            setWeeklySummary({ loading: false, content: parsed.summary, keyword: parsed.keyword, tags: safeTags });
+        } catch(e) {
+            setWeeklySummary({ loading: false, content: null, keyword: null, tags: [] });
+        }
     }
-
   }, [weekOffset]); // Re-run when switching weeks
 
   // Separate Effect for AI Generation to ensure localMemories is ready
   useEffect(() => {
-      if (localMemories.length === 0) return;
+      if (sanitizedMemories.length === 0) return;
 
       const weekId = getWeekId(weekOffset);
       const cachedSummary = localStorage.getItem(`weekly_summary_${weekId}`);
@@ -135,33 +173,32 @@ const Review = () => {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23,59,59,999);
 
-      const hasMemories = localMemories.some(m => {
-          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+      const hasMemories = sanitizedMemories.some(m => {
+          const mDate = m._parsedDate;
           return mDate >= startOfWeek && mDate <= endOfWeek;
       });
 
       if (hasMemories && !cachedSummary && !weeklySummary.loading && !weeklySummary.content) {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
-          try {
-               healthService.report_weekly('user', weekOffset).then(res => {
-                   if (res.success) {
-                       const result = { summary: res.summary, keyword: res.keyword, tags: res.tags };
-                       localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
-                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: res.tags });
-                   } else {
-                       setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: res.tags });
-                   }
-               }).catch(e => {
-                   console.error("Weekly Report Error:", e);
-                   setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。" });
-               });
-          } catch (e) {
-               console.error("Weekly Report Sync Error:", e);
-               setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。" });
-          }
+          healthService.report_weekly('user', weekOffset).then(res => {
+               // Defensive result handling
+               const safeTags = Array.isArray(res.tags) ? res.tags : [];
+               const result = { summary: res.summary, keyword: res.keyword, tags: safeTags };
+               
+               try {
+                   localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
+               } catch (e) {
+                   console.error("LocalStorage quota exceeded or error", e);
+               }
+               
+               setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: safeTags });
+           }).catch(e => {
+               console.error("Weekly Report Error:", e);
+               setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。", tags: [] });
+           });
       }
-  }, [weekOffset, localMemories]); // Depend on memories too
+  }, [weekOffset, sanitizedMemories]); // Depend on sanitizedMemories
 
 
   // Handle Box Open
@@ -175,7 +212,6 @@ const Review = () => {
 
   // Mock Data for Weekly Review (Dynamic based on offset)
   const weeklyData = useMemo(() => {
-      // ... (Date Range Logic same as before)
       const now = new Date();
       const currentDay = now.getDay(); 
       const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Monday
@@ -191,12 +227,9 @@ const Review = () => {
       const format = (d) => `${d.getMonth() + 1}月${d.getDate()}日`;
       const dateRangeStr = `${format(startOfWeek)} - ${format(endOfWeek)}`;
 
-      // Calculate Real Stats from localMemories
-      const weekMemories = localMemories.filter(m => {
-          if (!m) return false;
-          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-          // Handle potential invalid date
-          if (isNaN(mDate.getTime())) return false;
+      // Calculate Real Stats from sanitizedMemories
+      const weekMemories = sanitizedMemories.filter(m => {
+          const mDate = m._parsedDate;
           return mDate >= startOfWeek && mDate <= endOfWeek;
       });
       
@@ -205,14 +238,14 @@ const Review = () => {
       // Calculate Daily Trend (Mon-Sun)
       const trend = Array(7).fill(0);
       weekMemories.forEach(m => {
-          if (!m) return;
-          const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-          if (isNaN(mDate.getTime())) return;
-          
+          const mDate = m._parsedDate;
           // getDay: 0=Sun, 1=Mon... we want 0=Mon, 6=Sun
           let dayIndex = mDate.getDay() - 1;
           if (dayIndex === -1) dayIndex = 6;
-          trend[dayIndex]++;
+          
+          if (dayIndex >= 0 && dayIndex < 7) {
+              trend[dayIndex]++;
+          }
       });
 
       // Calculate Top Keyword based on Hall Usage (Simple Heuristic for fallback)
@@ -220,67 +253,85 @@ const Review = () => {
          sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0
       };
       weekMemories.forEach(m => {
-          if (m && m.hall && hallCountsMap[m.hall] !== undefined) hallCountsMap[m.hall]++;
+          if (m && m.hall) {
+              // Normalize hall keys (handle capitalization or mismatches)
+              const key = m.hall.toLowerCase();
+              if (hallCountsMap[key] !== undefined) hallCountsMap[key]++;
+          }
       });
           
-          // Generate Tags based on Hall distribution if API tags are missing
-          let fallbackTags = [];
-          if (hallCountsMap.sensation > 0) fallbackTags.push({ text: '感知', weight: Math.min(5, hallCountsMap.sensation) });
-          if (hallCountsMap.emotion > 0) fallbackTags.push({ text: '情绪', weight: Math.min(5, hallCountsMap.emotion) });
-          if (hallCountsMap.inspiration > 0) fallbackTags.push({ text: '灵感', weight: Math.min(5, hallCountsMap.inspiration) });
-          if (hallCountsMap.wanxiang > 0) fallbackTags.push({ text: '决策', weight: Math.min(5, hallCountsMap.wanxiang) });
-          
-          // Add some generic tags if empty
-          if (totalMemories > 0 && fallbackTags.length < 3) {
-             fallbackTags.push({ text: '记录', weight: 3 });
-             fallbackTags.push({ text: '生活', weight: 2 });
-          }
-    
-          const hallCounts = [
-              { id: 'sensation', name: '感知', count: hallCountsMap.sensation, icon: 'flower' },
-              { id: 'emotion', name: '情绪', count: hallCountsMap.emotion, icon: 'heart' },
-              { id: 'inspiration', name: '创意', count: hallCountsMap.inspiration, icon: 'zap' },
-              { id: 'wanxiang', name: '决策', count: hallCountsMap.wanxiang, icon: 'compass' },
-          ];
-    
-          // Return Data Object
-          const isEven = Math.abs(weekOffset) % 2 === 0;
-          return {
-              status: weekOffset === 0 ? 'locked' : 'unlocked', // logic for "locked" vs "unlocked" mainly affects the "Mystery Box" UI wrapper
-              dateRange: dateRangeStr,
-              keyword: isEven ? 'Courage' : 'Healing',
-              keywordCN: weeklySummary.keyword || (totalMemories > 0 ? (isEven ? '勇气' : '治愈') : '空白'),
-              keywordMeaning: isEven ? 'Facing the unknown with a smile.' : 'The art of stitching the soul with time.',
-              bgGradient: isEven ? 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]' : 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]',
-              bgImage: isEven 
-                ? 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop' 
-                : 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop',
-              moodShadow: isEven ? 'shadow-orange-100' : 'shadow-green-100',
-              count: totalMemories,
-              aiSummary: weeklySummary.loading ? (
-                 <div className="animate-pulse space-y-2">
-                     <div className="h-4 bg-black/5 rounded w-3/4"></div>
-                     <div className="h-4 bg-black/5 rounded w-full"></div>
-                     <div className="h-4 bg-black/5 rounded w-5/6"></div>
-                 </div>
-              ) : (weeklySummary.content ? (
-                 <div dangerouslySetInnerHTML={{ __html: weeklySummary.content }} />
-              ) : (
-                <>
-                    <strong>{startOfWeek.getMonth() + 1}月·周复盘</strong><br/><br/>
-                    {weekOffset === 0 
-                        ? "本周还在进行中，记录还在生长..." 
-                        : "暂无足够数据生成详细报告，请多记录一些日常吧。"}
-                </>
-              )),
-              trend: trend, // REAL DATA
-              tags: (weeklySummary.tags && weeklySummary.tags.length > 0) ? weeklySummary.tags : fallbackTags, // Use AI tags or Fallback
-              shape: isEven ? 'heart' : 'drop',
-              progress: trend, // Use same real trend for progress dots
-              daysLeft: 7 - (new Date().getDay() || 7),
-              hallCounts: hallCounts
-          };
-      }, [weekOffset, localMemories, weeklySummary]); // Depend on weeklySummary too to update tags/keywords
+      // Generate Tags based on Hall distribution if API tags are missing
+      let fallbackTags = [];
+      if (hallCountsMap.sensation > 0) fallbackTags.push({ text: '感知', weight: Math.min(5, hallCountsMap.sensation) });
+      if (hallCountsMap.emotion > 0) fallbackTags.push({ text: '情绪', weight: Math.min(5, hallCountsMap.emotion) });
+      if (hallCountsMap.inspiration > 0) fallbackTags.push({ text: '创意', weight: Math.min(5, hallCountsMap.inspiration) });
+      if (hallCountsMap.wanxiang > 0) fallbackTags.push({ text: '决策', weight: Math.min(5, hallCountsMap.wanxiang) });
+      
+      // Add some generic tags if empty
+      if (totalMemories > 0 && fallbackTags.length < 3) {
+         fallbackTags.push({ text: '记录', weight: 3 });
+         fallbackTags.push({ text: '生活', weight: 2 });
+      }
+
+      const hallCounts = [
+          { id: 'sensation', name: '感知', count: hallCountsMap.sensation, icon: 'flower' },
+          { id: 'emotion', name: '情绪', count: hallCountsMap.emotion, icon: 'heart' },
+          { id: 'inspiration', name: '创意', count: hallCountsMap.inspiration, icon: 'zap' },
+          { id: 'wanxiang', name: '决策', count: hallCountsMap.wanxiang, icon: 'compass' },
+      ];
+
+      // Safe Tags Access
+      let finalTags = [];
+      if (weeklySummary.tags && Array.isArray(weeklySummary.tags) && weeklySummary.tags.length > 0) {
+          finalTags = weeklySummary.tags;
+      } else {
+          finalTags = fallbackTags;
+      }
+      
+      // Ensure tags have weight property
+      finalTags = finalTags.map(t => {
+          if (typeof t === 'string') return { text: t, weight: 3 };
+          return t;
+      });
+
+      // Return Data Object
+      const isEven = Math.abs(weekOffset) % 2 === 0;
+      return {
+          status: weekOffset === 0 ? 'locked' : 'unlocked', 
+          dateRange: dateRangeStr,
+          keyword: isEven ? 'Courage' : 'Healing',
+          keywordCN: weeklySummary.keyword || (totalMemories > 0 ? (isEven ? '勇气' : '治愈') : '空白'),
+          keywordMeaning: isEven ? 'Facing the unknown with a smile.' : 'The art of stitching the soul with time.',
+          bgGradient: isEven ? 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]' : 'bg-gradient-to-br from-[#E0E7D8] to-[#F5F7F0]',
+          bgImage: isEven 
+            ? 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop' 
+            : 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=2787&auto=format&fit=crop',
+          moodShadow: isEven ? 'shadow-orange-100' : 'shadow-green-100',
+          count: totalMemories,
+          aiSummary: weeklySummary.loading ? (
+             <div className="animate-pulse space-y-2">
+                 <div className="h-4 bg-black/5 rounded w-3/4"></div>
+                 <div className="h-4 bg-black/5 rounded w-full"></div>
+                 <div className="h-4 bg-black/5 rounded w-5/6"></div>
+             </div>
+          ) : (weeklySummary.content ? (
+             <div dangerouslySetInnerHTML={{ __html: weeklySummary.content }} />
+          ) : (
+            <>
+                <strong>{startOfWeek.getMonth() + 1}月·周复盘</strong><br/><br/>
+                {weekOffset === 0 
+                    ? "本周还在进行中，记录还在生长..." 
+                    : "暂无足够数据生成详细报告，请多记录一些日常吧。"}
+            </>
+          )),
+          trend: trend,
+          tags: finalTags,
+          shape: isEven ? 'heart' : 'drop',
+          progress: trend, 
+          daysLeft: 7 - (new Date().getDay() || 7),
+          hallCounts: hallCounts
+      };
+  }, [weekOffset, sanitizedMemories, weeklySummary]); 
 
   // Real Data for Monthly Review
   const currentMonth = new Date().getMonth() + 1; // 1-12
@@ -291,10 +342,8 @@ const Review = () => {
           const isActive = month <= currentMonth; // Active if past or current month
           
           // Calculate Real Count
-          const monthMemories = localMemories.filter(m => {
-             if (!m) return false;
-             const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-             if (isNaN(mDate.getTime())) return false;
+          const monthMemories = sanitizedMemories.filter(m => {
+             const mDate = m._parsedDate;
              return mDate.getMonth() + 1 === month && mDate.getFullYear() === new Date().getFullYear();
           });
           const count = monthMemories.length;
@@ -303,23 +352,23 @@ const Review = () => {
           let keyword = '';
           if (month === 1) keyword = '萌芽';
           else if (month === 2) keyword = '喜悦';
-          else if (month === 3) keyword = '探索'; // March default
-          else keyword = '未知'; // Default for empty
+          else if (month === 3) keyword = '探索'; 
+          else keyword = '未知'; 
 
-          // Morandi Gradients (Muted, Elegant)
+          // Morandi Gradients
           const gradients = [
-              'from-[#F1F2B5]/40 to-[#135058]/10', // 1. Vintage Yellow/Green
-              'from-[#E0EAFC]/40 to-[#CFDEF3]/40', // 2. Soft Blue
-              'from-[#D4FC79]/20 to-[#96E6A1]/20', // 3. Fresh Green
-              'from-[#84fab0]/20 to-[#8fd3f4]/20', // 4. Teal/Blue
-              'from-[#cfd9df]/40 to-[#e2ebf0]/40', // 5. Silver/Blue
-              'from-[#a8edea]/30 to-[#fed6e3]/30', // 6. Pink/Teal
-              'from-[#f5f7fa]/60 to-[#c3cfe2]/40', // 7. Misty White
-              'from-[#e0c3fc]/30 to-[#8ec5fc]/30', // 8. Purple/Blue
-              'from-[#f093fb]/20 to-[#f5576c]/20', // 9. Pink/Red
-              'from-[#4facfe]/20 to-[#00f2fe]/20', // 10. Bright Blue
-              'from-[#43e97b]/20 to-[#38f9d7]/20', // 11. Green
-              'from-[#fa709a]/20 to-[#fee140]/20', // 12. Red/Yellow
+              'from-[#F1F2B5]/40 to-[#135058]/10', 
+              'from-[#E0EAFC]/40 to-[#CFDEF3]/40', 
+              'from-[#D4FC79]/20 to-[#96E6A1]/20', 
+              'from-[#84fab0]/20 to-[#8fd3f4]/20', 
+              'from-[#cfd9df]/40 to-[#e2ebf0]/40', 
+              'from-[#a8edea]/30 to-[#fed6e3]/30', 
+              'from-[#f5f7fa]/60 to-[#c3cfe2]/40', 
+              'from-[#e0c3fc]/30 to-[#8ec5fc]/30', 
+              'from-[#f093fb]/20 to-[#f5576c]/20', 
+              'from-[#4facfe]/20 to-[#00f2fe]/20', 
+              'from-[#43e97b]/20 to-[#38f9d7]/20', 
+              'from-[#fa709a]/20 to-[#fee140]/20', 
           ];
           
           const gradient = gradients[i % gradients.length];
@@ -328,20 +377,8 @@ const Review = () => {
           const daysInMonth = new Date(new Date().getFullYear(), month, 0).getDate();
           const trend = Array(daysInMonth).fill(0);
           monthMemories.forEach(m => {
-              // Ensure we parse dates correctly, fallback to Date.now() if invalid to prevent NaN crash
-              let d = 0;
-              try {
-                  const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-                  // Check if valid date
-                  if (!isNaN(mDate.getTime())) {
-                      d = mDate.getDate();
-                  } else {
-                      // Attempt to parse "X月X日" format manually if needed, or skip
-                      const match = m.date && typeof m.date === 'string' ? m.date.match(/(\d+)月(\d+)日/) : null;
-                      if (match) d = parseInt(match[2]);
-                  }
-              } catch (e) {}
-
+              const mDate = m._parsedDate;
+              const d = mDate.getDate();
               if (d >= 1 && d <= daysInMonth) trend[d-1]++;
           });
 
@@ -360,61 +397,54 @@ const Review = () => {
                 </>
               ),
               trend: trend,
-              tags: [] // Clear Mock Tags
+              tags: [] // Monthly tags could be aggregated if needed
           };
       });
-  }, [localMemories, currentMonth]);
+  }, [sanitizedMemories, currentMonth]);
 
 
-  // Data for Yearly Review - Real Data Mapping
+  // Yearly Review - Optimized O(N) lookup
   const currentYear = new Date().getFullYear();
   const daysInYear = ((currentYear % 4 === 0 && currentYear % 100 !== 0) || currentYear % 400 === 0) ? 366 : 365;
   
-  const yearlyData = Array.from({ length: daysInYear }, (_, i) => {
-      const date = new Date(currentYear, 0, i + 1); // Jan 1st + i days
-      const dateStr = date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }); // "3/8" or "3月8日" depending on locale, safer to use ISO for matching if possible, but let's match loose for now or use timestamp checks.
-      
-      // Check if we have a memory for this day
-      // Memories in localStorage have 'id' as timestamp or 'date' string.
-      // We'll check both for robustness.
-      const memory = localMemories.find(m => {
-          if (!m) return false;
-          
-          // Check by Timestamp (if id is number)
-          if (typeof m.id === 'number') {
-              const mDate = new Date(m.id);
-              if (isNaN(mDate.getTime())) return false;
-              return mDate.getFullYear() === currentYear &&
-                     mDate.getMonth() === date.getMonth() &&
-                     mDate.getDate() === date.getDate();
+  // Create a Set of "MM-DD" strings for O(1) lookup
+  const activeDaysSet = useMemo(() => {
+      const set = new Set();
+      sanitizedMemories.forEach(m => {
+          const mDate = m._parsedDate;
+          if (mDate.getFullYear() === currentYear) {
+              const key = `${mDate.getMonth()}-${mDate.getDate()}`; // "0-1" for Jan 1st (0-indexed month)
+              set.add(key);
           }
-          // Check by Date String (if 'date' field exists like "3月8日")
-          if (m.date && typeof m.date === 'string') {
-             // This is a bit loose, assumes "X月X日" format and current year
-             return m.date === `${date.getMonth() + 1}月${date.getDate()}日`;
-          }
-          return false;
       });
+      return set;
+  }, [sanitizedMemories, currentYear]);
 
-      // Determine color - Unified Warm Yellow Glass Bead
-      let beadColor = 'bg-white/5'; // Default empty state (faint glass)
-      let beadGlow = '';
-      
-      if (memory) {
-          // Warm Yellow / Amber for "Light Up"
-          beadColor = 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]'; 
-          beadGlow = 'shadow-[0_0_8px_rgba(246,211,101,0.6)]';
-      }
+  const yearlyData = useMemo(() => {
+      return Array.from({ length: daysInYear }, (_, i) => {
+          const date = new Date(currentYear, 0, i + 1); // Jan 1st + i days
+          const key = `${date.getMonth()}-${date.getDate()}`;
+          const isLit = activeDaysSet.has(key);
 
-      return {
-          day: i + 1,
-          date: date,
-          isLit: !!memory,
-          color: beadColor,
-          glow: beadGlow,
-          intensity: memory ? 0.9 + Math.random() * 0.1 : 0 
-      };
-  });
+          // Determine color
+          let beadColor = 'bg-white/5'; 
+          let beadGlow = '';
+          
+          if (isLit) {
+              beadColor = 'bg-gradient-to-br from-[#F6D365] to-[#FDA085]'; 
+              beadGlow = 'shadow-[0_0_8px_rgba(246,211,101,0.6)]';
+          }
+
+          return {
+              day: i + 1,
+              date: date,
+              isLit: isLit,
+              color: beadColor,
+              glow: beadGlow,
+              intensity: isLit ? 0.9 + Math.random() * 0.1 : 0 
+          };
+      });
+  }, [daysInYear, activeDaysSet, currentYear]);
 
   // Shape Layouts (Percentage based coordinates)
   const shapeLayouts = {
@@ -440,7 +470,8 @@ const Review = () => {
 
   const getShapePos = (shape, index) => {
      const layout = shapeLayouts[shape] || shapeLayouts.heart;
-     return layout[index] || { left: '50%', top: '50%' };
+     // Safe Access with Modulo to prevent out-of-bounds
+     return layout[index % layout.length] || { left: '50%', top: '50%' };
   };
 
   return (
@@ -699,11 +730,16 @@ const Review = () => {
                                      </div>
                                      {weeklyData.tags.map((tag, i) => {
                                          const pos = getShapePos(weeklyData.shape, i);
-                                         const fontSize = tag.weight >= 4 ? 'text-lg font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
-                                         const zIndex = tag.weight;
+                                         // Defensive: Check if tag exists
+                                         if (!tag || !tag.text) return null;
+                                         
+                                         const weight = tag.weight || 1;
+                                         const fontSize = weight >= 4 ? 'text-lg font-bold' : weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
+                                         const zIndex = weight;
+                                         
                                          return (
                                              <span 
-                                               key={tag.text} 
+                                               key={`${tag.text}-${i}`} 
                                                className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 hover:scale-110 cursor-default
                                                   ${fontSize} text-cangzhen-text-main drop-shadow-sm
                                                `}
@@ -865,10 +901,14 @@ const Review = () => {
                                  </div>
                                  {expandedMonth.tags.map((tag, i) => {
                                      const pos = getShapePos('heart', i);
-                                     const fontSize = tag.weight >= 4 ? 'text-xl font-bold' : tag.weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
+                                     // Safe Access
+                                     if (!tag || !tag.text) return null;
+                                     const weight = tag.weight || 1;
+                                     const fontSize = weight >= 4 ? 'text-xl font-bold' : weight >= 3 ? 'text-sm font-medium' : 'text-xs opacity-80';
+                                     
                                      return (
                                          <span 
-                                           key={tag.text} 
+                                           key={`${tag.text}-${i}`} 
                                            className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 hover:scale-110 cursor-default
                                               ${fontSize} text-cangzhen-text-main drop-shadow-sm
                                            `}

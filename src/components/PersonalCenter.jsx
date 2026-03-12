@@ -9,11 +9,14 @@ import HealthReport from './personal/HealthReport';
 import QuestionnaireWrapper from './personal/QuestionnaireWrapper';
 import DeviceConnect from './personal/DeviceConnect';
 
-const PersonalCenter = ({ onClose, isModal = true }) => {
+const PersonalCenter = ({ onClose, isModal = true, isSetupMode = false }) => {
   const [userInfo, setUserInfo] = useState({});
   const [constitution, setConstitution] = useState(null);
 
   useEffect(() => {
+    // If we are in setup mode, skip loading mock/persisted data to avoid confusion
+    if (isSetupMode) return;
+
     // Load data
     const userProfile = storageService.getUserProfile();
     if (userProfile.basicInfo) setUserInfo(userProfile.basicInfo);
@@ -94,6 +97,21 @@ const PersonalCenter = ({ onClose, isModal = true }) => {
   };
 
   const renderContent = () => {
+    // If in Setup Mode, show a guide or simplified view
+    if (isSetupMode) {
+        return (
+            <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center animate-pulse">
+                    <FileText className="w-10 h-10 text-brand" />
+                </div>
+                <h3 className="text-lg font-bold text-text-main">档案建立中...</h3>
+                <p className="text-sm text-text-muted text-center px-6">
+                    请在对话框中回答问题，我将为您生成专属健康档案。
+                </p>
+            </div>
+        );
+    }
+
     switch(activeTab) {
       case 'profile':
         return <HealthProfile onBack={() => setActiveTab('main')} />;

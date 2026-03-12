@@ -1,6 +1,7 @@
 import React, { useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CangzhenApp from './cangzhen/App';
+import ChatInterface from './components/ChatInterface'; // Add this import
 import { User, Cloud, CloudOff, AlertTriangle, RefreshCcw } from 'lucide-react'; 
 import { storageService } from './services/storageService';
 import { authService } from './services/authService';
@@ -140,9 +141,9 @@ function App() {
       </div>
 
       <Routes>
-        {/* Redirect root to Cangzhen (or just mount Cangzhen directly if preferred, but routing keeps structure clean) */}
-        {/* Actually, let's mount Cangzhen at root for a standalone feel */}
-        <Route path="/*" element={<CangzhenApp />} />
+        <Route path="/" element={<Navigate to="/hepai" replace />} />
+        <Route path="/hepai" element={<ChatInterface />} />
+        <Route path="/cangzhen/*" element={<CangzhenApp />} />
       </Routes>
     </Router>
     </ErrorBoundary>

@@ -1458,9 +1458,13 @@ const ChatInterface = ({ onOpenProfile }) => {
     }
 
     // 2. Fix Missing Profile in Daily Mode
-    // If user is in 'daily' mode (persisted) but profile is missing/cleared, force back to basic_info
+    // MODIFIED: Do NOT force back to basic_info if messages exist (User has already started chatting)
+    // This fixes the issue where user is chatting and suddenly gets thrown into onboarding.
     if (currentStep === 'daily' && !hasProfile) {
-        setCurrentStep('basic_info');
+        // We strictly avoid forcing basic_info here to prevent "Forced Onboarding" bugs.
+        // If the user is in Daily mode, they should stay there.
+        // Onboarding is only for fresh users (handled by initial state).
+        console.log("Profile incomplete but user is in Daily mode. Staying.");
     }
   }, []);
 
@@ -1847,9 +1851,10 @@ const ChatInterface = ({ onOpenProfile }) => {
 
     // GLOBAL INTERRUPT: Commands that should always switch context to 'daily'
     // This allows switching from Sleep Card to Poop Card directly without "Exiting" first.
-    if (['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录'].some(k => text.includes(k))) {
+    // Also covers Diet inputs like "早饭吃了..." to break out of other modes.
+    if (['生成周报', '我要记', '触发', '/reset', '周报', '食谱', '记录', '早饭', '午饭', '晚饭', '早餐', '午餐', '晚餐', '吃了', '喝了'].some(k => text.includes(k))) {
          stepToProcess = 'daily';
-         nextStep = 'daily'; // FORCE RESET: Clear any previous card state (like PoopRecordCard) immediately
+         nextStep = 'daily'; // FORCE RESET: Clear any previous card state immediately
     }
 
     const isQuestionnaireFlow = ['questionnaire_doing', 'questionnaire_intro', 'ask_questionnaire', 'diagnosis_confirm'].includes(currentStep);
@@ -2570,7 +2575,8 @@ const ChatInterface = ({ onOpenProfile }) => {
                    <DailyFeed />
                 </div>
                 <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
-                   <PersonalCenter isModal={false} onClose={() => toggleTab(null)} />
+                   {/* Pass currentStep to detect if we are in onboarding mode */}
+                   <PersonalCenter isModal={false} onClose={() => toggleTab(null)} isSetupMode={currentStep === 'basic_info'} />
                 </div>
                 <div className={activeTab === 'weekly' ? 'block' : 'hidden'}>
                    <WeeklyReportPanel />

@@ -361,19 +361,18 @@ export const healthService = {
   },
 
   /**
-   * 10. AI 饮食分析 (Local First Strategy)
-   * 策略：优先使用本地库和规则引擎实现毫秒级响应。
-   * 只有当本地无法识别时，才调用大模型。
-   * @param {string} foodInput Text description of food
-   * @param {Object} userProfile Contextual user data
+   * 10. AI 饮食分析 (Strict PRD Alignment)
+   * 逻辑分层：
+   * 1. 本地库查标准值 (Local Standard)
+   * 2. 烹饪系数修正 (Cooking Coefficient)
+   * 3. 体质矩阵判断 (Constitution Matrix)
    */
   analyze_diet: async (foodInput, userProfile = {}) => {
      const constitutionType = userProfile.constitution?.type || '平和质';
      const input = foodInput || "";
      
      // --- Step 1: Local Rule Engine (Fast Path) ---
-     
-     // 辅助函数：提取数量
+     // 1.1 Extract Quantity
      const extractQuantity = (text) => {
         const quantityMap = { '半': 0.5, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
         const numMatch = text.match(/(\d+(\.\d+)?)\s*(个|只|块|片|碗|份|g|克|ml|毫升|斤|两|杯)/);
@@ -395,29 +394,54 @@ export const healthService = {
 
      const quantity = extractQuantity(input);
      
-     // 1.1 Try Local Food Library
+     // 1.2 Cooking Method Detection & Coefficient (PRD Requirement)
+     let cookingMethod = 'raw'; // default
+     let cookingCoeff = 1.0;
+     
+     if (input.match(/(炸|烤|酥|天妇罗)/)) { 
+         cookingMethod = 'fried'; 
+         cookingCoeff = 2.0; // Fried x1.8-2.5 -> Avg 2.0
+     } else if (input.match(/(红烧|糖醋|拔丝)/)) { 
+         cookingMethod = 'braised'; 
+         cookingCoeff = 1.4; // Braised x1.4
+     } else if (input.match(/(火锅|麻辣烫|串串)/)) { 
+         cookingMethod = 'hotpot'; 
+         cookingCoeff = 1.5; // Hotpot veggies absorb oil x1.5
+     } else if (input.match(/(爆炒|煎|油焖)/)) { 
+         cookingMethod = 'stirfry'; 
+         cookingCoeff = 1.3; 
+     }
+
+     // 1.3 Try Local Food Library
      const libraryMatch = findFood(input);
      let localResult = null;
 
      if (libraryMatch) {
-        const baseCalories = Math.round((libraryMatch.weight * libraryMatch.calories) / 100);
+        // Base Calories from Library
+        let baseCalories = Math.round((libraryMatch.weight * libraryMatch.calories) / 100);
+        
+        // Apply Cooking Coefficient
+        baseCalories = Math.round(baseCalories * cookingCoeff);
+        
         let tags = [];
         if (libraryMatch.carbs > 20) tags.push("高碳水");
         if (libraryMatch.protein > 10) tags.push("高蛋白");
         if (libraryMatch.fat > 10) tags.push("高脂");
-        if (libraryMatch.calories < 50) tags.push("低卡");
-        if (libraryMatch.type === 'fruit') tags.push("维生素");
-        if (libraryMatch.type === 'veggie') tags.push("膳食纤维");
+        
+        // Add Method Tags
+        if (cookingMethod === 'fried') tags.push("高油炸");
+        if (cookingMethod === 'braised') tags.push("高糖油");
 
         localResult = {
             category: libraryMatch.type,
             baseCalories,
             tags,
-            name: libraryMatch.name
+            name: libraryMatch.name,
+            cookingMethod
         };
      } 
      
-     // 1.2 Try Regex Keywords (if library failed)
+     // 1.4 Try Regex Keywords (Fallback)
      if (!localResult) {
         const keywords = {
             fruit: /(果|橙|梨|桃|瓜|莓|橘|柚|蕉|葡萄)/,
@@ -429,22 +453,33 @@ export const healthService = {
             cold: /(冰|冷|生|沙拉|刺身|苦瓜|冬瓜)/
         };
 
-        if (input.match(keywords.fruit)) localResult = { category: 'fruit', tags: ["维生素", "天然糖分"], baseCalories: 50 };
-        else if (input.match(keywords.highOil)) localResult = { category: 'highOil', tags: ["高油", "重口味"], baseCalories: 400 };
-        else if (input.match(keywords.highSugar)) localResult = { category: 'highSugar', tags: ["高糖", "快乐水"], baseCalories: 350 };
-        else if (input.match(keywords.staple)) localResult = { category: 'staple', tags: ["碳水", "主食"], baseCalories: 250 };
-        else if (input.match(keywords.protein)) localResult = { category: 'protein', tags: ["高蛋白", "营养"], baseCalories: 150 };
-        else if (input.match(keywords.veggie)) localResult = { category: 'veggie', tags: ["低卡", "膳食纤维"], baseCalories: 30 };
-        else if (input.match(keywords.cold)) localResult = { category: 'cold', tags: ["生冷", "寒凉"], baseCalories: 100 };
+        if (input.match(keywords.fruit)) localResult = { category: 'fruit', tags: ["维生素"], baseCalories: 50 };
+        else if (input.match(keywords.highOil)) localResult = { category: 'highOil', tags: ["高油"], baseCalories: 400 }; // Already handled by coeff but kept for safety
+        else if (input.match(keywords.highSugar)) localResult = { category: 'highSugar', tags: ["高糖"], baseCalories: 350 };
+        else if (input.match(keywords.staple)) localResult = { category: 'staple', tags: ["碳水"], baseCalories: 250 };
+        else if (input.match(keywords.protein)) localResult = { category: 'protein', tags: ["高蛋白"], baseCalories: 150 };
+        else if (input.match(keywords.veggie)) localResult = { category: 'veggie', tags: ["膳食纤维"], baseCalories: 30 };
+        else if (input.match(keywords.cold)) localResult = { category: 'cold', tags: ["生冷"], baseCalories: 100 };
+        
+        // Apply Coeff to regex fallback too
+        if (localResult) {
+            localResult.baseCalories = Math.round(localResult.baseCalories * cookingCoeff);
+            localResult.cookingMethod = cookingMethod;
+        }
      }
 
-     // If we found a local match, generate response IMMEDIATELY
+     // Force High Oil override if keywords exist (Double Check)
+     if (cookingMethod !== 'raw' && localResult) {
+         if (!localResult.tags.includes('高油') && cookingCoeff > 1.2) localResult.tags.push('高油');
+     }
+
+     // If local match found -> Generate Response
      if (localResult) {
          console.log("Local Diet Analysis Hit:", localResult);
          const { category, baseCalories, tags } = localResult;
          const totalCalories = Math.round(baseCalories * quantity);
          
-         // Generate Advice based on Constitution (Local Logic)
+         // --- Constitution Matrix Logic (PRD 2.1.2) ---
          let suitability = "基本可以";
          let reason = "符合基础营养需求。";
          let advice = "营养尚可，注意细嚼慢咽。";
@@ -452,16 +487,62 @@ export const healthService = {
          const type = constitutionType;
          const isQuery = /(能|可|该|要)不(能|可|该|要)|(吗|么|？|\?)/.test(input);
 
-         // [Insert Constitution Logic Here - Simplified for brevity but preserving core rules]
-         // ... (Reusing the robust logic from previous code) ...
-         if (type.includes('阳虚') && (category === 'cold' || category === 'fruit')) {
-             suitability = '少吃'; reason = '生冷寒凉损耗阳气。'; advice = '建议少吃，或配合热饮。';
-         } else if (type.includes('湿热') && (category === 'highOil' || category === 'highSugar')) {
-             suitability = '不宜'; reason = '助湿生热，加重困倦。'; advice = '建议饮食清淡，多吃祛湿食材。';
-         } else if (type.includes('阴虚') && (input.match(/(辣|烤|炸)/) || category === 'highOil')) {
-             suitability = '少吃'; reason = '辛辣燥热伤阴。'; advice = '建议多喝水，滋阴润燥。';
+         // 1. Yang Deficiency (阳虚)
+         if (type.includes('阳虚')) {
+             if (category === 'cold' || category === 'fruit' || input.includes('冰')) {
+                 suitability = '不宜'; reason = '生冷寒凉损耗阳气。'; advice = '建议喝杯姜枣茶补救，下次改为热食。';
+             } else if (category === 'veggie' && cookingMethod === 'raw') { // Salad
+                 suitability = '少吃'; reason = '生吃蔬菜偏寒。'; advice = '建议烫熟再吃。';
+             } else if (cookingMethod === 'fried' || category === 'highOil') {
+                 suitability = '少吃'; reason = '阳虚者脾胃运化无力，油炸难消化。'; advice = '建议改为炖煮，更易吸收营养。';
+             }
          }
-         // ... Add more as needed or keep it generic for speed
+         // 2. Damp-Heat (湿热)
+         else if (type.includes('湿热')) {
+             if (cookingMethod === 'fried' || cookingMethod === 'braised' || category === 'highOil') {
+                 suitability = '不宜'; reason = '助湿生热，加重困倦与面垢。'; advice = '建议喝点金银花茶清热，下一餐务必清淡。';
+             } else if (input.match(/(芒果|榴莲|荔枝)/)) {
+                 suitability = '慎食'; reason = '热带水果助火。'; advice = '建议改吃苹果或梨。';
+             }
+         }
+         // 3. Phlegm-Dampness (痰湿)
+         else if (type.includes('痰湿')) {
+             if (category === 'highSugar' || category === 'highOil' || input.includes('奶茶')) {
+                 suitability = '少吃'; reason = '肥甘厚味是生痰之源。'; advice = '建议饭后快走30分钟帮助代谢。';
+             }
+         }
+         // 4. Qi Deficiency (气虚)
+         else if (type.includes('气虚')) {
+             if (input.match(/(萝卜|山楂)/)) {
+                 suitability = '少吃'; reason = '萝卜破气，山楂耗气。'; advice = '气虚者不宜多食，以免加重乏力。';
+             } else if (category === 'cold') {
+                 suitability = '少吃'; reason = '寒凉伤脾胃之气。'; advice = '建议多吃甘温补气的食物（如鸡肉、山药）。';
+             }
+         }
+         // 5. Yin Deficiency (阴虚)
+         else if (type.includes('阴虚')) {
+             if (input.match(/(辣|烤|炸|羊肉|姜|蒜)/) || cookingMethod === 'fried') {
+                 suitability = '不宜'; reason = '辛辣燥热伤阴助火。'; advice = '建议多吃梨、银耳润燥，多喝水。';
+             }
+         }
+         // 6. Blood Stasis (血瘀)
+         else if (type.includes('血瘀')) {
+             if (category === 'cold' || input.includes('冰')) {
+                 suitability = '不宜'; reason = '寒凝血瘀，加重气血不畅。'; advice = '建议温水泡脚，促进循环。';
+             }
+         }
+         // 7. Qi Stagnation (气郁)
+         else if (type.includes('气郁')) {
+             if (input.match(/(咖啡|浓茶|酒)/)) {
+                 suitability = '慎食'; reason = '刺激性食物可能加重焦虑。'; advice = '建议喝玫瑰花茶疏肝解郁。';
+             }
+         }
+         // 8. Special (特禀)
+         else if (type.includes('特禀')) {
+             if (input.match(/(虾|蟹|鹅|笋|酒)/)) {
+                 suitability = '慎食'; reason = '发物易诱发过敏。'; advice = '请密切观察皮肤反应。';
+             }
+         }
 
          return {
              calories: totalCalories,
@@ -478,6 +559,7 @@ export const healthService = {
      }
 
      // --- Step 2: Fallback to LLM (Only if Local Failed) ---
+     // PRD Requirement: System Prompt must include Cooking Coefficient logic
      console.log("Local Analysis Failed, calling LLM for:", input);
      
      const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
@@ -485,9 +567,25 @@ export const healthService = {
      const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
      const systemPrompt = `你是一位专业临床营养师。请分析用户输入的食物：
-1. 估算热量(kcal)和三大营养素(g)。
-2. 判断中医体质(${constitutionType})适宜性。
-3. 返回JSON: { calories, nutrients: {carb, protein, fat}, suitability, reason, advice, tags }`;
+     
+     【硬性规则：烹饪热量法则】
+     1. 油炸/天妇罗/裹面：热量系数 x 2.0
+     2. 红烧/糖醋/拔丝：热量系数 x 1.4
+     3. 火锅(蔬菜类)：热量系数 x 1.5 (吸油)
+     4. 爆炒/油煎：热量系数 x 1.3
+     
+     【体质判断矩阵】
+     用户体质：${constitutionType}
+     - 阳虚质：忌生冷/寒凉/冰饮 -> 警告：伤阳气
+     - 湿热质：忌辛辣/酒/油炸/热带水果 -> 警告：助湿生热
+     - 痰湿质：忌肥甘厚味/甜食/奶茶 -> 警告：生痰之源
+     - 气虚质：忌耗气(萝卜/山楂)/生冷 -> 提示：破气
+     - 阴虚质：忌辛辣/烧烤/羊肉 -> 警告：伤阴助火
+     - 血瘀质：忌寒凉/冷饮 -> 警告：寒凝血瘀
+     - 气郁质：忌刺激(浓茶/咖啡) -> 提示：加重焦虑
+     - 特禀质：忌发物(海鲜/笋) -> 提示：易过敏
+
+     请返回JSON: { calories, nutrients: {carb, protein, fat}, suitability, reason, advice, tags }`;
 
      try {
         const response = await fetch(API_URL, {
@@ -820,26 +918,29 @@ export const healthService = {
      }
 
      const systemPrompt = `你是一位精通中医食疗和现代营养学的健康顾问。请为用户生成今日的三餐食谱（早餐、午餐、晚餐）。
-用户档案：
-- 每日目标热量：约 ${tdee} kcal
-- 中医体质：${constitutionType} (${constitutionDesc})
-- 季节：春季 (惊蛰)
-${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : ''}
+     
+     【核心要求：务必每天不同！】
+     1. 请根据今天的日期（${new Date().toLocaleDateString('zh-CN', {weekday: 'long'})}），设计一份与昨天完全不同的食谱。
+     2. 不要总是推荐同样的食物（如小米粥、煮鸡蛋）。请多变换花样（如：红豆薏米粥、全麦三明治、紫薯燕麦杯等）。
+     3. 结合“春季养肝”的节气特点，多推荐绿色蔬菜和酸甘食物。
 
-要求：
-1. 食谱需符合中医“顺时而食”和体质调理原则（如阳虚补阳、湿热祛湿）。
-2. 需符合现代营养学三大营养素配比。
-3. 返回纯JSON格式，包含 breakfast, lunch, dinner 三个对象，每个对象包含 name(菜名组合), calories(热量), carbs(碳水g), protein(蛋白质g), fat(脂肪g), tag(简短调理标签)。
-4. 菜名必须具体，并且【强制包含】每种食物的具体克数/数量（如：小米粥(250g)、鸡蛋(1个)、清炒菠菜(150g)）。不要使用“适量”、“少许”等模糊词汇。
-5. 严禁输出任何Markdown标记或代码块（如 \`\`\`json），只返回纯文本JSON。
-6. 确保JSON格式合法，无多余字符。
-
-返回格式示例：
-{
-  "breakfast": { "name": "...", "calories": 400, "carbs": 50, "protein": 20, "fat": 10, "tag": "..." },
-  "lunch": { ... },
-  "dinner": { ... }
-}`;
+     用户档案：
+     - 每日目标热量：约 ${tdee} kcal
+     - 中医体质：${constitutionType} (${constitutionDesc})
+     ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : ''}
+     
+     【详细输出规则】
+     1. 返回纯JSON格式，包含 breakfast, lunch, dinner 三个对象。
+     2. 每个对象包含 name(菜名组合), calories(热量), carbs(碳水g), protein(蛋白质g), fat(脂肪g), tag(简短调理标签)。
+     3. 菜名必须具体，并且【强制包含】每种食物的具体克数/数量（如：小米粥(250g)、鸡蛋(1个)、清炒菠菜(150g)）。
+     4. 严禁输出任何Markdown标记或代码块，只返回纯文本JSON。
+     
+     返回格式示例：
+     {
+       "breakfast": { "name": "...", "calories": 400, "carbs": 50, "protein": 20, "fat": 10, "tag": "..." },
+       "lunch": { ... },
+       "dinner": { ... }
+     }`;
 
     try {
         const response = await fetch(API_URL, {
@@ -1180,9 +1281,9 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
 
         return {
             success: true,
-            summary: result.summary,
-            keyword: result.keyword, // Return keyword
-            tags: result.tags, // Return tags
+            summary: result.summary || "暂无详细总结",
+            keyword: result.keyword || "生活", // Return keyword
+            tags: Array.isArray(result.tags) ? result.tags : [], // Return tags safely
             stats: {
                 avgCalories,
                 exerciseMins,
