@@ -4,6 +4,7 @@ import DailyRecommend from '../components/DailyRecommend';
 import MuseumWalk from '../components/MuseumWalk';
 import { Settings, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { storageService } from '../../services/storageService';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -19,50 +20,57 @@ const Home = () => {
 
   // Check if today's recommendation is already opened
   useEffect(() => {
-      const todayStr = new Date().toDateString();
-      const lastOpened = localStorage.getItem('cangzhen_daily_opened');
-      if (lastOpened === todayStr) {
-          setHasOpenedToday(true);
-      }
-
-      // 1. Calculate Stats
-      const stored = localStorage.getItem('cangzhen_memories');
-      if (stored) {
-          try {
-              const memories = JSON.parse(stored);
-              
-              // Total
-              const total = memories.length;
-
-              // Weekly (Since Last Monday)
-              const now = new Date();
-              const day = now.getDay();
-              const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-              const monday = new Date(now.setDate(diff));
-              monday.setHours(0, 0, 0, 0);
-              
-              const weekly = memories.filter(m => {
-                  const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
-                  return mDate >= monday;
-              }).length;
-
-              setStats({ total, weekly });
-
-              // Pavilion Stats
-              const counts = { sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0 };
-              memories.forEach(m => {
-                  if (counts[m.hall] !== undefined) counts[m.hall]++;
-              });
-
-              setPavilionStats(prev => prev.map(p => ({
-                  ...p,
-                  count: counts[p.id] || 0
-              })));
-
-          } catch (e) {
-              console.error("Stats calculation error", e);
+      const loadData = async () => {
+          const todayStr = new Date().toDateString();
+          const lastOpened = localStorage.getItem('cangzhen_daily_opened');
+          if (lastOpened === todayStr) {
+              setHasOpenedToday(true);
           }
-      }
+
+          // 1. Calculate Stats
+          const memories = await storageService.getCangzhenMemories();
+          if (memories && memories.length > 0) {
+              try {
+                  // Total
+                  const total = memories.length;
+
+                  // Weekly (Since Last Monday)
+                  const now = new Date();
+                  const day = now.getDay();
+                  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+                  const monday = new Date(now.setDate(diff));
+                  monday.setHours(0, 0, 0, 0);
+                  
+                  const weekly = memories.filter(m => {
+                      const mDate = typeof m.id === 'number' ? new Date(m.id) : new Date(m.date);
+                      return mDate >= monday;
+                  }).length;
+
+                  setStats({ total, weekly });
+
+                  // Pavilion Stats
+                  const counts = { sensation: 0, emotion: 0, inspiration: 0, wanxiang: 0 };
+                  memories.forEach(m => {
+                      if (counts[m.hall] !== undefined) counts[m.hall]++;
+                  });
+
+                  setPavilionStats(prev => prev.map(p => ({
+                      ...p,
+                      count: counts[p.id] || 0
+                  })));
+
+              } catch (e) {
+                  console.error("Stats calculation error", e);
+              }
+          }
+      };
+      
+      loadData();
+      
+      // Listen for storage changes
+      const handleStorageChange = () => loadData();
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const handleOpenMuseum = () => {
@@ -143,10 +151,10 @@ const Home = () => {
 
       {/* 5. Daily Recommend Modal */}
       {showRecommendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in bg-black/20 backdrop-blur-sm">
-            <div className="w-full max-w-sm glass rounded-[32px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.1)] animate-scale-up relative border border-white/60 flex flex-col items-center backdrop-blur-xl bg-white/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in bg-black/5 backdrop-blur-md">
+            <div className="w-full max-w-sm rounded-[32px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.05)] animate-scale-up relative border border-white/80 flex flex-col items-center backdrop-blur-2xl bg-white/60">
                  {/* Decorative Glow */}
-                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-[32px]" />
+                 <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/70 to-transparent pointer-events-none rounded-[32px]" />
                  
                  <h3 className="text-xl font-serif font-bold text-cangzhen-text-main mb-8 text-center tracking-widest relative z-10 flex items-center gap-2 drop-shadow-sm">
                     <Sparkles size={18} className="text-yellow-600" /> 今日灵感签

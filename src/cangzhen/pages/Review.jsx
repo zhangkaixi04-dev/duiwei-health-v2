@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
-import { cangzhenService } from '../../services/cangzhenService';
+import { storageService } from '../../services/storageService';
 import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap, Award, Calendar } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
@@ -173,20 +173,21 @@ const ReviewContent = () => {
     }
 
     // Load memories...
-    const stored = localStorage.getItem('cangzhen_memories');
-    if (stored) {
-        try {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-                setRawMemories(parsed);
-            } else {
-                setRawMemories([]);
-            }
-        } catch (e) {
-            console.error("Failed to parse memories", e);
+    const loadMemories = async () => {
+        const stored = await storageService.getCangzhenMemories();
+        if (stored && stored.length > 0) {
+            setRawMemories(stored);
+        } else {
             setRawMemories([]);
         }
-    }
+    };
+    
+    loadMemories();
+    
+    // Listen for storage changes
+    const handleStorageChange = () => loadMemories();
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
 
     // Load Cached Summary
     const weekId = getWeekId(weekOffset);
@@ -231,9 +232,17 @@ const ReviewContent = () => {
       if (hasMemories && !cachedSummary && !weeklySummary.loading && !weeklySummary.content) {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
-          cangzhenService.report_weekly('user', weekOffset).then(res => {
-               const safeTags = Array.isArray(res.tags) ? res.tags : [];
-               const result = { summary: res.summary, keyword: res.keyword, tags: safeTags };
+          // 暂时使用静态数据，避免依赖cangzhenService
+          setTimeout(() => {
+               const result = { 
+                   summary: "<p>本周你记录了生活中的美好瞬间，每一个当下都值得被珍藏。继续保持记录的习惯，让时光在这里停留。</p>", 
+                   keyword: "珍惜", 
+                   tags: [
+                       { text: "感知", weight: 3 },
+                       { text: "生活", weight: 2 },
+                       { text: "记录", weight: 3 }
+                   ]
+               };
                
                try {
                    localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
@@ -241,11 +250,8 @@ const ReviewContent = () => {
                    console.error("LocalStorage quota exceeded or error", e);
                }
                
-               setWeeklySummary({ loading: false, content: res.summary, keyword: res.keyword, tags: safeTags });
-           }).catch(e => {
-               console.error("Weekly Report Error:", e);
-               setWeeklySummary({ loading: false, content: "生成报告时发生错误，请稍后重试。", tags: [] });
-           });
+               setWeeklySummary({ loading: false, content: result.summary, keyword: result.keyword, tags: result.tags });
+          }, 500);
       }
   }, [weekOffset, sanitizedMemories]); 
 

@@ -86,7 +86,7 @@ const AuthStatus = ({ appName = 'hepai' }) => {
                     className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 shadow-sm hover:bg-white transition-colors"
                 >
                     <CloudOff size={12} className="text-gray-400" />
-                    <span className="text-[10px] text-gray-600 font-medium">未同步</span>
+                    <span className="text-[10px] text-gray-600 font-medium">未登录</span>
                 </button>
             )}
         </div>

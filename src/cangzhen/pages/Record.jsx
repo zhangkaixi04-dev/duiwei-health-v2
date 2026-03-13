@@ -207,7 +207,7 @@ const Record = () => {
                   {/* 4. Actions */}
                   <div className="flex flex-col gap-3 w-full animate-slide-up delay-300">
                       <button 
-                        onClick={() => navigate('/museum')}
+                        onClick={() => navigate('/cangzhen/museum')}
                         className="w-full py-3.5 rounded-full bg-cangzhen-text-main text-white text-sm font-medium tracking-[0.2em] shadow-lg hover:scale-[1.02] transition-transform"
                       >
                           去博物馆看看
@@ -323,7 +323,7 @@ const Record = () => {
                 ${isSealing ? 'opacity-0 translate-y-10' : ''}
             `}
           >
-              封存此刻
+              {(!content.trim() && !image) || !selectedHall ? '请先选择要存放的展馆' : '封存藏品'}
           </button>
       </div>
 

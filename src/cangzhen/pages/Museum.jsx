@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
 import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react';
+import { storageService } from '../../services/storageService';
 
 const Museum = () => {
   const [activeTab, setActiveTab] = useState('sensation');
@@ -11,13 +12,12 @@ const Museum = () => {
 
   // Load memories from localStorage on mount
   useEffect(() => {
-      const stored = localStorage.getItem('cangzhen_memories');
-      if (stored) {
-          try {
-              const parsed = JSON.parse(stored);
-              // Normalize data structure
-              if (Array.isArray(parsed)) {
-                  const normalized = parsed.map(item => {
+      const loadMemories = async () => {
+          const stored = await storageService.getCangzhenMemories();
+          if (stored && stored.length > 0) {
+              try {
+                  // Normalize data structure
+                  const normalized = stored.map(item => {
                       const timestamp = typeof item.id === 'number' ? item.id : Date.now();
                       // Create a Date object for easier parsing
                       const dateObj = new Date(timestamp);
@@ -31,7 +31,7 @@ const Museum = () => {
                           ...item,
                           timestamp: timestamp,
                           isoDate: isoDate, // For filtering
-                          displayDate: item.date.includes('月') ? item.date : dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
+                          displayDate: item.date && item.date.includes('月') ? item.date : dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
                           tag: item.tags && item.tags.length > 0 ? item.tags[0] : '记录',
                           image: item.image || null
                       };
@@ -39,14 +39,21 @@ const Museum = () => {
                   // Sort by timestamp descending (newest first)
                   normalized.sort((a, b) => b.timestamp - a.timestamp);
                   setLocalMemories(normalized);
-              } else {
+              } catch (e) {
+                  console.error("Failed to parse memories", e);
                   setLocalMemories([]);
               }
-          } catch (e) {
-              console.error("Failed to parse memories", e);
+          } else {
               setLocalMemories([]);
           }
-      }
+      };
+      
+      loadMemories();
+      
+      // Listen for storage changes
+      const handleStorageChange = () => loadMemories();
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Halls Configuration (Ordered: Sensation, Emotion, Creative, Decision)

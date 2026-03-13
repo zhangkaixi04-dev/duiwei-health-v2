@@ -12,10 +12,10 @@ const STORAGE_KEYS = {
   SETTINGS: 'hepai_settings',
   MESSAGES: 'hepai_messages',
   APP_STATE: 'hepai_app_state',
-  // Cangzhen Keys (should be migrated to centralized management)
-  CANGZHEN_MEMORIES: 'cangzhen_memories',
-  CANGZHEN_DAILY_OPENED: 'cangzhen_daily_opened',
-  CANGZHEN_WEEKLY_SUMMARY: 'weekly_summary_' // prefix
+  // Cangzhen Keys (user-specific)
+  CANGZHEN_MEMORIES: (userId) => `cangzhen_memories_${userId}`,
+  CANGZHEN_DAILY_OPENED: (userId) => `cangzhen_daily_opened_${userId}`,
+  CANGZHEN_WEEKLY_SUMMARY: (userId) => `weekly_summary_${userId}_` // prefix
 };
 
 const getLocal = (key, defaultVal) => {
@@ -437,7 +437,13 @@ export const storageService = {
    * Add a new Cangzhen memory with Cloud Sync
    */
   addCangzhenMemory: async (memory) => {
-    const memories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
+    const { data: { session } } = await supabaseCangzhen.auth.getSession();
+    if (!session?.user) return [];
+    
+    const userId = session.user.id;
+    const storageKey = STORAGE_KEYS.CANGZHEN_MEMORIES(userId);
+    
+    const memories = getLocal(storageKey, []);
     const newMemory = {
         ...memory,
         sync_status: 'pending'
@@ -445,39 +451,60 @@ export const storageService = {
     const updated = [newMemory, ...memories];
     
     // 1. Save locally first (Immediate UI feedback)
-    setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, updated);
+    setLocal(storageKey, updated);
 
-    // 2. Sync to Cloud if logged in
-    const { data: { session } } = await supabaseCangzhen.auth.getSession();
-    if (session?.user) {
-        try {
-            const { error } = await supabaseCangzhen
-                .from('cangzhen_memories')
-                .upsert({
-                    user_id: session.user.id,
-                    memory_id: newMemory.id,
-                    content: newMemory.content,
-                    hall: newMemory.hall,
-                    image_url: newMemory.image,
-                    tags: newMemory.tags,
-                    created_at: new Date(newMemory.id).toISOString()
-                });
-            
-            if (!error) {
-                // Mark as synced locally
-                newMemory.sync_status = 'synced';
-                // Update local storage again with synced status
-                const currentMemories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
-                const syncedMemories = currentMemories.map(m => 
-                    m.id === newMemory.id ? { ...m, sync_status: 'synced' } : m
-                );
-                setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, syncedMemories);
-            }
-        } catch (e) {
-            console.error("Cloud sync failed, will retry later", e);
+    // 2. Sync to Cloud
+    try {
+        const { error } = await supabaseCangzhen
+            .from('cangzhen_memories')
+            .upsert({
+                user_id: userId,
+                memory_id: newMemory.id,
+                content: newMemory.content,
+                hall: newMemory.hall,
+                image_url: newMemory.image,
+                tags: newMemory.tags,
+                created_at: new Date(newMemory.id).toISOString()
+            });
+        
+        if (!error) {
+            // Mark as synced locally
+            newMemory.sync_status = 'synced';
+            // Update local storage again with synced status
+            const currentMemories = getLocal(storageKey, []);
+            const syncedMemories = currentMemories.map(m => 
+                m.id === newMemory.id ? { ...m, sync_status: 'synced' } : m
+            );
+            setLocal(storageKey, syncedMemories);
         }
+    } catch (e) {
+        console.error("Cloud sync failed, will retry later", e);
     }
     return updated;
+  },
+
+  /**
+   * Get Cangzhen memories for current user
+   */
+  getCangzhenMemories: async () => {
+    const { data: { session } } = await supabaseCangzhen.auth.getSession();
+    if (!session?.user) return [];
+    
+    const userId = session.user.id;
+    const storageKey = STORAGE_KEYS.CANGZHEN_MEMORIES(userId);
+    return getLocal(storageKey, []);
+  },
+
+  /**
+   * Save Cangzhen memories for current user
+   */
+  saveCangzhenMemories: async (memories) => {
+    const { data: { session } } = await supabaseCangzhen.auth.getSession();
+    if (!session?.user) return;
+    
+    const userId = session.user.id;
+    const storageKey = STORAGE_KEYS.CANGZHEN_MEMORIES(userId);
+    setLocal(storageKey, memories);
   },
 
   // Clear all app data (Careful!)
