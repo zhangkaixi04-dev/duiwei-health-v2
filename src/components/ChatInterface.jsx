@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Image as ImageIcon, Camera, Sparkles, Activity, Utensils, Moon, FileText, Calendar, PlusCircle, CheckCircle, XCircle, TrendingUp, AlertCircle, ChevronDown, ChevronUp, LayoutDashboard, User } from 'lucide-react';
 import DailyFeed from './DailyFeed';
 import PersonalCenter from './PersonalCenter';
+import AuthStatus from './AuthStatus';
 import { healthService } from '../services/healthService';
 import { storageService } from '../services/storageService';
 import { questionnaireData, calculateConstitution } from '../data/questionnaire';
@@ -2599,6 +2600,11 @@ const ChatInterface = ({ onOpenProfile }) => {
 
   return (
     <div className="flex flex-col h-full bg-bg relative">
+      {/* Auth Status for Hepai (Isolated) */}
+      <div className="fixed top-4 right-4 z-[60]">
+          <AuthStatus appName="hepai" />
+      </div>
+
       {/* Dashboard Area - Fixed at Top */}
       <div className="px-4 pt-safe-top pb-2 shrink-0 z-50 space-y-2 sticky top-0 bg-bg/95 backdrop-blur-sm">
         {/* Top Buttons - Original 3 Tabs */}

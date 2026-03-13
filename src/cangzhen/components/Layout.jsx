@@ -1,7 +1,8 @@
 // src/cangzhen/components/Layout.jsx
 import React from 'react';
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Landmark, BarChart3, PenLine } from 'lucide-react';
+import AuthStatus from '../../components/AuthStatus';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -66,6 +67,11 @@ const BottomNav = () => {
 const Layout = () => {
   return (
     <div className="min-h-screen relative overflow-hidden font-sans text-cangzhen-text-main">
+      {/* Auth Status for Cangzhen (Isolated) */}
+      <div className="fixed top-4 right-4 z-50">
+          <AuthStatus appName="cangzhen" />
+      </div>
+
       {/* 1. Ambient Background */}
       <div className="fixed inset-0 ambient-background z-0" />
       

@@ -749,62 +749,6 @@ export const healthService = {
      } catch (e) {
         console.error("LLM Analysis Failed:", e);
         
-        // --- Step 3: Local Fallback (Only if LLM Failed) ---
-        // If local regex found something (but maybe quantity wasn't perfect), reuse it.
-        if (localResult) {
-            
-            // Re-apply constitution logic LOCALLY because LLM failed
-            const type = constitutionType;
-            const season = getCurrentSeason();
-            const rules = SCENARIO_RULES[type] || SCENARIO_RULES['平和质'];
-            const baseScore = BASE_SCORES[type] || 5;
-            const seasonWeight = SEASONAL_WEIGHTS[type]?.[season] || 0;
-            const totalScore = baseScore + seasonWeight;
-            
-            const foodTags = localResult.tags || [];
-            // Merge method tags
-            if (cookingMethod !== 'raw') foodTags.push(cookingMethod);
-            if (localResult.category) foodTags.push(localResult.category);
-            
-            const tabooViolation = rules.taboo.filter(t => foodTags.includes(t));
-            const isTaboo = tabooViolation.length > 0;
-            
-            let suitability = "基本可以";
-            let reason = "网络不佳，仅提供基础分析。";
-            let advice = "建议您根据自身感受适量食用。";
-            
-            if (isTaboo) {
-                 if (totalScore >= 13) {
-                     suitability = "严禁食用";
-                     reason = `【高危预警】${type}体质在${season}极度敏感。`;
-                     advice = rules.inquiry_advice;
-                 } else if (totalScore >= 10) {
-                     suitability = "不宜食用";
-                     reason = `${type}体质不宜食用此类食物。`;
-                     advice = rules.inquiry_advice;
-                 } else {
-                     suitability = "少吃";
-                     reason = "建议控制摄入量。";
-                 }
-            } else if (rules.suitable.some(s => foodTags.includes(s))) {
-                 suitability = "推荐";
-                 reason = "符合您的体质需求。";
-            }
-
-            return {
-                 calories: totalCalories, // Use locally calculated values
-                 nutrients: { 
-                     carb: Math.round(totalCalories * 0.5 / 4), 
-                     protein: Math.round(totalCalories * 0.2 / 4), 
-                     fat: Math.round(totalCalories * 0.3 / 9) 
-                 },
-                 suitability: suitability, 
-                 reason: reason,
-                 advice: advice,
-                 tags: [...new Set([...tags, ...foodTags])]
-            };
-        }
-        
         return {
             calories: 0,
             nutrients: { carb: 0, protein: 0, fat: 0 },

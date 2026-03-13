@@ -4,16 +4,33 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabaseHepai = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storageKey: 'hepai-auth-token',
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+export const supabaseCangzhen = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storageKey: 'cangzhen-auth-token',
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Helper to get correct client
+const getClient = (appName) => {
+    if (appName === 'cangzhen') return supabaseCangzhen;
+    return supabaseHepai; // Default to Hepai if not specified, or throw error
+};
 
 export const authService = {
   // Sign Up
-  signUp: async (email, password) => {
-    // Check if user already exists first? No, Supabase handles it.
-    // However, for better UX in dev/test, we might want to disable email confirmation requirement in Supabase dashboard
-    // or handle the 'User already registered' error gracefully.
-    
-    const { data, error } = await supabase.auth.signUp({
+  signUp: async (email, password, appName = 'hepai') => {
+    const client = getClient(appName);
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       // By default, Supabase requires email confirmation.
@@ -24,8 +41,9 @@ export const authService = {
   },
 
   // Sign In
-  signIn: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+  signIn: async (email, password, appName = 'hepai') => {
+    const client = getClient(appName);
+    const { data, error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -33,21 +51,30 @@ export const authService = {
   },
 
   // Sign Out
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut();
+  signOut: async (appName = 'hepai') => {
+    const client = getClient(appName);
+    const { error } = await client.auth.signOut();
     return { error };
   },
 
   // Get Current User
-  getCurrentUser: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  getCurrentUser: async (appName = 'hepai') => {
+    const client = getClient(appName);
+    const { data: { user } } = await client.auth.getUser();
     return user;
   },
 
   // Listen for Auth Changes
-  onAuthStateChange: (callback) => {
-    return supabase.auth.onAuthStateChange((event, session) => {
+  onAuthStateChange: (callback, appName = 'hepai') => {
+    const client = getClient(appName);
+    return client.auth.onAuthStateChange((event, session) => {
       callback(event, session);
     });
+  },
+  
+  // Expose clients for other services
+  clients: {
+      hepai: supabaseHepai,
+      cangzhen: supabaseCangzhen
   }
 };

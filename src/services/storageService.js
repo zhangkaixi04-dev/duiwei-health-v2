@@ -3,7 +3,7 @@
  * Handles structured storage for user profile, health records, and daily logs.
  */
 
-import { supabase } from './authService.js';
+import { supabaseHepai, supabaseCangzhen } from './authService.js';
 
 const STORAGE_KEYS = {
   USER_PROFILE: 'hepai_user_profile',
@@ -52,17 +52,21 @@ export const storageService = {
    * @param {any} data Data to sync
    */
   syncToCloud: async (key, data) => {
-      // 1. Check if user is logged in
-      const { data: { session } } = await supabase.auth.getSession();
+      // 1. Determine correct client
+      const isCangzhen = key.startsWith('cangzhen') || key === STORAGE_KEYS.CANGZHEN_MEMORIES;
+      const client = isCangzhen ? supabaseCangzhen : supabaseHepai;
+
+      // 2. Check if user is logged in
+      const { data: { session } } = await client.auth.getSession();
       if (!session || !session.user) return; // No user, local only
       
       const userId = session.user.id;
       
-      // 2. Map Local Keys to DB Tables/Columns
+      // 3. Map Local Keys to DB Tables/Columns
       try {
           if (key === STORAGE_KEYS.USER_PROFILE) {
               // Upsert Profile
-              const { error } = await supabase
+              const { error } = await client
                   .from('profiles')
                   .upsert({ 
                       id: userId, 
@@ -74,17 +78,10 @@ export const storageService = {
               if (error) console.error('Sync Profile Error:', error);
           } 
           else if (key === STORAGE_KEYS.CANGZHEN_MEMORIES) {
-              // Sync Memories (Bulk or Incremental? For simplicity, we sync all for now or check diffs)
-              // Ideally, we should only sync the *new* memory. 
-              // But since setLocal receives the full array, we might need a smarter diffing strategy.
-              // A better approach for memories is to use an 'addMemory' function that calls API directly.
-              // For now, let's just log that we would sync.
+              // Cangzhen memories are usually synced via addCangzhenMemory, but this handles bulk sync?
+              // For safety, let's just log.
               console.log('Syncing Memories to Cloud...', data.length);
-              
-              // In a real implementation:
-              // await supabase.from('memories').upsert(data.map(m => ({ ...m, user_id: userId })));
           }
-          // Add other keys as needed
       } catch (err) {
           console.error('Cloud Sync Exception:', err);
       }
@@ -94,60 +91,57 @@ export const storageService = {
    * Pull latest data from Cloud (On Login/Load)
    */
   pullFromCloud: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !session.user) return;
-      
-      const userId = session.user.id;
-      
-      // 1. Pull Profile
-      const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-          
-      if (profile) {
-          const localProfile = {
-              basicInfo: profile.basic_info || {},
-              constitution: profile.constitution || {},
-              medicalHistory: profile.medical_history || {}
-          };
-          // Update Local without triggering another sync loop (use localStorage directly or flag)
-          localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(localProfile));
+      // 1. Pull Hepai Profile
+      const { data: { session: hepaiSession } } = await supabaseHepai.auth.getSession();
+      if (hepaiSession?.user) {
+          const userId = hepaiSession.user.id;
+          const { data: profile } = await supabaseHepai
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
+              
+          if (profile) {
+              const localProfile = {
+                  basicInfo: profile.basic_info || {},
+                  constitution: profile.constitution || {},
+                  medicalHistory: profile.medical_history || {}
+              };
+              localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(localProfile));
+          }
       }
-      
-      // 2. Pull Cangzhen Memories
-      const { data: memories } = await supabase
-          .from('cangzhen_memories')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
 
-      if (memories && memories.length > 0) {
-          // Merge logic: Don't overwrite unsynced local data if possible, but here we prioritize cloud
-          // Or better: Merge by ID
-          const localMemories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
-          const memoryMap = new Map();
-          
-          // Add local memories first
-          localMemories.forEach(m => memoryMap.set(String(m.id || m.memory_id), m));
-          
-          // Merge cloud memories (overwrite if exists, as cloud is source of truth, or keep local if newer?)
-          // For now, let's assume Cloud is truth for recovery
-          memories.forEach(m => {
-              memoryMap.set(String(m.memory_id), {
-                  id: m.memory_id,
-                  content: m.content,
-                  hall: m.hall,
-                  image: m.image_url,
-                  tags: m.tags,
-                  date: new Date(m.created_at).toLocaleDateString(),
-                  sync_status: 'synced'
+      // 2. Pull Cangzhen Memories
+      const { data: { session: cangzhenSession } } = await supabaseCangzhen.auth.getSession();
+      if (cangzhenSession?.user) {
+          const userId = cangzhenSession.user.id;
+          const { data: memories } = await supabaseCangzhen
+              .from('cangzhen_memories')
+              .select('*')
+              .eq('user_id', userId)
+              .order('created_at', { ascending: false });
+
+          if (memories && memories.length > 0) {
+              const localMemories = getLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, []);
+              const memoryMap = new Map();
+              
+              localMemories.forEach(m => memoryMap.set(String(m.id || m.memory_id), m));
+              
+              memories.forEach(m => {
+                  memoryMap.set(String(m.memory_id), {
+                      id: m.memory_id,
+                      content: m.content,
+                      hall: m.hall,
+                      image: m.image_url,
+                      tags: m.tags,
+                      date: new Date(m.created_at).toLocaleDateString(),
+                      sync_status: 'synced'
+                  });
               });
-          });
-          
-          const merged = Array.from(memoryMap.values()).sort((a, b) => b.id - a.id);
-          localStorage.setItem(STORAGE_KEYS.CANGZHEN_MEMORIES, JSON.stringify(merged));
+              
+              const merged = Array.from(memoryMap.values()).sort((a, b) => b.id - a.id);
+              localStorage.setItem(STORAGE_KEYS.CANGZHEN_MEMORIES, JSON.stringify(merged));
+          }
       }
       
       window.dispatchEvent(new Event('storage')); // Refresh UI
@@ -454,10 +448,10 @@ export const storageService = {
     setLocal(STORAGE_KEYS.CANGZHEN_MEMORIES, updated);
 
     // 2. Sync to Cloud if logged in
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseCangzhen.auth.getSession();
     if (session?.user) {
         try {
-            const { error } = await supabase
+            const { error } = await supabaseCangzhen
                 .from('cangzhen_memories')
                 .upsert({
                     user_id: session.user.id,
