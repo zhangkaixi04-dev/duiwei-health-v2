@@ -9,10 +9,18 @@ const CONSTITUTION_TYPES = [
 
 const ManualEntry = ({ onBack, onSaveSuccess }) => {
   const [mainType, setMainType] = useState('平和质');
-  const [subType, setSubType] = useState('无');
+  const [subTypes, setSubTypes] = useState([]);
+  const [notes, setNotes] = useState('');
+
+  const toggleSubType = (type) => {
+    if (subTypes.includes(type)) {
+      setSubTypes(subTypes.filter(t => t !== type));
+    } else if (subTypes.length < 2) {
+      setSubTypes([...subTypes, type]);
+    }
+  };
 
   const handleSave = () => {
-    // Generate mock radar data based on type
     const mockRadarData = [
       { subject: '气虚', A: mainType === '气虚质' ? 90 : 30, fullMark: 100 },
       { subject: '阳虚', A: mainType === '阳虚质' ? 90 : 20, fullMark: 100 },
@@ -25,23 +33,25 @@ const ManualEntry = ({ onBack, onSaveSuccess }) => {
       { subject: '平和', A: mainType === '平和质' ? 90 : 60, fullMark: 100 },
     ];
 
-    // Construct constitution data
+    const typeDisplay = subTypes.length > 0 
+      ? `${mainType} (兼${subTypes.join('、')})` 
+      : mainType;
+
     const constitutionData = {
-      type: mainType,
-      subType: subType === '无' ? null : subType,
-      source: 'manual', // Indicate this was manually entered
+      type: typeDisplay,
+      mainType: mainType,
+      subTypes: subTypes,
+      source: 'manual',
       updatedAt: new Date().toISOString(),
       desc: getConstitutionDesc(mainType),
-      score: 85, // Default score for manual entry
-      radarData: mockRadarData
+      score: 85,
+      radarData: mockRadarData,
+      notes: notes
     };
 
     storageService.updateUserProfileSection('constitution', constitutionData);
-    
-    // Create historical record (Activation Archive)
     storageService.addHealthRecord('constitution', constitutionData);
     
-    // Also trigger storage event or callback to update parent
     if (onSaveSuccess) {
       onSaveSuccess();
     } else {
@@ -74,7 +84,7 @@ const ManualEntry = ({ onBack, onSaveSuccess }) => {
         <h3 className="font-bold text-lg text-gray-800">录入体质结论</h3>
       </div>
 
-      <div className="space-y-6 flex-1">
+      <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-1">
         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
            <div className="flex gap-3">
              <div className="mt-0.5 text-blue-500"><CheckCircle2 className="w-5 h-5" /></div>
@@ -106,22 +116,36 @@ const ManualEntry = ({ onBack, onSaveSuccess }) => {
         </div>
 
         <div>
-          <label className="text-sm font-bold text-gray-700 block mb-2">兼夹体质（可选）</label>
-          <div className="relative">
-            <select 
-              value={subType}
-              onChange={(e) => setSubType(e.target.value)}
-              className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all appearance-none font-medium text-gray-700"
-            >
-              <option value="无">无</option>
-              {CONSTITUTION_TYPES.filter(t => t !== mainType).map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-              <ChevronLeft className="w-5 h-5 -rotate-90" />
-            </div>
+          <label className="text-sm font-bold text-gray-700 block mb-2">兼夹体质（可选，最多2个）</label>
+          <div className="grid grid-cols-3 gap-2">
+            {CONSTITUTION_TYPES.filter(t => t !== mainType).map(type => (
+              <button 
+                key={type}
+                onClick={() => toggleSubType(type)}
+                disabled={!subTypes.includes(type) && subTypes.length >= 2}
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                  subTypes.includes(type) 
+                    ? 'bg-brand/10 border-brand text-brand' 
+                    : subTypes.length >= 2 
+                      ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed' 
+                      : 'bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-bold text-gray-700 block mb-2">医生结论（补充）</label>
+          <textarea 
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="请输入医生的诊断结论..."
+            rows={4}
+            className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all font-medium text-gray-700 resize-none"
+          />
         </div>
       </div>
 

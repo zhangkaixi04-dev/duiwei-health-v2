@@ -24,11 +24,14 @@ const Record = () => {
     { id: 'wanxiang', label: '决策' }
   ];
 
-  const milestones = {
-    1: { plant: 'Snowdrop', plantNameCN: '初见·萌芽', meaning: '希望', desc: '每一个开始都值得被记录。' },
-    3: { plant: 'Rosemary', plantNameCN: '坚持·苏醒', meaning: '回忆', desc: '坚持本身就是一种美德。' },
-    7: { plant: 'Lily', plantNameCN: '习惯·破土', meaning: '幸福归来', desc: '一周的积累，如阳光般灿烂。' }
-  };
+  const BADGE_DEFINITIONS = [
+    { id: 1, threshold: 1, plant: 'StarOfBethlehem', plantNameCN: '初见·萌芽', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。' },
+    { id: 2, threshold: 3, plant: 'Snowdrop', plantNameCN: '坚持·苏醒', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。' },
+    { id: 3, threshold: 7, plant: 'Lily', plantNameCN: '习惯·破土', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。' },
+    { id: 4, threshold: 10, plant: 'Iris', plantNameCN: '光亮·前行', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始。' },
+    { id: 5, threshold: 21, plant: 'Lotus', plantNameCN: '蜕变·绽放', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。' },
+    { id: 6, threshold: 30, plant: 'custom', plantNameCN: '繁花·盛景', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录。' }
+  ];
 
   // Handle Image Upload
   const handleImageUpload = (e) => {
@@ -67,16 +70,18 @@ const Record = () => {
     const count = updatedEntries.length;
 
     // Delay badge reveal: Always show success screen first, then reveal badge if applicable
-    if (milestones[count]) {
+    const earnedBadge = BADGE_DEFINITIONS.find(b => b.threshold === count);
+    if (earnedBadge) {
         // Delay setting the badge to allow the standard seal view to appear first
         setTimeout(() => {
-            setEarnedBadge({ ...milestones[count], count });
+            setEarnedBadge({ ...earnedBadge, count });
         }, 5000); // 5 seconds delay (user request)
     } else {
-        // FOR DEMO PURPOSES: If count is 1, ensure badge is set even if logic fails slightly
+        // If count is 1, ensure badge is set even if logic fails slightly
         if (count === 1) {
              setTimeout(() => {
-                setEarnedBadge({ ...milestones[1], count: 1 });
+                const firstBadge = BADGE_DEFINITIONS.find(b => b.threshold === 1);
+                setEarnedBadge({ ...firstBadge, count: 1 });
              }, 5000); // 5 seconds delay
         } else {
              setEarnedBadge(null);
@@ -109,7 +114,7 @@ const Record = () => {
                       <div className="bg-[#F2F0E9] w-[90%] max-w-sm rounded-[2rem] p-8 shadow-2xl relative overflow-hidden flex flex-col items-center animate-slide-up border border-white/50">
                           {/* Close Button */}
                           <button 
-                              onClick={() => navigate('/review')} 
+                              onClick={() => navigate('/cangzhen/review')} 
                               className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-cangzhen-text-secondary"
                           >
                               <X size={20} />
@@ -149,7 +154,7 @@ const Record = () => {
 
                           {/* Action */}
                           <button 
-                              onClick={() => navigate('/review')}
+                              onClick={() => navigate('/cangzhen/review')}
                               className="w-full py-3.5 rounded-full bg-cangzhen-text-main text-white text-sm font-medium tracking-[0.2em] shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
                           >
                               <Award size={16} /> 收入徽章墙

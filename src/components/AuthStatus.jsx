@@ -61,10 +61,10 @@ const AuthStatus = ({ appName = 'hepai' }) => {
     };
 
     return (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-safe-top right-4 z-40 flex items-center gap-2">
             {user ? (
                 isExpanded ? (
-                    <div className="flex items-center gap-2 bg-black/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 shadow-sm animate-fade-in">
+                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-gray-200 shadow-sm animate-fade-in">
                         <div className={`w-2 h-2 rounded-full ${syncing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`} />
                         <span className="text-[10px] text-gray-600 font-medium">{user.email}</span>
                         <button onClick={handleLogout} className="text-[10px] text-red-500 hover:underline ml-2">退出</button>
@@ -75,7 +75,7 @@ const AuthStatus = ({ appName = 'hepai' }) => {
                 ) : (
                     <button 
                         onClick={() => setIsExpanded(true)}
-                        className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md border border-black/5 shadow-sm flex items-center justify-center hover:bg-white transition-colors"
+                        className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-md border border-gray-200 shadow-sm flex items-center justify-center hover:bg-white transition-colors"
                     >
                          <div className={`w-2 h-2 rounded-full ${syncing ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`} />
                     </button>
@@ -83,10 +83,10 @@ const AuthStatus = ({ appName = 'hepai' }) => {
             ) : (
                 <button 
                     onClick={handleLogin}
-                    className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 shadow-sm hover:bg-white transition-colors"
+                    className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-2 py-1 rounded-full border border-gray-200 shadow-sm hover:bg-white transition-colors"
                 >
-                    <CloudOff size={12} className="text-gray-400" />
-                    <span className="text-[10px] text-gray-600 font-medium">未登录</span>
+                    <CloudOff size={10} className="text-gray-400" />
+                    <span className="text-[9px] text-gray-600 font-medium">登录</span>
                 </button>
             )}
         </div>

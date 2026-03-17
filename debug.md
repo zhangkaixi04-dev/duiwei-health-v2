@@ -1,21 +1,121 @@
-# Debug Session: Review Page Error
+# 调试报告：PRD 7.0 实现验证
 
-## Hypotheses
-1. [x] **Import Error**: Incorrect imports in `Review.jsx` causing runtime crash. (Checked imports, seem fine, but error persists)
-2. [x] **Data Parsing Error**: `localMemories` format causing `safeParseDate` or `useMemo` calculation failure. (Added defensive checks, verified logic)
-3. [ ] **Infinite Render Loop**: `useEffect` dependencies causing infinite re-renders. (Dependencies look safe)
-4. [ ] **Missing Dependency**: A component like `FlowerIcon` is missing a required prop or sub-component. (Checked FlowerIcon implementation)
-5. [ ] **Environment/Build Issue**: Logs not sending implies component not mounting or network blocked.
+## 状态：[OPEN]
 
-## Actions
-- Instrumented code with `logToDebugServer`. (Failed to collect logs)
-- Analyzed code for syntax/logic errors. (Found potential minor issues, verified imports)
-- **Fix Applied**: Removed debug code, enhanced ErrorBoundary to display full stack trace on screen.
+## 问题描述
+严格按照 PRD 7.0 的要求检查代码实现，确保所有功能都正确实现，包括健康洞察模块、个人档案图标、快捷按钮设置、记排便和记月经模块等。
 
-## Status
-[OPEN] -> Waiting for user to report error details from new ErrorBoundary.
+## 预期行为
+1. 健康洞察模块：标题为"健康洞察"，包含"今日洞察"和"本周洞察"标签页
+2. 个人档案：使用设置图标
+3. 快捷按钮："今日状态"改为"记心情"
+4. 记排便模块：使用简笔画而非食物图片
+5. 记月经模块：使用科学的卫生经用量版本
+6. 每日推荐：添加采纳按钮
 
-## Timeline
-- **2025-03-12**: Session started.
-- **2025-03-12**: Instrumentation added (failed).
-- **2025-03-12**: Instrumentation removed, ErrorBoundary improved.
+## 可证伪假设
+
+### 假设 1：健康洞察模块实现正确
+- **现象**：健康洞察模块应显示正确的标题和标签页
+- **验证方法**：检查 `WeeklyReportCard` 组件
+- **预期结果**：标题为"健康洞察"，包含"今日洞察"和"本周洞察"标签页
+
+### 假设 2：个人档案图标使用正确
+- **现象**：个人档案应使用设置图标
+- **验证方法**：检查个人档案相关组件
+- **预期结果**：个人档案使用设置图标
+
+### 假设 3：快捷按钮设置正确
+- **现象**：快捷按钮"今日状态"应改为"记心情"
+- **验证方法**：检查快捷按钮配置
+- **预期结果**：快捷按钮显示"记心情"
+
+### 假设 4：记排便模块使用简笔画
+- **现象**：记排便模块应使用简笔画而非食物图片
+- **验证方法**：检查 `PoopRecordCard` 组件
+- **预期结果**：使用简笔画展示布里斯托分型
+
+### 假设 5：记月经模块使用科学版本
+- **现象**：记月经模块应使用科学的卫生经用量版本
+- **验证方法**：检查 `PeriodRecordCard` 组件
+- **预期结果**：使用科学的卫生经用量版本
+
+### 假设 6：每日推荐添加采纳按钮
+- **现象**：每日推荐应添加采纳按钮
+- **验证方法**：检查 `DailyFeed` 组件
+- **预期结果**：每日推荐有采纳按钮
+
+## 调试步骤
+1. 检查健康洞察模块
+2. 检查个人档案图标
+3. 检查快捷按钮设置
+4. 检查记排便模块
+5. 检查记月经模块
+6. 检查每日推荐采纳按钮
+7. 验证所有修复是否正确
+
+## 日志收集
+- 代码检查：静态分析
+- 构建验证：`npm run build`
+
+## 修复方案
+- 如发现问题，提供最小化修复
+- 验证修复后构建成功
+
+## 验证标准
+- 代码实现符合 PRD 7.0 要求
+- 构建无错误
+- 所有功能正常运行
+
+---
+
+## 调试记录
+
+### 步骤 1：检查健康洞察模块
+- 文件：`src/components/ChatInterface.jsx`
+- 状态：已完成
+- 结果：✅ 健康洞察模块实现正确
+  - 标题为"健康洞察"
+  - 包含"今日洞察"和"本周洞察"标签页
+  - 营养仪表盘完整实现
+
+### 步骤 2：检查个人档案图标
+- 文件：`src/components/ChatInterface.jsx`
+- 状态：已完成
+- 结果：✅ 个人档案图标已修复
+  - 将 User 图标改为 Settings 图标
+
+### 步骤 3：检查快捷按钮设置
+- 文件：`src/components/ChatInterface.jsx`
+- 状态：已完成
+- 结果：✅ 快捷按钮设置已修复
+  - 将"今日状态"改为"记心情"
+
+### 步骤 4：检查记排便模块
+- 文件：`src/components/ChatInterface.jsx`
+- 状态：已完成
+- 结果：✅ 记排便模块已修复
+  - 使用简笔画替代食物图片
+  - 布里斯托分型显示正确
+
+### 步骤 5：检查记月经模块
+- 文件：`src/components/ChatInterface.jsx`
+- 状态：已完成
+- 结果：✅ 记月经模块已修复
+  - 使用科学的卫生经用量版本
+  - 显示轻度(1-2片/天)、中度(3-5片/天)、重度(6+片/天)
+
+### 步骤 6：检查每日推荐采纳按钮
+- 文件：`src/components/DailyFeed.jsx`
+- 状态：已完成
+- 结果：✅ 每日推荐采纳按钮已添加
+  - 添加了采纳按钮
+  - 保留了不喜欢按钮
+
+### 步骤 7：验证所有修复
+- 命令：`npm run build`
+- 状态：已完成
+- 结果：✅ 构建成功
+  - 无错误
+  - 生成了生产版本
+  - 所有修复都已正确实现

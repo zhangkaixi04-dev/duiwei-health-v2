@@ -579,10 +579,27 @@ export const healthService = {
          
          const rules = SCENARIO_RULES[type] || SCENARIO_RULES['平和质'];
          const foodTags = tagFood(input);
-         // Merge localResult tags
+         // Merge localResult tags and map Chinese tags to English for taboo matching
          if (category) foodTags.push(category);
          if (cookingMethod !== 'raw') foodTags.push(cookingMethod);
-         if (localResult.tags) foodTags.push(...localResult.tags);
+         if (localResult.tags) {
+             foodTags.push(...localResult.tags);
+             // Map Chinese tags to English for Constitution Matrix
+             if (localResult.tags.includes('高油炸') || localResult.tags.includes('高油')) {
+                 foodTags.push('greasy', 'fried');
+             }
+             if (localResult.tags.includes('高脂')) {
+                 foodTags.push('greasy', 'fatty');
+             }
+             if (localResult.tags.includes('高糖油')) {
+                 foodTags.push('greasy', 'sweet');
+             }
+         }
+         // Additional safety: Ensure fried cooking method always triggers greasy/fried tags
+         if (cookingMethod === 'fried') {
+             if (!foodTags.includes('greasy')) foodTags.push('greasy');
+             if (!foodTags.includes('fried')) foodTags.push('fried');
+         }
 
          // 2. Component Scoring (0-100 Scale)
          
@@ -617,16 +634,21 @@ export const healthService = {
          let finalRiskScore = 0;
          let formulaDesc = "";
          
-         if (isQuery) {
+         // CRITICAL FIX: If food violates taboo, FORCE HIGH RISK regardless of formula
+         if (isTaboo) {
+             finalRiskScore = 90; // Very high risk for taboo violations
+             formulaDesc = "禁忌触发模式 (触犯核心禁忌)";
+         } else if (isQuery) {
              // Formula 1: Inquiry Mode
              // Risk = Ingredient(35%) + Constitution(25%) + Season(25%) + Status(15%)
              finalRiskScore = (ingredientScore * 0.35) + (constitutionScore * 0.25) + (seasonScore * 0.25) + (statusScore * 0.15);
              formulaDesc = "咨询模式 (食材35%+体质25%+时令25%+状态15%)";
          } else {
-             // Formula 2: Record Mode
-             // Risk = Status(40%) + Quantity(30%) + Constitution(20%) + Season(10%)
-             finalRiskScore = (statusScore * 0.40) + (quantityScore * 0.30) + (constitutionScore * 0.20) + (seasonScore * 0.10);
-             formulaDesc = "记录模式 (状态40%+食用量30%+体质20%+时令10%)";
+             // Formula 2: Record Mode - BUT ingredient taboo check comes FIRST (above)
+             // Risk = Ingredient(30%) + Status(25%) + Quantity(25%) + Constitution(15%) + Season(5%)
+             // Added Ingredient back for Record Mode since taboo check is separate
+             finalRiskScore = (ingredientScore * 0.30) + (statusScore * 0.25) + (quantityScore * 0.25) + (constitutionScore * 0.15) + (seasonScore * 0.05);
+             formulaDesc = "记录模式 (食材30%+状态25%+食用量25%+体质15%+时令5%)";
          }
          
          console.log(`[Matrix Calculation] ${formulaDesc}: Final Score = ${finalRiskScore.toFixed(1)}`);
@@ -1061,33 +1083,30 @@ export const healthService = {
         }
      }
 
-     const systemPrompt = `你是专业中医体质营养师 + 注册营养师，精通：
-- 中医九种体质辩证调理（阳虚 / 阴虚 / 气虚 / 痰湿 / 湿热 / 血瘀 / 气郁 / 特禀）
-- 现代营养学：热量、蛋白质、碳水、脂肪、膳食纤维、维生素、矿物质
-- 膳食搭配：每日≥12 种食材、每周≥25种食材；7 天不重样、精确到克、三餐均衡
+     const systemPrompt = `你是一位精通中医食疗和现代营养学的健康顾问。请为用户生成今日的三餐食谱（早餐、午餐、晚餐）。
+     
+     【核心要求：务必每天不同！】
+     1. 请根据今天的日期（${new Date().toLocaleDateString('zh-CN', {weekday: 'long'})}），设计一份与昨天完全不同的食谱。
+     2. 不要总是推荐同样的食物（如小米粥、煮鸡蛋）。请多变换花样（如：红豆薏米粥、全麦三明治、紫薯燕麦杯等）。
+     3. 结合“春季养肝”的节气特点，多推荐绿色蔬菜和酸甘食物。
 
-【用户档案】
-- 每日目标热量：约 ${tdee} kcal
-- 中医体质：${constitutionType} (${constitutionDesc})
-${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : ''}
-
-【规则】
-1. 严格按用户记忆的user_profile推荐
-2. 禁忌食材绝对不出现
-3. 每日总热量匹配用户目标（减脂 / 增肌 / 维持）
-4. 输出结构化、清晰、可直接食用
-
-【输出格式】
-返回纯JSON格式，包含以下字段：
-- date: 日期（YYYY-MM-DD）
-- total_calories: 每日总热量
-- breakfast: {name, calories, ingredients: [{name, amount}], nutrients: {carbs, protein, fat}, nutrition_points: [], constitution_fit}
-- lunch: {name, calories, ingredients: [{name, amount}], nutrients: {carbs, protein, fat}, nutrition_points: [], constitution_fit}
-- dinner: {name, calories, ingredients: [{name, amount}], nutrients: {carbs, protein, fat}, nutrition_points: [], constitution_fit}
-- daily_summary: {ingredient_count, nutrition_balance, key_benefits: []}
-- advice: 建议
-
-严禁输出任何Markdown标记或代码块，只返回纯文本JSON。`;
+     用户档案：
+     - 每日目标热量：约 ${tdee} kcal
+     - 中医体质：${constitutionType} (${constitutionDesc})
+     ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : ''}
+     
+     【详细输出规则】
+     1. 返回纯JSON格式，包含 breakfast, lunch, dinner 三个对象。
+     2. 每个对象包含 name(菜名组合), calories(热量), carbs(碳水g), protein(蛋白质g), fat(脂肪g), tag(简短调理标签)。
+     3. 菜名必须具体，并且【强制包含】每种食物的具体克数/数量（如：小米粥(250g)、鸡蛋(1个)、清炒菠菜(150g)）。
+     4. 严禁输出任何Markdown标记或代码块，只返回纯文本JSON。
+     
+     返回格式示例：
+     {
+       "breakfast": { "name": "...", "calories": 400, "carbs": 50, "protein": 20, "fat": 10, "tag": "..." },
+       "lunch": { ... },
+       "dinner": { ... }
+     }`;
 
     try {
         const response = await fetch(API_URL, {
@@ -1119,7 +1138,9 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         
         // Return a safe copy to avoid mutation if we were to modify it
         return {
-            ...fallbackPlan
+            breakfast: { ...fallbackPlan.breakfast },
+            lunch: { ...fallbackPlan.lunch },
+            dinner: { ...fallbackPlan.dinner }
         };
     }
   },
@@ -1464,16 +1485,42 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
 
   /**
    * 14. AI 意图识别 (Intent Classification)
-   * 解决关键词匹配精度差的问题
+   * 解决关键词匹配精度差的问题 - Hybrid Mode
    */
   classifyIntent: async (text) => {
-    // 1. Fast Path: Regex for Obvious Commands (Zero Latency)
-    if (/^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(text.trim()) || text.trim() === '我要记饮食') return { intent: 'diet_record', confidence: 1.0 };
-    if (/^(我要|想)?(记|录)(一下)?(睡眠|睡觉)?$/.test(text.trim()) || text.trim() === '我要记睡眠') return { intent: 'sleep_record', confidence: 1.0 };
-    if (/^(我要|想)?(记|录)(一下)?(排便|大便|拉屎)?$/.test(text.trim()) || text.trim() === '我要记排便') return { intent: 'poop_record', confidence: 1.0 };
-    if (/^(我要|想)?(记|录)(一下)?(经期|月经|大姨妈)?$/.test(text.trim()) || text.trim() === '我要记经期') return { intent: 'period_record', confidence: 1.0 };
+    const t = text.trim();
     
-    // 2. LLM Path (High Precision)
+    // 1. Fast Path: Regex for Obvious Commands (Zero Latency)
+    if (/^(我要|想)?(记|录)(一下)?(饮食|吃饭|早餐|午餐|晚餐)?$/.test(t) || t === '我要记饮食') return { intent: 'diet_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(睡眠|睡觉)?$/.test(t) || t === '我要记睡眠') return { intent: 'sleep_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(排便|大便|拉屎)?$/.test(t) || t === '我要记排便') return { intent: 'poop_record', confidence: 1.0 };
+    if (/^(我要|想)?(记|录)(一下)?(经期|月经|大姨妈)?$/.test(t) || t === '我要记经期') return { intent: 'period_record', confidence: 1.0 };
+    
+    // 2. Local Fallback Regex (When LLM fails)
+    const foodKeywords = ['肉', '菜', '蛋', '奶', '面', '米', '豆', '汤', '鱼', '虾', '鸡', '鸭', '牛', '羊', '猪', '饺', '饼', '包', '粥', '粉', '瓜', '薯', '蔬', '莓', '橙', '梨', '桃', '蕉', '葡', '提', '榴', '芒', '枣', '麦', '粮', '糖', '盐', '油', '酱', '醋', '咖啡', '拿铁', '美式', '三明治', '汉堡', '薯条', '披萨', '沙拉', '蛋糕', '甜点', '零食', '巧克力', '坚果', '酸奶', '牛奶', '燕麦', '玉米', '红薯', '紫薯'];
+    const hasFood = foodKeywords.some(kw => t.includes(kw));
+    
+    // Diet Record: Contains "吃了/喝了" + food
+    if (hasFood && /(吃了|喝了|我吃了|我喝了|早餐|午饭|晚餐|中午|晚上|早上)/.test(t)) {
+        return { intent: 'diet_record', confidence: 0.9 };
+    }
+    
+    // Diet Inquiry: Contains "能吃吗/可以吃吗/能不能吃"
+    if (hasFood && /(能吃吗|可以吃吗|能不能吃|好吗|合适吗|适合吗)/.test(t)) {
+        return { intent: 'diet_inquiry', confidence: 0.9 };
+    }
+    
+    // Sleep Record
+    if (/(睡了|睡了|刚醒|醒来|昨晚)/.test(t) && /(小时|分钟|点)/.test(t)) {
+        return { intent: 'sleep_record', confidence: 0.9 };
+    }
+    
+    // Exercise Record
+    if (/(跑了|走了|运动了|锻炼了|站桩|太极|瑜伽|游泳|跳绳)/.test(t) && /(公里|分钟|小时)/.test(t)) {
+        return { intent: 'exercise_record', confidence: 0.9 };
+    }
+    
+    // 3. LLM Path (High Precision)
     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
@@ -1514,125 +1561,12 @@ ${allergies ? `- 过敏/忌口：${allergies} (请严格避开这些食材)` : '
         const jsonStr = data.choices[0].message.content.replace(/```json|```/g, '').trim();
         return JSON.parse(jsonStr);
     } catch (e) {
-        console.error("Intent Classification Failed:", e);
-        return { intent: 'chat', confidence: 0 }; // Fallback
-    }
-  },
-
-  /**
-   * 14. AI 生成动态洞察
-   * @param {Object} userProfile 用户档案
-   * @param {Object} dailyData 今日数据
-   * @param {Object} weekData 本周数据
-   * @returns {Promise<Object>} 生成的洞察内容
-   */
-  generate_dynamic_insight: async (userProfile, dailyData = {}, weekData = {}) => {
-    const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-
-    const constitutionType = userProfile.constitution?.type || '平和质';
-    const constitutionDesc = userProfile.constitution?.desc || '';
-    const basicInfo = userProfile.basicInfo || {};
-
-    const systemPrompt = `你是专业中医体质营养师 + 注册营养师，精通：
-- 中医九种体质辩证调理（阳虚 / 阴虚 / 气虚 / 痰湿 / 湿热 / 血瘀 / 气郁 / 特禀）
-- 现代营养学：热量、蛋白质、碳水、脂肪、膳食纤维、维生素、矿物质
-- 膳食搭配：每日≥12 种食材、每周≥25种食材；7 天不重样、精确到克、三餐均衡
-
-【用户档案】
-- 中医体质：${constitutionType} (${constitutionDesc})
-- 基础信息：${basicInfo.gender === 'female' ? '女' : '男'}, ${basicInfo.age || ''}岁
-
-【今日数据】
-${JSON.stringify(dailyData, null, 2)}
-
-【本周数据】
-${JSON.stringify(weekData, null, 2)}
-
-【规则】
-1. 严格按用户体质进行分析
-2. 不虚构饮水、疲劳、体态、症状、舌苔、脉象等未记录的信息
-3. 所有分析、建议都要和${constitutionType}强绑定
-4. 不做医疗诊断、不开药方、不承诺治愈、不使用恐怖化表述
-5. 信息输入和输出之间要有围绕体质调理的证据链
-6. 数据结论跟科学指标有呼应对比（如：睡眠比较好的是23点前睡觉、睡够7-8小时）
-
-【输出格式】
-返回纯JSON格式，包含以下字段：
-- today_insight: {
-    core_issue: "核心问题（1个）",
-    actions: ["立即能改的动作（1-2个）"],
-    analysis: "结合体质的分析说明"
-  }
-- week_insight: {
-    long_term_problems: ["最影响体质的长期问题（1-2个）"],
-    next_week_goals: ["下周可坚持的小目标（1-2个）"],
-    scientific_evidence: "科学依据说明"
-  }
-
-严禁输出任何Markdown标记或代码块，只返回纯文本JSON。`;
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
-            body: JSON.stringify({
-                model: ENDPOINT_ID,
-                messages: [{ role: "system", content: systemPrompt }],
-                stream: false
-            })
-        });
-
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-
-        const text = data.choices[0].message.content;
-        const jsonStr = text.replace(/```json|```/g, '').trim();
-        return JSON.parse(jsonStr);
-
-    } catch (e) {
-        console.error("Dynamic Insight Generation Error:", e);
-        
-        // 生成静态fallback数据
-        const staticInsight = {
-            today_insight: {
-                core_issue: "需要结合今日记录进一步分析",
-                actions: ["继续保持健康记录", "关注身体感受"],
-                analysis: "建议您继续记录健康数据，系统将为您提供更精准的体质分析。"
-            },
-            week_insight: {
-                long_term_problems: ["保持规律的生活习惯", "关注长期健康趋势"],
-                next_week_goals: ["坚持健康记录", "保持规律作息"],
-                scientific_evidence: "规律的生活习惯和持续的健康记录是改善体质的基础。"
-            }
-        };
-        
-        // 根据体质微调
-        switch (constitutionType) {
-            case '气虚质':
-                staticInsight.today_insight.core_issue = "气虚体质需要注意能量补充";
-                staticInsight.today_insight.actions = ["适当增加优质蛋白质摄入", "避免过度劳累"];
-                staticInsight.today_insight.analysis = "气虚体质需要补气养身，建议适当增加营养摄入，避免过度消耗体力。";
-                break;
-            case '阳虚质':
-                staticInsight.today_insight.core_issue = "阳虚体质需要注意保暖";
-                staticInsight.today_insight.actions = ["避免生冷食物", "注意身体保暖"];
-                staticInsight.today_insight.analysis = "阳虚体质需要温补阳气，建议避免生冷，注意保暖。";
-                break;
-            case '阴虚质':
-                staticInsight.today_insight.core_issue = "阴虚体质需要注意滋阴";
-                staticInsight.today_insight.actions = ["多喝水补充水分", "避免辛辣刺激食物"];
-                staticInsight.today_insight.analysis = "阴虚体质需要滋阴润燥，建议多喝水，避免辛辣刺激食物。";
-                break;
-            default:
-                break;
+        console.warn("Intent Classification LLM Failed, using local fallback:", e);
+        // If LLM fails and we have food but no clear inquiry, default to diet_record
+        if (hasFood) {
+            return { intent: 'diet_record', confidence: 0.8 };
         }
-        
-        return staticInsight;
+        return { intent: 'chat', confidence: 0 }; // Final fallback
     }
   }
 };

@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Image as ImageIcon, Camera, Sparkles, Activity, Utensils, Moon, FileText, Calendar, PlusCircle, CheckCircle, XCircle, TrendingUp, AlertCircle, TrendingDown, Minus, Info, LayoutDashboard, Settings } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Send, Mic, Image as ImageIcon, Camera, Sparkles, Activity, Utensils, Moon, FileText, Calendar, PlusCircle, CheckCircle, XCircle, TrendingUp, AlertCircle, ChevronDown, ChevronUp, LayoutDashboard, Settings } from 'lucide-react';
 import DailyFeed from './DailyFeed';
 import PersonalCenter from './PersonalCenter';
 import AuthStatus from './AuthStatus';
 import { healthService } from '../services/healthService';
 import { storageService } from '../services/storageService';
-import { scoringService } from '../services/scoringService';
 import { questionnaireData, calculateConstitution } from '../data/questionnaire';
 
 // --- Sub Components ---
@@ -496,38 +494,13 @@ const DeviceSetupCard = ({ onConfirm, onSkip }) => {
 };
 
 const WeeklyReportCard = ({ report }) => {
-    const [scoreData, setScoreData] = React.useState(null);
-    const [loading, setLoading] = React.useState(true);
+    if (!report) return null;
+    // Defensive coding: Ensure all nested properties exist to prevent crashes from old/bad data
+    const metrics = report.metrics || { sleepAvg: 0, exerciseDays: 0, dietScore: 0, poopStatus: '未知' };
+    const correlationInsight = report.correlationInsight || { title: '暂无洞察', content: '继续保持记录，AI将为您发现健康规律。' };
+    const actionCards = report.actionCards || [];
 
-    React.useEffect(() => {
-        const fetchScoreData = () => {
-            try {
-                const data = scoringService.calculateWeeklyScore(0);
-                setScoreData(data);
-            } catch (error) {
-                console.error('计算评分失败:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchScoreData();
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4 animate-fade-in-up mx-2 mb-4">
-                <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-                    <div className="h-24 bg-gray-200 rounded mb-4"></div>
-                    <div className="h-32 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!scoreData) return null;
-
+    // 计算健康等级和颜色
     const getScoreInfo = (score) => {
         let level = '需改善';
         let color = 'text-red-600';
@@ -552,131 +525,130 @@ const WeeklyReportCard = ({ report }) => {
         return { level, color, bg, border };
     };
 
-    const score = scoreData.totalScore || 0;
+    const score = report.score || 0;
     const scoreInfo = getScoreInfo(score);
 
-    const moduleScores = [
-        { subject: '饮食', A: scoreData.moduleScores.diet.score },
-        { subject: '睡眠', A: scoreData.moduleScores.sleep.score },
-        { subject: '运动', A: scoreData.moduleScores.exercise.score },
-        { subject: '消化', A: scoreData.moduleScores.poop.score }
-    ];
+    // 模拟各模块的健康分
+    const moduleScores = {
+        diet: 8.5,
+        sleep: 7.2,
+        exercise: 6.8,
+        poop: 9.0
+    };
 
     return (
-    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-4 animate-fade-in-up mx-2 mb-4">
+    <div className="bg-gradient-to-br from-[#FAF9F6] to-[#EDF5F0] p-5 rounded-2xl border border-gray-100 shadow-lg space-y-5 animate-fade-in-up mx-2 mb-4">
+      {/* Header - 删除"健康洞察"，只保留周期和得分在一行 */}
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-sm font-semibold text-gray-900">{report?.dateRange || '本周'}</p>
+          <p className="text-sm font-semibold text-text-main">{report.dateRange || '本周'}</p>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[10px] text-gray-400">综合得分</span>
-          <div className="text-2xl font-bold text-emerald-600 leading-none font-serif flex items-baseline">
-            {score}
-            <span className="text-xs text-emerald-400 ml-0.5 font-sans font-normal">/10</span>
-          </div>
+        <div className={`bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border ${scoreInfo.border} shadow-sm flex items-center gap-2`}>
+          <span className="text-xs text-text-muted">健康分</span>
+          <span className={`text-xl font-bold ${scoreInfo.color}`}>{score}</span>
+          <span className={`text-[10px] ${scoreInfo.color}`}>{scoreInfo.level}</span>
         </div>
       </div>
-
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <h4 className="font-bold text-sm text-gray-900">各模块健康分</h4>
-        </div>
-        <div className="flex justify-between gap-2">
-          {moduleScores.map((item, index) => (
-            <div key={index} className="flex flex-col items-center gap-1 flex-1">
-              <span className="text-[10px] font-medium text-gray-500">{item.subject}</span>
-              <span className="text-lg font-bold text-emerald-600">{item.A}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-emerald-500" />
-          <h4 className="font-bold text-sm text-gray-900">AI 健康洞察</h4>
-        </div>
-        <div className="text-xs leading-relaxed text-gray-800">
-          <div className="space-y-3">
-            <div>
-              <div className="font-bold text-gray-900 mb-1">做得好</div>
-              <div className="text-xs text-gray-800">本周饮食种类丰富，排便规律顺畅，运动习惯也在逐步养成。</div>
-            </div>
-            <div>
-              <div className="font-bold text-gray-900 mb-1">需要改善</div>
-              <div className="text-xs text-gray-800">有3天晚于23:00入睡，错过了养肝黄金期。</div>
-            </div>
-            <div>
-              <div className="font-bold text-gray-900 mb-1">下周改善方向</div>
-              <div className="text-xs text-gray-800">尽量在23:00前入睡，每周运动增加到4-5次，饮食继续保持多样性。</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+  
+      {/* 1. 各模块健康分 */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h4 className="font-bold text-sm text-gray-900">分模块总结</h4>
+        <h4 className="text-sm font-bold text-text-main">各模块健康分</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Utensils className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-semibold text-text-main">饮食</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-600">{moduleScores.diet}</div>
+            <div className="text-[10px] text-text-muted">摄入均衡，种类丰富</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Moon className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-semibold text-text-main">睡眠</span>
+            </div>
+            <div className="text-2xl font-bold text-indigo-600">{moduleScores.sleep}</div>
+            <div className="text-[10px] text-text-muted">时长达标，偶有熬夜</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-semibold text-text-main">运动</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-600">{moduleScores.exercise}</div>
+            <div className="text-[10px] text-text-muted">运动3天，频率尚可</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <PlusCircle className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-semibold text-text-main">排便</span>
+            </div>
+            <div className="text-2xl font-bold text-emerald-600">{moduleScores.poop}</div>
+            <div className="text-[10px] text-text-muted">规律顺畅，形态良好</div>
+          </div>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-          <div className="flex-shrink-0 w-72 bg-gray-50 rounded-xl p-3">
-            <div className="text-xs font-bold text-gray-900 mb-1">饮食</div>
-            <div className="text-[10px] text-gray-600 mb-2">记录了5天，其中3天表现良好。平均食材种类为9种/天，建议增加到12种/天。</div>
-            <div className="h-24 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={scoreData.dailyTrends} margin={{ left: -10, right: 0, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 8 }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} width={30} />
-                  <Tooltip contentStyle={{ fontSize: '9px', padding: '5px' }} formatter={(value) => [`${value}分`, '饮食得分']} />
-                  <Line type="monotone" dataKey="score" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+      </div>
+  
+      {/* 2. AI总结 */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-brand" />
+          <h4 className="text-sm font-bold text-text-main">AI总结</h4>
+        </div>
+        <div className="space-y-3">
+          <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+            <span className="font-bold text-green-800 block mb-1">✨ 做得好：</span>
+            <p className="text-xs text-green-800/80">本周饮食种类丰富，排便规律顺畅，运动习惯也在逐步养成。</p>
+          </div>
+          <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+            <span className="font-bold text-orange-800 block mb-1">⚠️ 需要改善：</span>
+            <p className="text-xs text-orange-800/80">有3天晚于23:00入睡，错过了养肝黄金期。</p>
+          </div>
+          <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+            <span className="font-bold text-indigo-800 block mb-1">📅 下周改善方向：</span>
+            <p className="text-xs text-indigo-800/80">尽量在23:00前入睡，每周运动增加到4-5次，饮食继续保持多样性。</p>
+          </div>
+        </div>
+      </div>
+  
+      {/* 3. 数字卡片 */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-bold text-text-main">关键数据</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="bg-orange-50 p-2 rounded-lg">
+              <Utensils className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <div className="text-xs text-text-muted">饮食</div>
+              <div className="text-sm font-bold text-text-main">{metrics.dietScore}分</div>
             </div>
           </div>
-          <div className="flex-shrink-0 w-72 bg-gray-50 rounded-xl p-3">
-            <div className="text-xs font-bold text-gray-900 mb-1">睡眠</div>
-            <div className="text-[10px] text-gray-600 mb-2">记录了4天，平均睡眠时长6.5小时，其中2天在23点前入睡。建议增加到7-8小时。</div>
-            <div className="h-24 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={scoreData.dailyTrends} margin={{ left: -10, right: 0, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 8 }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} width={30} />
-                  <Tooltip contentStyle={{ fontSize: '9px', padding: '5px' }} formatter={(value) => [`${value}分`, '睡眠得分']} />
-                  <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="bg-indigo-50 p-2 rounded-lg">
+              <Moon className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <div className="text-xs text-text-muted">睡眠</div>
+              <div className="text-sm font-bold text-text-main">{metrics.sleepAvg}h</div>
             </div>
           </div>
-          <div className="flex-shrink-0 w-72 bg-gray-50 rounded-xl p-3">
-            <div className="text-xs font-bold text-gray-900 mb-1">运动</div>
-            <div className="text-[10px] text-gray-600 mb-2">记录了3天，运动天数达标。建议保持每周至少3次中等强度运动。</div>
-            <div className="h-24 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={scoreData.dailyTrends} margin={{ left: -10, right: 0, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 8 }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} width={30} />
-                  <Tooltip contentStyle={{ fontSize: '9px', padding: '5px' }} formatter={(value) => [`${value}分`, '运动得分']} />
-                  <Line type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="bg-orange-50 p-2 rounded-lg">
+              <Activity className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <div className="text-xs text-text-muted">运动</div>
+              <div className="text-sm font-bold text-text-main">{metrics.exerciseDays}/7天</div>
             </div>
           </div>
-          <div className="flex-shrink-0 w-72 bg-gray-50 rounded-xl p-3">
-            <div className="text-xs font-bold text-gray-900 mb-1">消化</div>
-            <div className="text-[10px] text-gray-600 mb-2">排便规律顺畅，形态正常。继续保持良好的饮食习惯。</div>
-            <div className="h-24 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={scoreData.dailyTrends} margin={{ left: -10, right: 0, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 8 }} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 8 }} width={30} />
-                  <Tooltip contentStyle={{ fontSize: '9px', padding: '5px' }} formatter={(value) => [`${value}分`, '消化得分']} />
-                  <Line type="monotone" dataKey="score" stroke="#ec4899" strokeWidth={2} dot={{ fill: '#ec4899', r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="bg-emerald-50 p-2 rounded-lg">
+              <PlusCircle className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <div className="text-xs text-text-muted">消化</div>
+              <div className="text-sm font-bold text-text-main">{metrics.poopStatus}</div>
             </div>
           </div>
         </div>

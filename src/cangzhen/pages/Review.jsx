@@ -96,36 +96,24 @@ const ReviewContent = () => {
       }));
   }, [rawMemories]);
 
-  // Badges Data (Dynamic based on real DAYS count)
+  // Badges Data (Dynamic based on record COUNT)
   const badges = useMemo(() => {
-      // 1. Calculate Unique Days Count
-      const uniqueDays = new Set();
-      sanitizedMemories.forEach(m => {
-          if (m._parsedDate) {
-              const dateStr = m._parsedDate.toISOString().split('T')[0];
-              uniqueDays.add(dateStr);
-          }
-      });
-      const totalDays = uniqueDays.size;
+      const totalCount = sanitizedMemories.length;
       
-      // Define Milestones & Metadata (New Data)
+      // Define Milestones & Metadata (Same as Record.jsx)
       const definitions = [
-          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'StarOfBethlehem', plantNameCN: '伯利恒之星', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。恭喜你开启第一段真实记录，愿每一次落笔，都被时光温柔珍藏。', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
-          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Snowdrop', plantNameCN: '雪割草', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。谢谢你坚持记录，每一次认真生活的瞬间，都值得被看见。', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
-          { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '绿绒蒿', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。坚持一周的你超棒，生活的微光，正被你一一拾起。', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
-          { id: 4, threshold: 10, name: '光亮·前行', icon: 'flower', plant: 'Iris', plantNameCN: '鸢尾', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始，愿你在文字里，始终遇见内心的光亮。', color: 'bg-[#9D84B7]', mainColor: '#9D84B7' },
-          { id: 5, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '蓍草', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。21 次坚持，习惯已成自然，恭喜你，与更笃定的自己相遇。', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
-          { id: 6, threshold: 30, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '夕雾草', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录生活，每一段日常都因你变得柔软珍贵。', color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' },
-          { id: 7, threshold: 88, name: '顺遂·如意', icon: 'wind', plant: 'custom', plantNameCN: '风铃草', meaning: '顺遂', desc: '花似风铃，清脆美好。八十八次坚持，愿日子如铃音轻快，平安喜乐，万事顺遂。', color: 'bg-[#89CFF0]', mainColor: '#89CFF0' },
-          { id: 8, threshold: 108, name: '百日·森林', icon: 'tree', plant: 'custom', plantNameCN: '文殊兰', meaning: '静心', desc: '禅意清雅的圣洁之花。沉淀百次，你已学会与内心相处，愿你在记录中，始终从容自在。', color: 'bg-[#8F9E78]', mainColor: '#8F9E78' },
-          { id: 9, threshold: 188, name: '盛放·热烈', icon: 'sun', plant: 'custom', plantNameCN: '鹤望兰', meaning: '盛放', desc: '花姿如鹤，舒展大气。一路坚持的你，早已自成风景，愿生活热烈绽放，自在如风。', color: 'bg-[#FFD700]', mainColor: '#FFD700' },
-          { id: 10, threshold: 365, name: '圆满·永恒', icon: 'star', plant: 'custom', plantNameCN: '十二卷', meaning: '圆满', desc: '四季常青，岁岁安然。一整年的坚守，是时光最好的礼物，恭喜你收获圆满，热爱永不落幕。', color: 'bg-[#2E8B57]', mainColor: '#2E8B57' },
+          { id: 1, threshold: 1, name: '初见·萌芽', icon: 'sprout', plant: 'StarOfBethlehem', plantNameCN: '初见·萌芽', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。恭喜你开启第一段真实记录，愿每一次落笔，都被时光温柔珍藏。', color: 'bg-[#D6CEAB]', mainColor: '#D6CEAB' },
+          { id: 2, threshold: 3, name: '坚持·苏醒', icon: 'leaf', plant: 'Snowdrop', plantNameCN: '坚持·苏醒', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。谢谢你坚持记录，每一次认真生活的瞬间，都值得被看见。', color: 'bg-[#A0C4A0]', mainColor: '#A0C4A0' },
+          { id: 3, threshold: 7, name: '习惯·破土', icon: 'bud', plant: 'Lily', plantNameCN: '习惯·破土', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。坚持一周的你超棒，生活的微光，正被你一一拾起。', color: 'bg-[#F4D0D8]', mainColor: '#F4D0D8' },
+          { id: 4, threshold: 10, name: '光亮·前行', icon: 'flower', plant: 'Iris', plantNameCN: '光亮·前行', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始，愿你在文字里，始终遇见内心的光亮。', color: 'bg-[#9D84B7]', mainColor: '#9D84B7' },
+          { id: 5, threshold: 21, name: '蜕变·绽放', icon: 'flower', plant: 'Lotus', plantNameCN: '蜕变·绽放', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。21 次坚持，习惯已成自然，恭喜你，与更笃定的自己相遇。', color: 'bg-[#C4BAD0]', mainColor: '#C4BAD0' },
+          { id: 6, threshold: 30, name: '繁花·盛景', icon: 'bouquet', plant: 'custom', plantNameCN: '繁花·盛景', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录生活，每一段日常都因你变得柔软珍贵。', color: 'bg-[#E0D8C8]', mainColor: '#E0D8C8' }
       ];
 
       return definitions.map(def => ({
           ...def,
-          count: totalDays, // Using DAYS count now
-          unlocked: totalDays >= def.threshold,
+          count: totalCount,
+          unlocked: totalCount >= def.threshold,
           date: null 
       }));
   }, [sanitizedMemories]);
@@ -349,10 +337,16 @@ const ReviewContent = () => {
           return t;
       });
 
+      // Determine if this week should be unlocked
+      let weekStatus = 'unlocked';
+      if (weekOffset === 0) {
+          weekStatus = isPaletteOpen ? 'unlocked' : 'locked';
+      }
+
       // Return Data Object
       const isEven = Math.abs(weekOffset) % 2 === 0;
       return {
-          status: weekOffset === 0 ? 'locked' : 'unlocked', 
+          status: weekStatus,
           dateRange: dateRangeStr,
           keyword: isEven ? 'Courage' : 'Healing',
           keywordCN: weeklySummary.keyword || (totalMemories > 0 ? (isEven ? '勇气' : '治愈') : '空白'),
@@ -386,7 +380,7 @@ const ReviewContent = () => {
           daysLeft: 7 - (new Date().getDay() || 7),
           hallCounts: hallCounts
       };
-  }, [weekOffset, sanitizedMemories, weeklySummary]); 
+  }, [weekOffset, sanitizedMemories, weeklySummary, isPaletteOpen]); 
 
   // Real Data for Monthly Review
   const currentMonth = new Date().getMonth() + 1; // 1-12

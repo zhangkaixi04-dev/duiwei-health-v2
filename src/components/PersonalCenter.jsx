@@ -1,34 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Calendar, FileText, X } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { Settings, Calendar, FileText, X, ChevronRight, ClipboardList, Camera, User, Plus, Smartphone, Edit2, Save } from 'lucide-react';
 import { healthService } from '../services/healthService';
 import { storageService } from '../services/storageService';
-import HealthProfile from './personal/HealthProfile';
-import ManualEntry from './personal/ManualEntry';
-import HealthReport from './personal/HealthReport';
 import QuestionnaireWrapper from './personal/QuestionnaireWrapper';
+import ManualEntry from './personal/ManualEntry';
 import DeviceConnect from './personal/DeviceConnect';
 
 const PersonalCenter = ({ onClose, isModal = true, isSetupMode = false }) => {
   const [userInfo, setUserInfo] = useState({});
   const [constitution, setConstitution] = useState(null);
+  const [activeSection, setActiveSection] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [goals, setGoals] = useState([]);
 
   useEffect(() => {
-    // If we are in setup mode, skip loading mock/persisted data to avoid confusion
     if (isSetupMode) return;
 
-    // Load data
     const userProfile = storageService.getUserProfile();
-    if (userProfile.basicInfo) setUserInfo(userProfile.basicInfo);
+    if (userProfile.basicInfo) {
+      setUserInfo(userProfile.basicInfo);
+      setEditFormData({
+        height: userProfile.basicInfo.height || '',
+        weight: userProfile.basicInfo.weight || '',
+        age: userProfile.basicInfo.age || '',
+        gender: userProfile.basicInfo.gender || '',
+        allergies: Array.isArray(userProfile.medicalHistory?.allergies) 
+          ? userProfile.medicalHistory.allergies.join(', ') 
+          : (userProfile.medicalHistory?.allergies || ''),
+        medicalHistory: Array.isArray(userProfile.medicalHistory?.diseases) 
+          ? userProfile.medicalHistory.diseases.join(', ') 
+          : (userProfile.medicalHistory?.diseases || '')
+      });
+    }
+    if (userProfile.goals) setGoals(userProfile.goals);
 
-    // MOCK DATA for "Yang Deficiency + Blood Deficiency"
-    // Overriding the actual service call for visualization purposes as requested
     const mockConstitution = {
         type: '阳虚质 (兼血虚)',
         desc: '阳气不足，失于温煦，兼有面色苍白、唇甲淡白等血虚表现。建议温补阳气，兼顾养血。',
         radarData: [
             { subject: '阳虚', A: 90, fullMark: 100 },
-            { subject: '血虚', A: 75, fullMark: 100 }, // Added specific dimension
+            { subject: '血虚', A: 75, fullMark: 100 },
             { subject: '气虚', A: 65, fullMark: 100 },
             { subject: '平和', A: 30, fullMark: 100 },
             { subject: '湿热', A: 20, fullMark: 100 },
@@ -40,233 +52,349 @@ const PersonalCenter = ({ onClose, isModal = true, isSetupMode = false }) => {
         ]
     };
     
-    // CRITICAL: Persist mock data to storage so HealthService can see it!
     storageService.updateUserProfileSection('constitution', mockConstitution);
     setConstitution(mockConstitution);
-
-    // Original Logic (Commented out for mock)
-    /*
-    healthService.get_constitution('user').then(data => {
-      setConstitution(data);
-    });
-    */
   }, []);
 
-  const [activeTab, setActiveTab] = useState('main'); // main, profile, report, questionnaire, manual_entry, goals
+  const goalOptions = [
+    '提升精力', '改善疲劳感',
+    '入睡困难', '睡眠浅易醒',
+    '健康减重', '增肌塑形',
+    '经期调理', '皮肤改善',
+    '减少焦虑', '稳定情绪',
+    '肠胃调理', '免疫力提升'
+  ];
 
-  // --- New Goal Component ---
-  const GoalsSection = () => {
-    const [goals, setGoals] = useState([]);
-    
-    useEffect(() => {
-        const profile = storageService.getUserProfile();
-        if (profile.goals) setGoals(profile.goals);
-    }, []);
-
-    const toggleGoal = (goal) => {
-        const newGoals = goals.includes(goal) 
-            ? goals.filter(g => g !== goal)
-            : [...goals, goal];
-        setGoals(newGoals);
-        storageService.updateUserProfileSection('goals', newGoals);
-    };
-
-    const options = [
-        '改善睡眠', '减肥减脂', '调理月经', '增强体质', '缓解焦虑', '改善肠胃', '备孕调理', '美容养颜'
-    ];
-
-    return (
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-            <h3 className="text-sm font-bold text-text-main mb-3 flex items-center gap-2">
-                <span className="w-1 h-4 bg-brand rounded-full"></span>
-                调理目标
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-                {options.map(opt => (
-                    <button 
-                        key={opt}
-                        onClick={() => toggleGoal(opt)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${goals.includes(opt) ? 'bg-brand/10 border-brand text-brand' : 'bg-gray-50 border-gray-100 text-text-muted hover:bg-gray-100'}`}
-                    >
-                        {opt}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
+  const toggleGoal = (goal) => {
+    if (goals.includes(goal)) {
+      setGoals(goals.filter(g => g !== goal));
+    } else if (goals.length < 2) {
+      setGoals([...goals, goal]);
+    }
   };
 
-  const renderContent = () => {
-    // If in Setup Mode, show a guide or simplified view
-    if (isSetupMode) {
-        return (
-            <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center animate-pulse">
-                    <FileText className="w-10 h-10 text-brand" />
-                </div>
-                <h3 className="text-lg font-bold text-text-main">档案建立中...</h3>
-                <p className="text-sm text-text-muted text-center px-6">
-                    请在对话框中回答问题，我将为您生成专属健康档案。
-                </p>
-            </div>
-        );
-    }
+  const handleSave = () => {
+    storageService.updateUserProfileSection('basicInfo', {
+      ...userInfo,
+      height: editFormData.height,
+      weight: editFormData.weight,
+      age: editFormData.age,
+      gender: editFormData.gender
+    });
 
-    switch(activeTab) {
-      case 'profile':
-        return <HealthProfile onBack={() => setActiveTab('main')} />;
-      case 'report':
-        return <HealthReport onBack={() => setActiveTab('main')} />;
+    const allergiesList = editFormData.allergies.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+    const diseasesList = editFormData.medicalHistory.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+
+    storageService.updateUserProfileSection('medicalHistory', {
+      allergies: allergiesList,
+      diseases: diseasesList
+    });
+    
+    storageService.updateUserProfileSection('goals', goals);
+
+    const userProfile = storageService.getUserProfile();
+    if (userProfile.basicInfo) setUserInfo(userProfile.basicInfo);
+    
+    setIsEditing(false);
+  };
+
+  const renderSection = () => {
+    switch(activeSection) {
       case 'questionnaire':
-         return (
-            <QuestionnaireWrapper 
-                onBack={() => setActiveTab('main')}
-                onComplete={(result) => {
-                    setConstitution(result);
-                    setActiveTab('main');
-                }}
-            />
-         );
-      case 'manual_entry':
-         return (
-            <ManualEntry 
-              onBack={() => setActiveTab('main')} 
-              onSaveSuccess={() => {
-                // Refresh constitution data
-                healthService.get_constitution('user').then(data => {
-                  setConstitution(data);
-                  setActiveTab('main');
-                });
-              }}
-            />
-         );
-      case 'device_connect':
-        return <DeviceConnect onBack={() => setActiveTab('main')} />;
-      default:
         return (
-          <>
-        {/* Constitution Radar Card */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-           {constitution?.radarData ? (
-             <>
-               <div className="mb-4 text-center">
-                  <h2 className="text-xl font-bold text-emerald-800">
-                    {constitution.type}
-                    <span className="text-sm font-normal text-text-muted ml-2">为主</span>
-                  </h2>
-                  <p className="text-xs text-text-muted mt-2 px-4">
-                     {constitution.desc ? constitution.desc.split('。')[0] : ''}
-                  </p>
-               </div>
-               
-               {/* Radar Chart */}
-               <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={constitution.radarData}>
-                      <PolarGrid stroke="#94a3b8" strokeDasharray="4 4" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 11, fontWeight: 'bold' }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar
-                        name="体质"
-                        dataKey="A"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        fill="#10b981"
-                        fillOpacity={0.3}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-               </div>
-               
-               {/* Action Buttons */}
-               <div className="flex gap-3 mt-4">
-                  <button 
-                    onClick={() => setActiveTab('questionnaire')}
-                    className="flex-1 py-3 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all"
-                  >
-                    补充问卷
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('manual_entry')}
-                    className="flex-1 py-3 bg-white border border-gray-200 text-text-main text-xs font-bold rounded-xl hover:bg-gray-50 transition-all"
-                  >
-                    录入结论
-                  </button>
-               </div>
-             </>
-           ) : (
-             <div className="flex flex-col items-center gap-4 text-center px-4 py-6">
-                <div className="w-20 h-20 bg-brand/5 rounded-full flex items-center justify-center text-4xl mb-2">🧬</div>
-                <div>
-                   <h3 className="text-lg font-bold text-text-main mb-1">开启您的体质档案</h3>
-                   <p className="text-xs text-text-muted max-w-[200px] mx-auto leading-relaxed">
-                     了解自己是阳虚、湿热还是平和质？获取专属调理方案。
-                   </p>
-                </div>
-                <div className="flex gap-3 w-full mt-2">
-                    <button 
-                        onClick={() => setActiveTab('questionnaire')}
-                        className="flex-1 py-2.5 bg-brand text-white text-xs font-bold rounded-xl shadow-brand/20 shadow-md hover:bg-brand-dark transition-all"
-                    >
-                        补充问卷
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('manual_entry')}
-                        className="flex-1 py-2.5 bg-white border border-gray-200 text-text-main text-xs font-bold rounded-xl hover:bg-gray-50 transition-all"
-                    >
-                        录入结论
-                    </button>
-                </div>
-             </div>
-           )}
-        </div>
-        
-        {/* Goals Section (Removed) - Moved to HealthProfile */}
-
-        {/* Menu Grid - Parallel Layout */}
-        <div className="grid grid-cols-2 gap-2">
-           <button 
-             onClick={() => setActiveTab('profile')}
-             className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-200 transition-all relative overflow-hidden group"
-           >
-              <div className="w-8 h-8 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                 <FileText className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-text-main">健康档案</span>
-           </button>
-
-           <button 
-             onClick={() => setActiveTab('device_connect')}
-             className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-200 transition-all group"
-           >
-              <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                 <Settings className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-text-main">设备连接</span>
-           </button>
-        </div>
-          </>
+          <QuestionnaireWrapper 
+            onBack={() => setActiveSection(null)}
+            onComplete={(result) => {
+              setConstitution(result);
+              setActiveSection(null);
+            }}
+          />
         );
+      case 'manual_entry':
+        return (
+          <ManualEntry 
+            onBack={() => setActiveSection(null)} 
+            onSaveSuccess={() => {
+              healthService.get_constitution('user').then(data => {
+                setConstitution(data);
+                setActiveSection(null);
+              });
+            }}
+          />
+        );
+      case 'device_connect':
+        return <DeviceConnect onBack={() => setActiveSection(null)} />;
+      default:
+        return renderMainContent();
     }
+  };
+
+  const renderMainContent = () => {
+    if (isSetupMode) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-4">
+          <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center animate-pulse">
+            <FileText className="w-10 h-10 text-brand" />
+          </div>
+          <h3 className="text-lg font-bold text-text-main">档案建立中...</h3>
+          <p className="text-sm text-text-muted text-center px-6">
+            请在对话框中回答问题，我将为您生成专属健康档案。
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* 体质补充 */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="text-sm font-bold text-text-main mb-3 flex items-center gap-2">
+            <span className="w-1 h-4 bg-brand rounded-full"></span>
+            体质补充
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            <button 
+              onClick={() => setActiveSection('questionnaire')}
+              className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl bg-brand/5 border border-brand/20 hover:bg-brand/10 transition-all"
+            >
+              <ClipboardList className="w-5 h-5 text-brand" />
+              <span className="text-xs font-bold text-brand">问卷</span>
+            </button>
+            <button 
+              onClick={() => {
+                onClose();
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('trigger-tongue-upload'));
+                }, 300);
+              }}
+              className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all"
+            >
+              <Camera className="w-5 h-5 text-blue-500" />
+              <span className="text-xs font-bold text-blue-500">舌诊</span>
+            </button>
+            <button 
+              onClick={() => setActiveSection('manual_entry')}
+              className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all"
+            >
+              <FileText className="w-5 h-5 text-emerald-500" />
+              <span className="text-xs font-bold text-emerald-500">医生结论</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 基础信息 */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+              <span className="w-1 h-4 bg-brand rounded-full"></span>
+              基础信息
+            </h3>
+            {!isEditing && (
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="p-1.5 text-brand hover:bg-brand/10 rounded-lg transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          
+          {isEditing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">身高 (cm)</label>
+                <input 
+                  type="number" 
+                  value={editFormData.height || ''}
+                  onChange={(e) => setEditFormData({...editFormData, height: e.target.value})}
+                  placeholder="请输入身高"
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">体重 (kg)</label>
+                <input 
+                  type="number" 
+                  value={editFormData.weight || ''}
+                  onChange={(e) => setEditFormData({...editFormData, weight: e.target.value})}
+                  placeholder="请输入体重"
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">年龄</label>
+                <input 
+                  type="number" 
+                  value={editFormData.age || ''}
+                  onChange={(e) => setEditFormData({...editFormData, age: e.target.value})}
+                  placeholder="请输入年龄"
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">性别</label>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setEditFormData({...editFormData, gender: 'female'})}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${editFormData.gender === 'female' ? 'bg-brand text-white border-brand' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
+                  >
+                    女
+                  </button>
+                  <button 
+                    onClick={() => setEditFormData({...editFormData, gender: 'male'})}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${editFormData.gender === 'male' ? 'bg-brand text-white border-brand' : 'bg-gray-50 border-gray-200 text-gray-600'}`}
+                  >
+                    男
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-2">调理目标 (最多选2个)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {goalOptions.map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => toggleGoal(opt)}
+                      disabled={!goals.includes(opt) && goals.length >= 2}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                        goals.includes(opt) 
+                          ? 'bg-brand/10 border-brand text-brand' 
+                          : goals.length >= 2 
+                            ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed' 
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">过敏史/忌口</label>
+                <textarea 
+                  value={editFormData.allergies || ''}
+                  onChange={(e) => setEditFormData({...editFormData, allergies: e.target.value})}
+                  placeholder="如：海鲜、芒果、花生（用逗号分隔）"
+                  rows={2}
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-600 block mb-1">病史</label>
+                <textarea 
+                  value={editFormData.medicalHistory || ''}
+                  onChange={(e) => setEditFormData({...editFormData, medicalHistory: e.target.value})}
+                  placeholder="如：高血压、糖尿病（用逗号分隔）"
+                  rows={2}
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
+                >
+                  取消
+                </button>
+                <button 
+                  onClick={handleSave}
+                  className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  保存
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-text-main">身高</span>
+                <span className="text-sm font-medium text-text-muted">{userInfo.height ? `${userInfo.height} cm` : '未设置'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-text-main">体重</span>
+                <span className="text-sm font-medium text-text-muted">{userInfo.weight ? `${userInfo.weight} kg` : '未设置'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-text-main">年龄</span>
+                <span className="text-sm font-medium text-text-muted">{userInfo.age ? `${userInfo.age} 岁` : '未设置'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm text-text-main">性别</span>
+                <span className="text-sm font-medium text-text-muted">
+                  {userInfo.gender === 'female' ? '女' : userInfo.gender === 'male' ? '男' : '未设置'}
+                </span>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-text-main">调理目标</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {goals && goals.length > 0 ? (
+                    goals.map(goal => (
+                      <span key={goal} className="px-2 py-0.5 bg-brand/10 text-brand text-[10px] font-bold rounded-lg border border-brand/20">
+                        {goal}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">暂未设置目标</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <span className="text-sm text-text-main block">过敏史/忌口</span>
+                  <span className="text-xs text-text-muted">
+                    {editFormData.allergies ? editFormData.allergies.split(/[,，]/).join('、') : '暂无记录'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <span className="text-sm text-text-main block">病史</span>
+                  <span className="text-xs text-text-muted">
+                    {editFormData.medicalHistory ? editFormData.medicalHistory.split(/[,，]/).join('、') : '暂无记录'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 绑定硬件 */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <button 
+            onClick={() => setActiveSection('device_connect')}
+            className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+                <Smartphone className="w-4 h-4 text-blue-500" />
+              </div>
+              <span className="text-sm font-medium text-text-main">绑定硬件</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-text-muted" />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className={`bg-gray-50 z-50 animate-slide-in-right overflow-y-auto ${isModal ? 'fixed inset-0' : 'w-full h-full min-h-[400px]'}`}>
-      {/* Header - Simplified */}
       {isModal && (
         <div className="bg-white p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm border-b border-gray-100">
-           <h2 className="text-lg font-bold text-gray-800">个人中心</h2>
+           <h2 className="text-lg font-bold text-gray-800">设置</h2>
           <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-all">
             <X className="w-5 h-5 text-text-muted" />
           </button>
         </div>
       )}
 
-      <div className={`px-4 pb-20 space-y-4 ${isModal ? 'pt-4' : 'pt-2'}`}>
-         {renderContent()}
+      <div className={`px-4 pb-20 ${isModal ? 'pt-4' : 'pt-2'}`}>
+         {renderSection()}
          
-         {/* Debug / Reset - Only show on main tab */}
-         {activeTab === 'main' && (
+         {!activeSection && !isSetupMode && (
             <div className="pt-4">
                <button 
                  onClick={() => {

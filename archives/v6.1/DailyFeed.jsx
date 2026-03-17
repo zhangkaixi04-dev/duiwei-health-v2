@@ -77,7 +77,12 @@ const DailyFeed = () => {
             const constiType = userProfile.constitution?.type || '平和质';
             const fallbackPlan = dietFallback[constiType] || dietFallback['平和质'];
             
-            setMeals(fallbackPlan);
+            const meals = {
+                breakfast: { ...fallbackPlan.breakfast, id: 1 },
+                lunch: { ...fallbackPlan.lunch, id: 2 },
+                dinner: { ...fallbackPlan.dinner, id: 3 }
+            };
+            setMeals(meals);
         } finally {
             setIsGeneratingMeals(false);
         }
@@ -117,130 +122,40 @@ const DailyFeed = () => {
              </div>
           ) : meals ? (
             <div className="space-y-2">
-              {meals.breakfast && meals.lunch && meals.dinner ? (
-                <>
-                  {['breakfast', 'lunch', 'dinner'].map((type) => {
-                    const meal = meals[type];
-                    return (
-                      <div key={type} className="bg-white p-3 rounded-xl border border-gray-100/50 shadow-sm relative group animate-fade-in">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg ${
-                              type === 'breakfast' ? 'bg-orange-50 text-orange-500' :
-                              type === 'lunch' ? 'bg-yellow-50 text-yellow-600' :
-                              'bg-indigo-50 text-indigo-500'
-                            }`}>
-                              {type === 'breakfast' ? <Coffee className="w-4 h-4" /> :
-                               type === 'lunch' ? <Sun className="w-4 h-4" /> :
-                               <Moon className="w-4 h-4" />}
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-text-muted block capitalize leading-none mb-0.5">{type === 'breakfast' ? '早餐' : type === 'lunch' ? '午餐' : '晚餐'}</span>
-                              <span className="font-medium text-text-main text-sm line-clamp-2">{meal.name}</span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] bg-gray-50 px-1.5 py-0.5 rounded text-text-main/70">{meal.calories} kcal</span>
-                        </div>
-                        
-                        {meal.ingredients && (
-                          <div className="pl-9 mb-2">
-                            <span className="text-[10px] text-text-muted">食材：</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {meal.ingredients.map((ing, idx) => (
-                                <span key={idx} className="text-[9px] bg-brand/5 px-1.5 py-0.5 rounded-full text-brand/80">
-                                  {ing.name} {ing.amount}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {meal.nutrients && (
-                          <div className="pl-9 mb-2">
-                            <div className="flex gap-2 text-[9px] text-text-muted">
-                              <span>碳水: {meal.nutrients.carbs}g</span>
-                              <span>蛋白质: {meal.nutrients.protein}g</span>
-                              <span>脂肪: {meal.nutrients.fat}g</span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {meal.nutrition_points && (
-                          <div className="pl-9 mb-2">
-                            <div className="flex flex-wrap gap-1">
-                              {meal.nutrition_points.map((point, idx) => (
-                                <span key={idx} className="text-[9px] bg-green-50 px-1.5 py-0.5 rounded text-green-600">
-                                  {point}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {meal.constitution_fit && (
-                          <div className="pl-9 text-[9px] text-text-muted">
-                            💡 {meal.constitution_fit}
-                          </div>
-                        )}
+              {Object.entries(meals).map(([type, meal]) => (
+                <div key={type} className="bg-white p-3 rounded-xl border border-gray-100/50 shadow-sm relative group animate-fade-in">
+                  <div className="flex justify-between items-start mb-1">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg ${
+                        type === 'breakfast' ? 'bg-orange-50 text-orange-500' :
+                        type === 'lunch' ? 'bg-yellow-50 text-yellow-600' :
+                        'bg-indigo-50 text-indigo-500'
+                      }`}>
+                        {type === 'breakfast' ? <Coffee className="w-4 h-4" /> :
+                         type === 'lunch' ? <Sun className="w-4 h-4" /> :
+                         <Moon className="w-4 h-4" />}
                       </div>
-                    );
-                  })}
+                      <div>
+                        <span className="text-[10px] text-text-muted block capitalize leading-none mb-0.5">{type === 'breakfast' ? '早餐' : type === 'lunch' ? '午餐' : '晚餐'}</span>
+                        <span className="font-medium text-text-main text-sm line-clamp-1">{meal.name}</span>
+                      </div>
+                    </div>
+                  </div>
                   
-                  {meals.daily_summary && (
-                    <div className="bg-white/80 p-3 rounded-xl border border-gray-100/50 shadow-sm">
-                      <div className="text-[10px] text-text-muted mb-1">📊 每日总结</div>
-                      <div className="flex flex-wrap gap-2 text-[9px]">
-                        <span className="bg-gray-50 px-2 py-1 rounded">食材种类: {meals.daily_summary.ingredient_count}种</span>
-                        <span className="bg-gray-50 px-2 py-1 rounded">营养比例: {meals.daily_summary.nutrition_balance}</span>
-                      </div>
-                      {meals.daily_summary.key_benefits && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {meals.daily_summary.key_benefits.map((benefit, idx) => (
-                            <span key={idx} className="text-[9px] bg-blue-50 px-1.5 py-0.5 rounded text-blue-600">
-                              ✓ {benefit}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                  <div className="flex justify-between items-center text-[10px] text-text-muted pl-9">
+                    <span className="bg-gray-50 px-1.5 py-0.5 rounded text-text-main/70">{meal.calories} kcal · {meal.tag}</span>
+                    
+                    <div className="flex gap-2">
+                      <button onClick={() => alert('已采纳，感谢您的反馈！')} className="p-1 hover:text-green-500" title="采纳">
+                        <CheckCircle className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => alert('感谢反馈，我们将为您优化推荐')} className="p-1 hover:text-red-500" title="不喜欢">
+                        <ThumbsDown className="w-3 h-3" />
+                      </button>
                     </div>
-                  )}
-                  
-                  {meals.advice && (
-                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
-                      <div className="text-[10px] text-amber-700">💬 营养师建议</div>
-                      <div className="text-[9px] text-amber-600 mt-1">{meals.advice}</div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="space-y-2">
-                  {Object.entries(meals).map(([type, meal]) => (
-                    <div key={type} className="bg-white p-3 rounded-xl border border-gray-100/50 shadow-sm relative group animate-fade-in">
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg ${
-                            type === 'breakfast' ? 'bg-orange-50 text-orange-500' :
-                            type === 'lunch' ? 'bg-yellow-50 text-yellow-600' :
-                            'bg-indigo-50 text-indigo-500'
-                          }`}>
-                            {type === 'breakfast' ? <Coffee className="w-4 h-4" /> :
-                             type === 'lunch' ? <Sun className="w-4 h-4" /> :
-                             <Moon className="w-4 h-4" />}
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-text-muted block capitalize leading-none mb-0.5">{type === 'breakfast' ? '早餐' : type === 'lunch' ? '午餐' : '晚餐'}</span>
-                            <span className="font-medium text-text-main text-sm line-clamp-1">{meal.name}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center text-[10px] text-text-muted pl-9">
-                        <span className="bg-gray-50 px-1.5 py-0.5 rounded text-text-main/70">{meal.calories} kcal</span>
-                      </div>
-                    </div>
-                  ))}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           ) : (
             <div className="text-center py-4 text-xs text-text-muted">暂无推荐</div>
