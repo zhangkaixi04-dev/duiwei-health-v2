@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FlowerIcon } from '../components/FlowerIcons';
 import { storageService } from '../../services/storageService';
+import { cangzhenService } from '../../services/cangzhenService';
 import { ChevronLeft, ChevronRight, TrendingUp, Sparkles, Quote, Cloud, Gift, X, Heart, Compass, Zap, Award, Calendar } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
@@ -119,7 +120,11 @@ const ReviewContent = () => {
   }, [sanitizedMemories]);
   
   // Weekly Review State
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = Current Week, -1 = Last Week
+  // If today is Monday, default to last week (-1), otherwise current week (0)
+  const [weekOffset, setWeekOffset] = useState(() => {
+      const today = new Date().getDay();
+      return (today === 1) ? -1 : 0;
+  });
   
   // Helper to get week ID for persistence (e.g. "2026-W10")
   const getWeekId = (offset) => {
@@ -220,26 +225,20 @@ const ReviewContent = () => {
       if (hasMemories && !cachedSummary && !weeklySummary.loading && !weeklySummary.content) {
           setWeeklySummary(prev => ({ ...prev, loading: true }));
           
-          // 暂时使用静态数据，避免依赖cangzhenService
-          setTimeout(() => {
-               const result = { 
-                   summary: "<p>本周你记录了生活中的美好瞬间，每一个当下都值得被珍藏。继续保持记录的习惯，让时光在这里停留。</p>", 
-                   keyword: "珍惜", 
-                   tags: [
-                       { text: "感知", weight: 3 },
-                       { text: "生活", weight: 2 },
-                       { text: "记录", weight: 3 }
-                   ]
-               };
-               
-               try {
-                   localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
-               } catch (e) {
-                   console.error("LocalStorage quota exceeded or error", e);
-               }
-               
-               setWeeklySummary({ loading: false, content: result.summary, keyword: result.keyword, tags: result.tags });
-          }, 500);
+          const fetchSummary = async () => {
+              try {
+                  const result = await cangzhenService.report_weekly(null, weekOffset);
+                  if (result.success) {
+                      localStorage.setItem(`weekly_summary_${weekId}`, JSON.stringify(result));
+                  }
+                  setWeeklySummary({ loading: false, content: result.summary, keyword: result.keyword, tags: result.tags });
+              } catch (e) {
+                  console.error("Fetch Summary Error", e);
+                  setWeeklySummary({ loading: false, content: "<p>生成失败，请稍后重试。</p>", keyword: "留白", tags: [] });
+              }
+          };
+          
+          fetchSummary();
       }
   }, [weekOffset, sanitizedMemories]); 
 
@@ -339,8 +338,8 @@ const ReviewContent = () => {
 
       // Determine if this week should be unlocked
       let weekStatus = 'unlocked';
-      if (weekOffset === 0) {
-          weekStatus = isPaletteOpen ? 'unlocked' : 'locked';
+      if (weekOffset === 0 && !isPaletteOpen) {
+          weekStatus = totalMemories > 0 ? 'unlocked' : 'locked';
       }
 
       // Return Data Object

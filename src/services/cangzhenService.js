@@ -124,17 +124,8 @@ export const cangzhenService = {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23,59,59,999);
     
-    // 2. Fetch Memories from LocalStorage (Directly or via storageService if adaptable)
-    // We access localStorage 'cangzhen_memories' directly to be safe and specific
-    const stored = localStorage.getItem('cangzhen_memories');
-    let memories = [];
-    if (stored) {
-        try {
-            memories = JSON.parse(stored);
-        } catch (e) {
-            memories = [];
-        }
-    }
+    // 2. Fetch Memories from LocalStorage via storageService (User Isolated)
+    const memories = await storageService.getCangzhenMemories();
 
     // Filter by Date
     const weekMemories = memories.filter(m => {
@@ -162,24 +153,27 @@ export const cangzhenService = {
     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
-    const systemPrompt = `你是一位温柔、细腻的“数字博物馆”策展人。请阅读用户本周的灵感碎片（藏品），为她/他写一段简短的周展前言（周报）。
+    const systemPrompt = `你是一位深具洞察力且温柔细腻的“数字博物馆”策展人。请阅读用户本周在“感知、情绪、创意、决策”四个展馆中留下的灵感碎片（藏品），为她/他撰写一份极具质感和深度的「周展前言」（周报）。
     
     【用户本周藏品】
-    ${inputs.length > 0 ? inputs : "（本周暂无新增藏品）"}
+    ${inputs.length > 0 ? inputs : "（本周暂无新增藏品，展馆正在静静呼吸）"}
     
     【撰写要求】
-    1. 风格：文艺、治愈、富有哲理（参考《Kinfolk》或艺术展风格）。
-    2. 内容：不要罗列流水账。要从碎片中提炼出一种“生活状态”或“情绪色调”。
-    3. 如果没有藏品，请写一段关于“留白”或“期待”的优美文字。
-    4. 字数：100字左右。
-    5. **关键**：请同时提取一个“年度关键词”（2个字，如：破茧、微光、沉淀）和一组“标签”（3-5个，如：#捕捉生活 #情绪着陆）。
+    1. **文风**：文艺、治愈、富有哲理与空间感（如顶级艺术展的策展前言，参考《Kinfolk》风格）。语气亲切、像老朋友的低语。
+    2. **内容深度**：
+       - **串联与提炼**：不要罗列流水账！要将用户的碎片串联成一个有内在逻辑的故事或情绪流。
+       - **情感共鸣**：从字里行间读懂用户的喜悦、疲惫、思考或迷茫，给予温暖的回应与肯定。
+       - **生活哲理**：在结尾升华，给出一段富有启发性、能带来力量的寄语。
+    3. **排版与格式**：在 \`summary\` 字段中返回 HTML 格式的文本。使用 <p> 分段，可以用 <strong> 突出核心金句或情绪词，使排版错落有致。总字数约 200-300 字，内容要充实丰满。
+    4. **留白处理**：如果本周无藏品，请写一段关于“停下脚步、允许留白、积蓄能量”的优美散文，鼓励用户下周继续记录。
+    5. **核心提取**：精准提取 1 个高度概括本周状态的“本周关键词”（2-4个字，如：破茧、自洽、向内求索）和一组“情绪/状态标签”（3-5个，带有艺术感，如：#捕捉微光 #允许一切发生）。
     
     【返回格式】
-    请严格返回纯JSON格式，不要Markdown代码块：
+    必须严格返回纯JSON格式（不要包含任何Markdown代码块如 \`\`\`json）：
     {
-      "summary": "HTML格式的文本...",
-      "keyword": "关键词",
-      "tags": [{"text":"标签1","weight":5}, {"text":"标签2","weight":3}]
+      "summary": "<p>第一段：情绪的共鸣与串联...</p><p>第二段：藏品背后的闪光点...</p><p>第三段：温暖有力量的寄语...</p>",
+      "keyword": "自洽",
+      "tags": [{"text":"情绪着陆","weight":5}, {"text":"接纳","weight":4}, {"text":"向内生长","weight":3}]
     }`;
 
     try {
@@ -217,7 +211,7 @@ export const cangzhenService = {
         console.error("Cangzhen Report Error:", e);
         return {
             success: false,
-            summary: "生活是由无数个微小的瞬间组成的。即使本周留白，也是为了下一次更绚烂的绽放。",
+            summary: "<p>生活是由无数个微小的瞬间组成的。即使本周留白，也是为了下一次更绚烂的绽放。</p>",
             keyword: "留白",
             tags: []
         };
