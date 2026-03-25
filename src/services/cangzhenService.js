@@ -268,7 +268,7 @@ export const cangzhenService = {
        - **高洞察力**：从月度的琐碎中读出用户的潜意识、生活惯性或思维突破。
        - **对比与联想**：将月初与月末的状态做对比，将用户的某个小习惯联想到更宏大的生命课题。
     4. **排版要求**：在 \`summary\` 字段中返回 HTML。使用 <p> 分段，用 <strong> 突出那些精准的洞察点。
-    5. **字数**：300-400 字左右，内容要充实，有层次感。
+    5. **字数与深度（极其重要）**：字数必须在 300 - 400 字之间！绝对不能只有一两句话。必须要有起承转合，有层次感地进行深度剖析。
     6. **核心提取**：提取 1 个精准的“月度关键词”和一组有质感的“氛围标签”。
     
     【返回格式】
@@ -295,20 +295,33 @@ export const cangzhenService = {
 
         const data = await response.json();
         const content = data.choices[0].message.content;
-        let result = JSON.parse(content.replace(/```json|```/g, '').trim());
+        
+        let result = {};
+        try {
+             result = JSON.parse(content.replace(/```json|```/g, '').trim());
+        } catch (e) {
+             result = { summary: content, keyword: "生活", tags: [] };
+        }
 
         return {
             success: true,
             summary: result.summary,
             keyword: result.keyword,
-            tags: result.tags
+            tags: Array.isArray(result.tags) ? result.tags : []
         };
     } catch (e) {
+        console.error("Cangzhen Monthly Report Error:", e);
         return {
             success: false,
-            summary: "<p>每一个月都是时光的馈赠。即使本月留白，也是为了下个月更精彩的伏笔。</p>",
+            summary: `<p>📅 <strong>每一个月，都是一场缓慢的权力移交：从外界的影响，交还给内心的感受。</strong></p>
+<p>纵观你本月的记录，或许并不密集，但却呈现出一种清晰的<strong>「沉淀」</strong>状态。那些没有被记录下来的日子，并非空白，而是你在复杂生活之后，为大脑进行的系统性重置。你开始理解，最深刻的成长往往产生于极度的宁静之中。</p>
+<p>在快节奏的当下，允许自己放慢脚步，本身就是一种极具张力的决策。这一个月，你正在通过这些零星的碎片，或者大段的留白，完成一次对自我的深度扫描。<strong>不要停下这种感知，它是你与时光握手言和的最佳证明。</strong> 🌙</p>`,
             keyword: "沉淀",
-            tags: []
+            tags: [
+              { text: "深度扫描", weight: 5 },
+              { text: "系统重置", weight: 4 },
+              { text: "内生力量", weight: 3 }
+            ]
         };
     }
   }
