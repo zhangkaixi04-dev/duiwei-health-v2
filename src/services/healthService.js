@@ -42,28 +42,31 @@ export const healthService = {
    * @param {Array} messages History of messages
    * @param {Object} userProfile Contextual user data (constitution, basic info, etc.)
    */
-  chat: async (messages, userProfile = {}) => {
-     // Use Doubao (Volcengine Ark) for general chat
-     // NOTE: Replace with a stable/production endpoint ID when available.
-     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; // Updated to a more stable endpoint
-     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+  chat: async (messages, userProfile = {}, customSystemPrompt = null) => {
+     // Use Zhipu AI for general chat since Doubao endpoint is 404
+     const API_KEY = '1e52c1eb939a43cb9aba66a83ed799ef.zF7gmf1FJ3Ayxzyr'; 
+     const ENDPOINT_ID = 'glm-4-flash'; 
+     const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
      // Construct System Prompt with User Context
-     let systemPrompt = "你是一位专业、严谨的中医健康顾问“合拍”。你的语言风格客观、理性、专业，避免使用任何过于亲昵的称呼（如“亲爱的”、“宝宝”、“亲”等）。";
+     let systemPrompt = customSystemPrompt;
      
-     // Inject User Profile if available
-     if (userProfile && Object.keys(userProfile).length > 0) {
-         systemPrompt += `\n\n【当前用户档案】：\n`;
-         if (userProfile.gender && userProfile.age) systemPrompt += `- 基础信息：${userProfile.gender === 'female' ? '女' : '男'}, ${userProfile.age}岁\n`;
-         if (userProfile.constitution) systemPrompt += `- 中医体质：${userProfile.constitution.type} (${userProfile.constitution.desc})\n`;
-         if (userProfile.sleepTime) systemPrompt += `- 平时作息：${userProfile.sleepTime} 入睡\n`;
-         if (userProfile.activity) systemPrompt += `- 活动强度：${userProfile.activity}\n`;
+     if (!systemPrompt) {
+         systemPrompt = "你是一位专业、严谨的中医健康顾问“合拍”。你的语言风格客观、理性、专业，避免使用任何过于亲昵的称呼（如“亲爱的”、“宝宝”、“亲”等）。";
          
-         systemPrompt += `\n请结合用户的【体质特征】和【生活习惯】进行针对性分析。例如：如果用户是阳虚质且熬夜，应重点提醒补阳和早睡；如果入睡晚，需分析是否因脾胃不和或肝火旺导致。`;
-     }
+         // Inject User Profile if available
+         if (userProfile && Object.keys(userProfile).length > 0) {
+             systemPrompt += `\n\n【当前用户档案】：\n`;
+             if (userProfile.gender && userProfile.age) systemPrompt += `- 基础信息：${userProfile.gender === 'female' ? '女' : '男'}, ${userProfile.age}岁\n`;
+             if (userProfile.constitution) systemPrompt += `- 中医体质：${userProfile.constitution.type} (${userProfile.constitution.desc})\n`;
+             if (userProfile.sleepTime) systemPrompt += `- 平时作息：${userProfile.sleepTime} 入睡\n`;
+             if (userProfile.activity) systemPrompt += `- 活动强度：${userProfile.activity}\n`;
+             
+             systemPrompt += `\n请结合用户的【体质特征】和【生活习惯】进行针对性分析。例如：如果用户是阳虚质且熬夜，应重点提醒补阳和早睡；如果入睡晚，需分析是否因脾胃不和或肝火旺导致。`;
+         }
 
-     systemPrompt += "\n\n【重要指令】：\n1. 严禁输出任何形式的思考过程、推理步骤或Chain of Thought。\n2. 严禁使用 <think> 等标签。\n3. 直接输出最终回复给用户，就像正常聊天一样。\n4. 回复必须简短精炼，不要长篇大论。\n5. 不要使用Markdown代码块，直接返回纯文本。\n6. 如果用户涉及严重医疗问题，请建议就医。";
+         systemPrompt += "\n\n【重要指令】：\n1. 严禁输出任何形式的思考过程、推理步骤或Chain of Thought。\n2. 严禁使用 <think> 等标签。\n3. 直接输出最终回复给用户，就像正常聊天一样。\n4. 回复必须简短精炼，不要长篇大论。\n5. 不要使用Markdown代码块，直接返回纯文本。\n6. 如果用户涉及严重医疗问题，请建议就医。";
+     }
 
      // Convert app messages to API format
      const apiMessages = [
@@ -690,9 +693,9 @@ export const healthService = {
      // PRD Requirement: System Prompt must include Cooking Coefficient logic
      console.log("Local Analysis Failed, calling LLM for:", input);
      
-     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+     const API_KEY = '1e52c1eb939a43cb9aba66a83ed799ef.zF7gmf1FJ3Ayxzyr'; 
+     const ENDPOINT_ID = 'glm-4-flash'; 
+     const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
      const systemPrompt = `你是一位专业临床营养师。请分析用户输入的食物：
      
@@ -744,7 +747,10 @@ export const healthService = {
         
         if (data.error) throw new Error(data.error.message);
         
-        const jsonStr = data.choices[0].message.content.replace(/```json|```/g, '').trim();
+        const text = data.choices[0].message.content;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Invalid JSON format from LLM");
+        const jsonStr = jsonMatch[0];
         return JSON.parse(jsonStr);
      } catch (e) {
         console.error("LLM Analysis Failed:", e);
@@ -1031,9 +1037,9 @@ export const healthService = {
   },
 
   generate_meal_plan: async (userProfile) => {
-     const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
-     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
-     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+     const API_KEY = '1e52c1eb939a43cb9aba66a83ed799ef.zF7gmf1FJ3Ayxzyr'; 
+     const ENDPOINT_ID = 'glm-4-flash'; 
+     const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
      // Calculate TDEE or use default
      let tdee = 1800;

@@ -223,11 +223,11 @@ ${JSON.stringify(this.getToolsDescription(), null, 2)}
 5. 工具调用失败时，使用已知信息继续对话，不要让用户知道工具调用失败了
 
 【回复要求】
-1. 先思考需要什么信息，决定是否调用工具
-2. 直接回复用户，不要暴露思考过程
-3. 回复必须简短精炼，不要长篇大论
-4. 如果用户涉及严重医疗问题，请建议就医
-5. 禁止医疗诊断、开药方、承诺治愈
+1. 直接回复用户，不要暴露思考过程或使用 <think> 标签。
+2. 回复必须简短精炼，不要长篇大论，字数控制在100字以内。
+3. 如果是饮食记录，请根据【最近工具调用结果】中的 analyze_diet 数据（热量、适宜度、建议等），给用户一个贴心的反馈。
+4. 如果用户涉及严重医疗问题，请建议就医。
+5. 禁止医疗诊断、开药方、承诺治愈。
 
 `;
 
@@ -260,9 +260,11 @@ ${JSON.stringify(this.getToolsDescription(), null, 2)}
     }));
 
     try {
+      const systemPrompt = this.buildSystemPrompt(context);
       const response = await healthService.chat(
         chatMessages,
-        context.userProfile || {}
+        context.userProfile || {},
+        systemPrompt
       );
 
       this.memory.addMessage('assistant', response);
@@ -281,7 +283,7 @@ ${JSON.stringify(this.getToolsDescription(), null, 2)}
     }
   }
 
-  async processWithTools(userMessage) {
+  async processWithTools(userMessage, options = {}) {
     this.memory.loadUserProfile();
     this.memory.addMessage('user', userMessage);
 
@@ -304,7 +306,7 @@ ${JSON.stringify(this.getToolsDescription(), null, 2)}
       }
     }
 
-    if (intent.needsDietAnalysis) {
+    if (intent.needsDietAnalysis || options.forceDiet) {
       const result = await this.executeTool('analyze_diet', { foodInput: userMessage });
       if (result.success) {
         toolResults.push(result);
@@ -317,9 +319,11 @@ ${JSON.stringify(this.getToolsDescription(), null, 2)}
     }));
 
     try {
+      const systemPrompt = this.buildSystemPrompt(context);
       const response = await healthService.chat(
         chatMessages,
-        context.userProfile || {}
+        context.userProfile || {},
+        systemPrompt
       );
 
       this.memory.addMessage('assistant', response);

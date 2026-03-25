@@ -12,7 +12,7 @@ export const useHealthAgent = () => {
     setAgent(newAgent);
   }, []);
 
-  const processMessage = async (userMessage) => {
+  const processMessage = async (userMessage, options = {}) => {
     if (!agentRef.current) {
       return {
         type: 'text',
@@ -23,7 +23,7 @@ export const useHealthAgent = () => {
     setIsTyping(true);
 
     try {
-      const result = await agentRef.current.processWithTools(userMessage);
+      const result = await agentRef.current.processWithTools(userMessage, options);
       setIsTyping(false);
       return result;
     } catch (error) {

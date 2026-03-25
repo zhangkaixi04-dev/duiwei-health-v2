@@ -3,7 +3,7 @@ import { authService } from '../services/authService';
 import { storageService } from '../services/storageService';
 import { CloudOff, X } from 'lucide-react';
 
-const AuthStatus = ({ appName = 'hepai' }) => {
+const AuthStatus = ({ appName = 'hepai', isStatic = false }) => {
     const [user, setUser] = React.useState(null);
     const [syncing, setSyncing] = React.useState(false);
     const [isExpanded, setIsExpanded] = React.useState(false);
@@ -60,8 +60,12 @@ const AuthStatus = ({ appName = 'hepai' }) => {
         await authService.signOut(appName);
     };
 
+    const containerClasses = isStatic 
+        ? "flex items-center gap-2"
+        : "fixed top-safe-top right-4 z-40 flex items-center gap-2";
+
     return (
-        <div className="fixed top-safe-top right-4 z-40 flex items-center gap-2">
+        <div className={containerClasses}>
             {user ? (
                 isExpanded ? (
                     <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-gray-200 shadow-sm animate-fade-in">

@@ -153,27 +153,29 @@ export const cangzhenService = {
     const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
     const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 
-    const systemPrompt = `你是一位深具洞察力且温柔细腻的“数字博物馆”策展人。请阅读用户本周在“感知、情绪、创意、决策”四个展馆中留下的灵感碎片（藏品），为她/他撰写一份极具质感和深度的「周展前言」（周报）。
+    const systemPrompt = `你是一位冷静、敏锐且极具审美能力的“数字博物馆”资深策展人。
+    请阅读用户本周在“感知、情绪、创意、决策”四个展馆中留下的记录，为她/他撰写一份【年度回顾质感】的周展前言。
     
-    【用户本周藏品】
-    ${inputs.length > 0 ? inputs : "（本周暂无新增藏品，展馆正在静静呼吸）"}
+    【用户本周记录】
+    ${inputs.length > 0 ? inputs : "（本周暂无新增记录，生活在静默中寻找平衡）"}
     
     【撰写要求】
-    1. **文风**：文艺、治愈、富有哲理与空间感（如顶级艺术展的策展前言，参考《Kinfolk》风格）。语气亲切、像老朋友的低语。
-    2. **内容深度**：
-       - **串联与提炼**：不要罗列流水账！要将用户的碎片串联成一个有内在逻辑的故事或情绪流。
-       - **情感共鸣**：从字里行间读懂用户的喜悦、疲惫、思考或迷茫，给予温暖的回应与肯定。
-       - **生活哲理**：在结尾升华，给出一段富有启发性、能带来力量的寄语。
-    3. **排版与格式**：在 \`summary\` 字段中返回 HTML 格式的文本。使用 <p> 分段，可以用 <strong> 突出核心金句或情绪词，使排版错落有致。总字数约 200-300 字，内容要充实丰满。
-    4. **留白处理**：如果本周无藏品，请写一段关于“停下脚步、允许留白、积蓄能量”的优美散文，鼓励用户下周继续记录。
-    5. **核心提取**：精准提取 1 个高度概括本周状态的“本周关键词”（2-4个字，如：破茧、自洽、向内求索）和一组“情绪/状态标签”（3-5个，带有艺术感，如：#捕捉微光 #允许一切发生）。
+    1. **表达主体**：你是观察者，用户是主角。请用“你记录了xxx”、“你本周的表现是xxx”这类视角。
+    2. **拒绝死板**：禁止像流水账一样按顺序罗列“感知馆、情绪馆...”。要把这些记录打碎重组，发现它们内在的关联和冲突。
+    3. **文风逻辑**：
+       - **拒绝鸡汤与煽情**：不要空洞的鼓励。要客观、克制，通过对细节的精准捕捉来产生力量。
+       - **高洞察力**：从琐碎中读出用户的潜意识或生活状态。
+       - **对比与联想**：比如将“周一的忙碌”与“周日的留白”做对比，将“微小的动作”联想到“宏大的生活哲学”。
+    4. **排版要求**：在 \`summary\` 字段中返回 HTML。使用 <p> 分段，用 <strong> 突出那些精准的洞察点。
+    5. **字数**：300 字左右。
+    6. **核心提取**：提取 1 个精准的“本周关键词”和一组有质感的“氛围标签”。
     
     【返回格式】
-    必须严格返回纯JSON格式（不要包含任何Markdown代码块如 \`\`\`json）：
+    必须严格返回纯JSON格式：
     {
-      "summary": "<p>第一段：情绪的共鸣与串联...</p><p>第二段：藏品背后的闪光点...</p><p>第三段：温暖有力量的寄语...</p>",
-      "keyword": "自洽",
-      "tags": [{"text":"情绪着陆","weight":5}, {"text":"接纳","weight":4}, {"text":"向内生长","weight":3}]
+      "summary": "...",
+      "keyword": "...",
+      "tags": [{"text":"...", "weight":5}, ...]
     }`;
 
     try {
@@ -211,8 +213,101 @@ export const cangzhenService = {
         console.error("Cangzhen Report Error:", e);
         return {
             success: false,
-            summary: "<p>生活是由无数个微小的瞬间组成的。即使本周留白，也是为了下一次更绚烂的绽放。</p>",
-            keyword: "留白",
+            summary: `<p>✨ <strong>生活是由无数个微小的瞬间组成的。</strong></p>
+<p>即使本周留白，也是为了下一次更绚烂的绽放。在这段静默的时光里，你的博物馆正在悄悄积蓄能量。有时候，停下脚步去观察一朵花的开落，或者仅仅是允许自己发呆十分钟，都是一种了不起的“藏品”。</p>
+<p><strong>不要因为没有记录而感到焦虑。</strong> 每一个当下，无论你是否落笔，它都已经深刻地刻画在你的生命里。愿你在下周，能重新找回那份捕捉微光的好奇心，继续在这里，与更真实的自己相遇。✨</p>`,
+            keyword: "蓄能",
+            tags: [{text: "允许留白", weight: 5}, {text: "静默生长", weight: 3}]
+        };
+    }
+  },
+
+  /**
+   * Generate Monthly Review for Cangzhen (Museum)
+   * 
+   * @param {string} userId 
+   * @param {number} month Offset (0 for current, -1 for last month)
+   */
+  report_monthly: async (userId, monthOffset = 0) => {
+    // 1. Calculate Date Range
+    const now = new Date();
+    const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const startOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+    
+    // 2. Fetch Memories
+    const memories = await storageService.getCangzhenMemories();
+    const monthMemories = memories.filter(m => {
+        if (!m) return false;
+        let mDate = m.id ? new Date(m.id) : (m.date ? new Date(m.date) : null);
+        if (!mDate || isNaN(mDate.getTime())) return false;
+        return mDate >= startOfMonth && mDate <= endOfMonth;
+    });
+
+    const inputs = monthMemories.map(m => {
+        const hallMap = { sensation: '感知', emotion: '情绪', inspiration: '创意', wanxiang: '决策' };
+        return `[${hallMap[m.hall] || '记录'}] ${m.content || '(图片记录)'}`;
+    }).join('\n');
+
+    // 3. Call Doubao AI
+    const API_KEY = 'dad8fc14-6dac-40f8-8ade-599d60a53336'; 
+    const ENDPOINT_ID = 'ep-20250218143825-9k28d'; 
+    const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+
+    const systemPrompt = `你是一位冷静、敏锐且极具审美能力的“数字博物馆”资深策展人。
+    请阅读用户【本月】在“感知、情绪、创意、决策”四个展馆中留下的灵感碎片，为她/他撰写一份【年度回顾质感】的月度深度复盘。
+    
+    【用户本月记录】
+    ${inputs.length > 0 ? inputs : "（本月暂无新增记录，生活在静默中蓄力）"}
+    
+    【撰写要求】
+    1. **表达主体**：你是观察者，用户是主角。请用“你记录了xxx”、“你本月呈现的状态是xxx”这类视角。
+    2. **拒绝死板**：禁止像流水账一样按顺序罗列。要把一整个月的记录打碎重组，发现它们内在的关联、冲突与成长曲线。
+    3. **文风逻辑**：
+       - **拒绝鸡汤与煽情**：不要空洞的夸奖。要客观、克制，通过对细节的精准捕捉来产生力量。
+       - **高洞察力**：从月度的琐碎中读出用户的潜意识、生活惯性或思维突破。
+       - **对比与联想**：将月初与月末的状态做对比，将用户的某个小习惯联想到更宏大的生命课题。
+    4. **排版要求**：在 \`summary\` 字段中返回 HTML。使用 <p> 分段，用 <strong> 突出那些精准的洞察点。
+    5. **字数**：300-400 字左右，内容要充实，有层次感。
+    6. **核心提取**：提取 1 个精准的“月度关键词”和一组有质感的“氛围标签”。
+    
+    【返回格式】
+    必须严格返回纯JSON格式：
+    {
+      "summary": "...",
+      "keyword": "...",
+      "tags": [{"text":"...", "weight":5}, ...]
+    }`;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify({
+                model: ENDPOINT_ID,
+                messages: [{ role: "system", content: systemPrompt }],
+                stream: false
+            })
+        });
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        let result = JSON.parse(content.replace(/```json|```/g, '').trim());
+
+        return {
+            success: true,
+            summary: result.summary,
+            keyword: result.keyword,
+            tags: result.tags
+        };
+    } catch (e) {
+        return {
+            success: false,
+            summary: "<p>每一个月都是时光的馈赠。即使本月留白，也是为了下个月更精彩的伏笔。</p>",
+            keyword: "沉淀",
             tags: []
         };
     }

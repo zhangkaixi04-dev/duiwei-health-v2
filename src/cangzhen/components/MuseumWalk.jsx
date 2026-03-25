@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FlowerIcon } from './FlowerIcons';
 import { Quote, X, Lock } from 'lucide-react';
+import { storageService } from '../../services/storageService';
 
 const MuseumWalk = () => {
   const [activeCard, setActiveCard] = useState(null);
@@ -20,63 +21,67 @@ const MuseumWalk = () => {
   };
 
   useEffect(() => {
-      const stored = localStorage.getItem('cangzhen_memories');
-      if (stored) {
-          try {
-              const parsed = JSON.parse(stored);
-              const now = Date.now();
-              const fiveDaysAgo = now - (5 * 24 * 60 * 60 * 1000);
+      const loadData = async () => {
+          const memories = await storageService.getCangzhenMemories();
+          if (memories && memories.length > 0) {
+              try {
+                  // 获取今天零点的时间戳
+                  const startOfToday = new Date();
+                  startOfToday.setHours(0, 0, 0, 0);
+                  const todayTimestamp = startOfToday.getTime();
 
-              // 1. Filter memories older than 5 days
-              const olderMemories = parsed.filter(item => {
-                  const timestamp = typeof item.id === 'number' ? item.id : new Date(item.date).getTime(); // Fallback if id is not timestamp
-                  return timestamp < fiveDaysAgo;
-              });
-
-              // 2. Check if total older records < 4
-              if (olderMemories.length < 4) {
-                  setIsLocked(true);
-              } else {
-                  setIsLocked(false);
-
-                  // 3. Group by Date (YYYY-MM-DD)
-                  const groupedByDate = {};
-                  olderMemories.forEach(item => {
+                  // 1. Filter past memories (anything before today)
+                  const pastMemories = memories.filter(item => {
                       const timestamp = typeof item.id === 'number' ? item.id : new Date(item.date).getTime();
-                      const dateObj = new Date(timestamp);
-                      const dateKey = dateObj.toLocaleDateString(); // Local format as key
-                      
-                      if (!groupedByDate[dateKey]) {
-                          groupedByDate[dateKey] = [];
-                      }
-                      
-                      // Normalize item structure
-                      groupedByDate[dateKey].push({
-                          id: item.id,
-                          date: dateKey, // Display date
-                          tag: (item.tags && item.tags[0]) || '记录',
-                          hall: item.hall || 'sensation',
-                          content: item.content,
-                          color: getHallColor(item.hall)
-                      });
+                      return timestamp < todayTimestamp;
                   });
 
-                  // 4. Pick a random date
-                  const dates = Object.keys(groupedByDate);
-                  if (dates.length > 0) {
-                      const randomDate = dates[Math.floor(Math.random() * dates.length)];
-                      setRandomDateStr(randomDate);
-                      setDisplayMemories(groupedByDate[randomDate]);
-                  }
-              }
+                  // 2. Check if there are any past records
+                  if (pastMemories.length === 0) {
+                      setIsLocked(true);
+                  } else {
+                      setIsLocked(false);
 
-          } catch (e) {
-              console.error("Failed to parse memories for Museum Walk", e);
+                      // 3. Group by Date (YYYY-MM-DD)
+                      const groupedByDate = {};
+                      pastMemories.forEach(item => {
+                          const timestamp = typeof item.id === 'number' ? item.id : new Date(item.date).getTime();
+                          const dateObj = new Date(timestamp);
+                          const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+                          
+                          if (!groupedByDate[dateKey]) {
+                              groupedByDate[dateKey] = [];
+                          }
+                          
+                          groupedByDate[dateKey].push({
+                              id: item.id,
+                              date: dateKey,
+                              tag: (item.tags && item.tags[0]) || '记录',
+                              hall: item.hall || 'sensation',
+                              content: item.content,
+                              color: getHallColor(item.hall)
+                          });
+                      });
+
+                      // 4. Pick a random date
+                      const dates = Object.keys(groupedByDate);
+                      if (dates.length > 0) {
+                          const randomDate = dates[Math.floor(Math.random() * dates.length)];
+                          setRandomDateStr(randomDate);
+                          setDisplayMemories(groupedByDate[randomDate]);
+                      }
+                  }
+
+              } catch (e) {
+                  console.error("Failed to parse memories for Museum Walk", e);
+                  setIsLocked(true);
+              }
+          } else {
               setIsLocked(true);
           }
-      } else {
-          setIsLocked(true);
-      }
+      };
+
+      loadData();
   }, []);
 
   if (isLocked) {
@@ -87,8 +92,8 @@ const MuseumWalk = () => {
           </div>
           <div className="w-full h-32 glass-concave rounded-2xl flex flex-col items-center justify-center text-cangzhen-text-secondary/50 gap-2 border border-black/5">
               <Lock size={20} />
-              <span className="text-xs tracking-widest font-serif">馆藏不足 · 敬请期待</span>
-              <span className="text-[10px] opacity-60">记录满5天后开启时空漫游</span>
+              <span className="text-xs tracking-widest font-serif">时光穿梭机 · 启动中</span>
+              <span className="text-[10px] opacity-60">记录满 1 天后开启时空漫游</span>
           </div>
         </div>
       );

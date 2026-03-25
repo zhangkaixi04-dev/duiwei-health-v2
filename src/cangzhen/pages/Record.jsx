@@ -25,12 +25,12 @@ const Record = () => {
   ];
 
   const BADGE_DEFINITIONS = [
-    { id: 1, threshold: 1, plant: 'StarOfBethlehem', plantNameCN: '初见·萌芽', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。' },
-    { id: 2, threshold: 3, plant: 'Snowdrop', plantNameCN: '坚持·苏醒', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。' },
-    { id: 3, threshold: 7, plant: 'Lily', plantNameCN: '习惯·破土', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。' },
-    { id: 4, threshold: 10, plant: 'Iris', plantNameCN: '光亮·前行', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始。' },
-    { id: 5, threshold: 21, plant: 'Lotus', plantNameCN: '蜕变·绽放', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。' },
-    { id: 6, threshold: 30, plant: 'custom', plantNameCN: '繁花·盛景', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录。' }
+    { id: 1, threshold: 1, plant: 'StarOfBethlehem', realPlantName: '伯利恒之星', displayName: '初见', meaning: '初见', desc: '清透如月光的温柔花材，带着初见的纯净与美好。' },
+    { id: 2, threshold: 3, plant: 'Snowdrop', realPlantName: '雪滴花', displayName: '苏醒', meaning: '坚定', desc: '冰雪中绽放的坚韧小花，温柔却有力量。' },
+    { id: 3, threshold: 7, plant: 'Lily', realPlantName: '百合', displayName: '破土', meaning: '微光', desc: '高原上的清雅花朵，自带清冷高级气质。' },
+    { id: 4, threshold: 10, plant: 'Iris', realPlantName: '鸢尾花', displayName: '前行', meaning: '光亮', desc: '花形如蝶，优雅灵动。十次记录，是热爱的开始。' },
+    { id: 5, threshold: 21, plant: 'Lotus', realPlantName: '莲花', displayName: '绽放', meaning: '笃定', desc: '上古灵草，羽叶清雅，自带沉稳力量。' },
+    { id: 6, threshold: 30, plant: 'custom', realPlantName: '满天星', displayName: '繁花', meaning: '温柔', desc: '朦胧轻盈的治愈之花。一个月的陪伴，谢谢你认真记录。' }
   ];
 
   // Handle Image Upload
@@ -143,7 +143,7 @@ const Record = () => {
 
                           {/* Text Info */}
                           <h3 className="text-2xl font-serif font-bold text-cangzhen-text-main mb-2 tracking-widest">
-                              {earnedBadge.plantNameCN}
+                              {earnedBadge.realPlantName}
                           </h3>
                           <p className="text-xs text-cangzhen-text-secondary font-serif tracking-wider mb-6">
                               花语 · {earnedBadge.meaning}

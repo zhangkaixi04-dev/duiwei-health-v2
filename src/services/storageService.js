@@ -488,9 +488,7 @@ export const storageService = {
    */
   getCangzhenMemories: async () => {
     const { data: { session } } = await supabaseCangzhen.auth.getSession();
-    if (!session?.user) return [];
-    
-    const userId = session.user.id;
+    const userId = session?.user?.id || 'guest_user';
     const storageKey = STORAGE_KEYS.CANGZHEN_MEMORIES(userId);
     return getLocal(storageKey, []);
   },
@@ -500,9 +498,7 @@ export const storageService = {
    */
   saveCangzhenMemories: async (memories) => {
     const { data: { session } } = await supabaseCangzhen.auth.getSession();
-    if (!session?.user) return;
-    
-    const userId = session.user.id;
+    const userId = session?.user?.id || 'guest_user';
     const storageKey = STORAGE_KEYS.CANGZHEN_MEMORIES(userId);
     setLocal(storageKey, memories);
   },

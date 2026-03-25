@@ -1853,9 +1853,9 @@ const ChatInterface = ({ onOpenProfile }) => {
 
   // --- Constants ---
   const allShortcuts = [
-    { id: 'status', label: '记心情', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
     { id: 'sleep', label: '记睡眠', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-50' },
     { id: 'poop', label: '记排便', icon: PlusCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' }, 
+    { id: 'status', label: '记心情', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
   ];
 
   const shortcuts = allShortcuts;
@@ -2216,9 +2216,54 @@ const ChatInterface = ({ onOpenProfile }) => {
   const processAgentLogic = async (text) => {
     if (text.startsWith('[') && text.includes(']')) return;
 
+    // --- UI Command Interception ---
+    // Priority 1: Explicit "Record" commands
+    if (text === '我要记睡眠') {
+      setCurrentStep('sleep_record');
+      return;
+    }
+    if (text === '我要记排便') {
+      setCurrentStep('poop_record');
+      return;
+    }
+    if (text === '记心情') {
+      setCurrentStep('status_record');
+      return;
+    }
+    if (text === '我要记饮食') {
+      setDietPending(true);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        sender: 'ai',
+        text: '请告诉我您具体吃了什么？或者点击左下角上传食物图片。',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+      return;
+    }
+
+    let forceDiet = false;
+    // Priority 3: Natural language triggers for low-frequency cards (Period)
+    if (dietPending) {
+      setDailyFoodLog(prev => [...prev, text]);
+      setDietPending(false);
+      forceDiet = true;
+      // Continue to AI analysis below
+    } else {
+      if (text === '我要记经期' || text.match(/^(月经|经期|大姨妈|例假|生理期)$/) || (text.length < 10 && text.match(/(月经|经期|大姨妈|例假|生理期)/))) {
+        setCurrentStep('period_record');
+        return;
+      }
+    }
+
+    // If we reach here, it's a general chat message. 
+    // If we were in a specific record card (except basic info/questionnaire), reset to daily chat view.
+    if (['period_record', 'sleep_record', 'poop_record', 'status_record', 'diet_summary'].includes(currentStep)) {
+      setCurrentStep('daily');
+    }
+
     try {
       setIsAiTyping(true);
-      const result = await agentProcessMessage(text);
+      const result = await agentProcessMessage(text, { forceDiet });
       
       setMessages(prev => [...prev, {
         id: Date.now(),
@@ -2619,14 +2664,13 @@ const ChatInterface = ({ onOpenProfile }) => {
                  <span className="text-xs text-text-muted font-medium">常用功能</span>
                  <button onClick={() => setShowActionSheet(false)} className="text-xs text-brand">收起</button>
                </div>
-               {/* 5-column grid for shortcuts */}
-               <div className="grid grid-cols-5 gap-2">
+               <div className="flex gap-4">
                  {shortcuts.map((s) => (
                    <button key={s.id} onClick={() => handleShortcut(s)} className="flex flex-col items-center gap-1.5 group p-1 active:scale-95 transition-transform">
-                     <div className={`w-10 h-10 rounded-2xl ${s.bg} flex items-center justify-center shadow-sm`}>
-                       <s.icon className={`w-5 h-5 ${s.color}`} />
+                     <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center shadow-sm`}>
+                       <s.icon className={`w-6 h-6 ${s.color}`} />
                      </div>
-                     <span className="text-[10px] text-text-muted font-bold whitespace-nowrap">{s.label}</span>
+                     <span className="text-[11px] text-text-muted font-bold whitespace-nowrap">{s.label}</span>
                    </button>
                  ))}
                </div>
